@@ -1,7 +1,8 @@
 """The Ole5 app's server (plan 003): one FastAPI app that serves Ole5's widget
-(apps/ole5-voice-agent/web/), the app's token route (token_route.py), the mock ticket system's
-read-only page (tickets/page.py, plan 007) and the library's router mounted under
-`VOICE_PREFIX` (the design's 4.5, "The mount"), run by uvicorn with one worker.
+(apps/ole5-voice-agent/web/), the token route (the library's `access_code_router`, at most
+`TOKENS_PER_DAY` tokens a day), the mock ticket system's read-only page (tickets/page.py, plan
+007) and the library's router mounted under `VOICE_PREFIX` (the design's 4.5, "The mount"), run
+by uvicorn with one worker.
 
 `uv run --offline python -m ole5_voice.server --env-file .env` serves it on 127.0.0.1:7861, its
 settings from the environment and the file given (settings.py). Its agent (agent.py) is Ole5's
@@ -12,16 +13,16 @@ none of it is, which one log line says; the settings refuse it set only in part.
 base's client signs in once the runtime has started, and is closed as the app's lifespan ends,
 after the runtime's. The mock ticket system is kept in the folder the settings give
 (`tickets_folder`), answering as `OLE5_VOICE_TICKETS_MODE` says; every join token the token
-route mints names the settings' demo customer (`OLE5_VOICE_DEMO_CUSTOMER_EMAIL`, customer.py).
-The app is built as the mount
-asks, since there the library's router cannot reach the app's object:
+route mints names the settings' demo customer (`OLE5_VOICE_DEMO_CUSTOMER_EMAIL`, customer.py),
+whatever the request says. The app is built as the mount asks, since there the library's router
+cannot reach the app's object:
 - FastAPI's own telemetry off (`TELEMETRY_OFF`): by default FastAPI traces, measures and logs
   every request through OpenTelemetry's global providers, and the library instruments no other
   library (D-023);
 - CORS for `server.allowed_origins` alone, with POST and PATCH, and as headers `content-type`
   and the offer secret's;
-- the widget's files with its page's headers (`page_headers`): a Content-Security-Policy with
-  no inline script and `frame-ancestors` only the website's origin
+- the widget's files with the library's page headers (`page_headers`): a
+  Content-Security-Policy with no inline script and `frame-ancestors` only the website's origin
   (`OLE5_VOICE_WEBSITE_ORIGIN`), `'none'` while it is unset; `nosniff`; no referrer; the
   microphone for this origin alone.
 uvicorn trusts proxy headers only from `server.forwarded_allow_ips`, none by default, so a
@@ -53,18 +54,26 @@ from t2_agentic_voice import (
     get_logger,
 )
 from t2_agentic_voice.identity import SignedJoinTokens
+from t2_agentic_voice.server import (
+    AccessCodeGuard,
+    TokenMinter,
+    access_code_router,
+    page_headers,
+)
 
 from ole5_voice import LOGGERS
 from ole5_voice.agent import ECHO_AGENT, talker_agent
+from ole5_voice.customer import demo_caller
 from ole5_voice.knowledge_base import QdrantKnowledgeBase
 from ole5_voice.settings import ACCESS, Settings, knowledge_access, load, tickets_folder
 from ole5_voice.tickets.mock import MockTicketSystem
 from ole5_voice.tickets.page import STYLE, tickets_router
 from ole5_voice.tickets.tools import with_ticket_claims
-from ole5_voice.token_route import Guard, Minter, token_router
 
 HOST: Final = "127.0.0.1"
 PORT: Final = 7861
+# The token route's tokens a day (plan 003's Q4); its wrong codes an hour are the library's 20.
+TOKENS_PER_DAY: Final = 10
 VOICE_PREFIX: Final = "/voice"
 # The widget's folder, beside the app's src/.
 WEB: Final = Path(__file__).resolve().parents[2] / "web"
@@ -98,35 +107,11 @@ class Closable(Protocol):
     async def aclose(self) -> None: ...
 
 
-def page_headers(website_origin: str | None) -> dict[str, str]:
-    """The headers of the widget's files: its page's policy, framed only by `website_origin`
-    (none when unset)."""
-    ancestors = website_origin or "'none'"
-    policy = "; ".join(
-        (
-            "default-src 'none'",
-            "script-src 'self'",
-            "style-src 'self'",
-            "connect-src 'self'",
-            "img-src 'self' data:",
-            "base-uri 'none'",
-            "form-action 'none'",
-            f"frame-ancestors {ancestors}",
-        )
-    )
-    return {
-        "Content-Security-Policy": policy,
-        "X-Content-Type-Options": "nosniff",
-        "Referrer-Policy": "no-referrer",
-        "Permissions-Policy": "microphone=(self)",
-    }
-
-
 def build_app(
     settings: Settings,
     *,
     router: APIRouter,
-    minter: Minter,
+    minter: TokenMinter,
     clock: Callable[[], float] = time.monotonic,
     web: Path = WEB,
     tickets: MockTicketSystem | None = None,
@@ -145,9 +130,11 @@ def build_app(
         allow_headers=["content-type", OFFER_SECRET_HEADER],
     )
     customer = settings.app.demo_customer_email
-    guard = Guard(clock=clock)
+    guard = AccessCodeGuard(clock=clock, tokens_per_day=TOKENS_PER_DAY)
     app.include_router(
-        token_router(settings.app.access_code, minter, customer_email=customer, guard=guard)
+        access_code_router(
+            settings.app.access_code, minter, caller=lambda: demo_caller(customer), guard=guard
+        )
     )
     if tickets is not None:
         app.include_router(tickets_router(tickets, headers=page_headers(None)))

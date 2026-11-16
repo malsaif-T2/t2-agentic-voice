@@ -703,7 +703,7 @@ Stability levels are defined in section 5.4. "Provisional" covers everything tha
 | `t2_agentic_voice.ports` | `SpeechToText`, `ChatModel`, `TextToSpeech`, `IdentityVerifier`, `UsedTokens`, `Outbox`, `KnowledgeBase`; data types `AudioClip`, `AudioChunk`, `Transcript`, `ChatRequest`, `ChatEvent` (`TextDelta`, `ToolCallRequest`, `Usage`, `Done`), `DataFlow`, `Passage`, `OutboxEntry` | stable (`KnowledgeBase`, `Outbox`, `UsedTokens`: provisional) |
 | `t2_agentic_voice.identity` | `SignedJoinTokens` (mint and verify), `DevIdentity`; later `Authenticate` | stable |
 | `t2_agentic_voice.groq` | `GroqSTT`, `GroqChat`, `GroqTTS` | stable |
-| `t2_agentic_voice.server` | `serve(factory)`, `combine_lifespans` | stable |
+| `t2_agentic_voice.server` | `serve(factory)`, `combine_lifespans`; for an app's own demo page, `access_code_router` (`POST /token` for an access code, its `AccessCodeGuard` with tokens a day and wrong codes an hour, the caller built by the app's function, minting with a `TokenMinter`) and `page_headers` | stable |
 | `t2_agentic_voice.testing` | `TextCall`, `ScriptedLLM`, `FunctionLLM`, the fakes, `VirtualClock`, `ActionSafetySuite`, `assert_no_secret_leaks` | stable |
 | `t2_agentic_voice.testing.simulate` | `simulate`, `SimulatedCaller`, the hard checks | provisional |
 | `t2_agentic_voice.testing.audio` | `AudioCall` (audio replay) | provisional |

@@ -1,9 +1,10 @@
-"""The Ole5 app's token route (ole5_voice/token_route.py, plan 003's Q4): a join token only for
-the owner's access code, compared in constant time; an address's repeated wrong codes slowed; the
-route closed by the hour's 20th wrong code until a restart; at most 10 tokens a day; the consent
-of the request passed into the token as it came, the customer the route was built for named in
-it, and nothing else of the body taken. The address a proxy forwards is taken only from a
-trusted one: tests/ole5_voice/test_server.py runs the route behind uvicorn's configuration."""
+"""The access-code token route (api/access_code.py, the `server` facade): a join token only for
+the app's access code, compared in constant time; an address's repeated wrong codes slowed; the
+route closed by the hour's 20th wrong code (or the app's number) until a restart; at most 10
+tokens a day (or the app's number); the consent of the request passed into the token as it came,
+the caller the app's function builds named in it, and nothing else of the body taken. The
+address a proxy forwards is taken only from a trusted one: tests/ole5_voice/test_server.py runs
+the route behind uvicorn's configuration."""
 
 from __future__ import annotations
 
@@ -15,26 +16,25 @@ from typing import Any, Protocol
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from ole5_voice.customer import CUSTOMER_EMAIL, SUBJECT, customer_email
-from ole5_voice.token_route import (
+from pydantic import SecretStr
+from t2_agentic_voice import Caller, ConfigurationError, Consent
+from t2_agentic_voice.api.access_code import (
     DAY_S,
     HOUR_S,
     MAX_BODY_BYTES,
     TOKENS_PER_DAY,
     WRONG_PER_HOUR,
-    Guard,
-    token_router,
 )
-from pydantic import SecretStr
-from t2_agentic_voice import Caller, Consent
+from t2_agentic_voice.server import AccessCodeGuard, access_code_router
 
 from tests.leaks import holding, shown
-from tests.ole5_voice.server_support import CODE
 
+CODE = "made-up-access-code-0123"
 WRONG = "not-the-code-at-all-0123"
 CONSENT = {"version": "m2-owner-test-1", "record_audio": True}
-CUSTOMER = "made-up.customer@example.com"
-OTHER = "someone.else@example.com"
+ACCOUNT = "account"
+CALLER = Caller(subject="made-up-caller", attributes={ACCOUNT: "made-up-account-17"})
+OTHER = "someone-else-account"
 
 
 class Response(Protocol):
@@ -83,9 +83,13 @@ def clock() -> Clock:
 
 @pytest.fixture
 def app(minter: Minter, clock: Clock) -> FastAPI:
+    return routed(minter, AccessCodeGuard(clock=clock))
+
+
+def routed(minter: Minter, guard: AccessCodeGuard) -> FastAPI:
     app = FastAPI()
     app.include_router(
-        token_router(SecretStr(CODE), minter, customer_email=CUSTOMER, guard=Guard(clock=clock))
+        access_code_router(SecretStr(CODE), minter, caller=lambda: CALLER, guard=guard)
     )
     return app
 
@@ -109,8 +113,7 @@ def test_the_right_code_mints_a_token_carrying_the_consent_given(
     assert answer.json() == {"token": "made-up-token-0"}
     assert answer.headers["cache-control"] == "no-store"
     caller, consent, _ = minter.minted[0]
-    assert caller == Caller(subject=SUBJECT, attributes={CUSTOMER_EMAIL: CUSTOMER})
-    assert customer_email(caller) == CUSTOMER
+    assert caller == CALLER
     assert consent == Consent(version="m2-owner-test-1", record_audio=True)
     declined = {"version": "m2-owner-test-1", "record_audio": False}
     assert ask(app, consent=declined).status_code == 200
@@ -123,18 +126,18 @@ def test_the_right_code_mints_a_token_carrying_the_consent_given(
 def test_the_body_can_set_nothing_but_the_code_and_the_consent(
     app: FastAPI, minter: Minter
 ) -> None:
-    """No caller, subject, customer or other claim is taken from the request: the token names
-    the owner as the customer the route was built for (invariant 3), and its consent is the one
-    the request carried, which no later message changes."""
+    """No caller, subject, attribute or other claim is taken from the request: the token names
+    the caller the app's function builds (invariant 3), and its consent is the one the request
+    carried, which no later message changes."""
     extra = {"code": CODE, "consent": CONSENT, "subject": "someone-else"}
     assert client(app).post("/token", json=extra).json()["code"] == "invalid_request"
     nested = {"code": CODE, "consent": {**CONSENT, "subject": "someone-else"}}
     assert client(app).post("/token", json=nested).json()["code"] == "invalid_request"
     for named in (
-        {CUSTOMER_EMAIL: OTHER},
-        {"attributes": {CUSTOMER_EMAIL: OTHER}},
-        {"attrs": {CUSTOMER_EMAIL: OTHER}},
-        {"consent": {**CONSENT, CUSTOMER_EMAIL: OTHER}},
+        {ACCOUNT: OTHER},
+        {"attributes": {ACCOUNT: OTHER}},
+        {"attrs": {ACCOUNT: OTHER}},
+        {"consent": {**CONSENT, ACCOUNT: OTHER}},
     ):
         answer = client(app).post("/token", json={"code": CODE, "consent": CONSENT, **named})
         assert answer.json()["code"] == "invalid_request"
@@ -276,10 +279,7 @@ def test_the_hours_20th_wrong_code_closes_the_route_until_a_restart(
     clock.now += DAY_S
     assert ask(app, address="198.51.100.2").status_code == 503
     assert len(minter.minted) == 1
-    restarted = FastAPI()
-    restarted.include_router(
-        token_router(SecretStr(CODE), minter, customer_email=CUSTOMER, guard=Guard(clock=clock))
-    )
+    restarted = routed(minter, AccessCodeGuard(clock=clock))
     assert ask(restarted).status_code == 200
 
 
@@ -302,4 +302,46 @@ def test_at_most_ten_tokens_a_day(app: FastAPI, minter: Minter, clock: Clock) ->
     assert len(minter.minted) == TOKENS_PER_DAY
     clock.now = 1000.0 + DAY_S  # the first token's day has passed
     assert ask(app).status_code == 200
-    assert TOKENS_PER_DAY == 10
+    assert (TOKENS_PER_DAY, WRONG_PER_HOUR) == (10, 20)
+
+
+def test_an_apps_own_numbers_set_the_days_tokens_and_the_hours_wrong_codes(
+    minter: Minter, clock: Clock
+) -> None:
+    app = routed(minter, AccessCodeGuard(clock=clock, tokens_per_day=3, wrong_per_hour=2))
+    for _ in range(3):
+        assert ask(app).status_code == 200
+    assert ask(app).json()["code"] == "daily_limit"
+    other = routed(minter, AccessCodeGuard(clock=clock, tokens_per_day=50))
+    for _ in range(TOKENS_PER_DAY + 1):  # past the default ten
+        assert ask(other).status_code == 200
+    closing = routed(minter, AccessCodeGuard(clock=clock, wrong_per_hour=2))
+    assert ask(closing, code=WRONG, address="192.0.2.1").status_code == 403
+    assert ask(closing, address="198.51.100.1").status_code == 200
+    assert ask(closing, code=WRONG, address="192.0.2.2").status_code == 403
+    assert ask(closing, address="198.51.100.1").json()["code"] == "closed"
+
+
+def test_the_caller_is_built_by_the_apps_function_for_each_token(minter: Minter) -> None:
+    built: list[Caller] = []
+
+    def caller() -> Caller:
+        built.append(Caller(subject=f"made-up-caller-{len(built)}"))
+        return built[-1]
+
+    app = FastAPI()
+    app.include_router(access_code_router(SecretStr(CODE), minter, caller=caller))
+    assert ask(app).status_code == ask(app, address="198.51.100.1").status_code == 200
+    assert [each for each, _, _ in minter.minted] == built
+    assert [each.subject for each in built] == ["made-up-caller-0", "made-up-caller-1"]
+    assert ask(app, code=WRONG, address="192.0.2.9").status_code == 403
+    assert len(built) == 2  # a refused try builds no caller
+
+
+@pytest.mark.parametrize("field", ["tokens_per_day", "wrong_per_hour"])
+@pytest.mark.parametrize("value", [0, -1, True, 2.5])
+def test_a_guard_number_below_one_or_not_whole_is_refused(field: str, value: object) -> None:
+    with pytest.raises(ConfigurationError) as refused:
+        AccessCodeGuard(**{field: value})  # type: ignore[arg-type]
+    assert refused.value.details == {"field": field}
+    assert field in refused.value.message

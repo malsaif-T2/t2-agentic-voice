@@ -13,12 +13,13 @@ import pytest
 from fastapi import APIRouter
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
-from ole5_voice.server import WEB, build_app, page_headers
+from ole5_voice.server import WEB, build_app
 from ole5_voice.settings import AppSettings, Settings
 from ole5_voice.tickets.mock import FILE_NAME, MockTicketSystem
 from ole5_voice.tickets.page import COLUMNS, PAGE, REFRESH_S, STYLE, render, tickets_router
 from pydantic import SecretStr
 from t2_agentic_voice import Caller, Consent, VoiceSettings
+from t2_agentic_voice.server import page_headers
 
 from tests.ole5_voice.tickets.ticket_support import (
     MORNING,

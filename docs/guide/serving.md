@@ -87,9 +87,11 @@ TELEMETRY_OFF: Final[TelemetryConfig] = {
            allow_headers=["content-type", OFFER_SECRET_HEADER],
        )
        customer = settings.app.demo_customer_email
-       guard = Guard(clock=clock)
+       guard = AccessCodeGuard(clock=clock, tokens_per_day=TOKENS_PER_DAY)
        app.include_router(
-           token_router(settings.app.access_code, minter, customer_email=customer, guard=guard)
+           access_code_router(
+               settings.app.access_code, minter, caller=lambda: demo_caller(customer), guard=guard
+           )
        )
        if tickets is not None:
            app.include_router(tickets_router(tickets, headers=page_headers(None)))
@@ -177,18 +179,25 @@ a secret with `python -c "import secrets; print(secrets.token_urlsafe(48))"`. An
 verifies, so a new key can be added before it signs.
 
 **Minting.** In Python, `SignedJoinTokens.mint(caller, consent=...)` mints one with the key
-`current_kid` names; any JWT library that writes the claims above works as well. The Ole5 app's
-token route mints one for a caller who typed the owner's access code, carrying the consent its
-consent screen sent, its caller the owner as the demo customer the settings name
-(`OLE5_VOICE_DEMO_CUSTOMER_EMAIL`, carried as the caller's `customer_email` attribute), in
-[token_route.py](../../apps/ole5-voice-agent/src/ole5_voice/token_route.py):
+`current_kid` names; any JWT library that writes the claims above works as well.
 
-```python
-        minted = minter.mint(caller, consent=asked.consent)
-        held.minted()
-        log.info("token_minted", record_audio=asked.consent.record_audio)
-        return JSONResponse({"token": minted}, headers={"Cache-Control": "no-store"})
-```
+**A demo page's access code.** For a page of your own app that has no sign-in yet (a demo, a
+tester day), the `server` facade gives the token route the Ole5 app uses:
+`access_code_router(access_code, minter, caller=..., guard=...)` serves `POST /token`, which
+mints a token with `minter` (your `SignedJoinTokens`) for a page that sends
+`{"code": "<access code>", "consent": {"version": ..., "record_audio": ...}}`. The token's
+caller is the one your `caller` function builds, never one the request names; its consent is
+the one the page's box sent. The body is JSON alone, at most 1 KiB, parsed strictly. Its
+`AccessCodeGuard` compares the code in constant time, slows an address after each wrong code (1
+s, doubling, at most 60 s), closes the route until a restart at the hour's `wrong_per_hour`-th
+wrong code (20 by default), and mints at most `tokens_per_day` tokens a day (10 by default);
+each count lives in the process. `page_headers(website_origin)` gives the headers for the
+page's own files: a Content-Security-Policy with no inline script or style and `frame-ancestors`
+only `website_origin` (`'none'` when it is `None`), `nosniff`, no referrer, and the microphone
+for the page's origin alone. The Ole5 app's
+[server.py](../../apps/ole5-voice-agent/src/ole5_voice/server.py) builds both, as in step 2
+above, its caller the owner as the demo customer the settings name
+(`OLE5_VOICE_DEMO_CUSTOMER_EMAIL`), at 10 tokens a day.
 
 ## The routes
 

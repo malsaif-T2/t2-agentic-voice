@@ -44,7 +44,14 @@ NAMES = {
     "t2_agentic_voice.groq": {"GroqChat", "GroqSTT", "GroqTTS"},
     "t2_agentic_voice.classifiers": {"EcapaLanguage", "SileroLanguage"},
     "t2_agentic_voice.identity": {"DevIdentity", "SignedJoinTokens"},
-    "t2_agentic_voice.server": {"combine_lifespans", "serve"},
+    "t2_agentic_voice.server": {
+        "AccessCodeGuard",
+        "TokenMinter",
+        "access_code_router",
+        "combine_lifespans",
+        "page_headers",
+        "serve",
+    },
     "t2_agentic_voice.stores": {
         "ClauseCache",
         "ClauseCounts",

@@ -31,7 +31,6 @@ from ole5_voice.server import (
     VOICE_PREFIX,
     WEB,
     build_app,
-    page_headers,
     server_config,
 )
 from ole5_voice.settings import DEMO_CUSTOMER_EMAIL, AppSettings, Settings
@@ -39,6 +38,7 @@ from ole5_voice.tickets.mock import MockTicketSystem
 from pydantic import SecretStr
 from t2_agentic_voice import Caller, Consent, JoinSettings, ServerSettings, VoiceSettings
 from t2_agentic_voice.api import protocol
+from t2_agentic_voice.server import page_headers
 
 from tests.leaks import holding, shown
 from tests.ole5_voice.server_support import CODE
