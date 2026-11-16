@@ -19,9 +19,10 @@ SttModel = Literal["whisper-large-v3", "whisper-large-v3-turbo"]
 # pricing, read 2026-11-01; the design's 10.4): the adapter's billed seconds, the session's
 # usage and the echo timings count it so.
 WHISPER_MIN_BILLED_S = 10.0
-# The language a live call sends Whisper: the session's, none (for Whisper to detect), or each
-# turn's from a spoken-language classifier.
-LiveLanguage = Literal["session", "auto", "classified"]
+# The language a live call sends Whisper: the session's, none (for Whisper to detect), each
+# turn's from a spoken-language classifier, or the call's current one with a second request of a
+# long turn naming none, whose language moves the call (D-038's amendment).
+LiveLanguage = Literal["session", "auto", "classified", "detected"]
 # The spoken-language classifier: Silero's 95 languages on onnxruntime, or ECAPA on VoxLingua107,
 # which runs on torch through SpeechBrain, the library's `ecapa` extra.
 Classifier = Literal["silero", "ecapa"]
@@ -57,8 +58,24 @@ class SttSettings(Group):
             "Whisper detects it) or classified (each turn's, chosen among the agent's languages "
             "by the classifier `stt.classifier` names from the turn's first "
             "`stt.classifier_from_s` seconds; a short, unsure, late, busy or failed turn keeps "
-            "the language last classified, the call's until one is). A registered measurement "
-            "sets the default (GP-18)."
+            "the language last classified, the call's until one is) or detected (each request "
+            "names the call's current language, and a turn with `stt.detect_from_s` seconds of "
+            "voiced speech or more is also sent naming none, at the same time: when Whisper "
+            "hears the agent's other language in a question or request, never a short reply, "
+            "that transcript is the turn's and the call moves to that language). A registered "
+            "measurement sets the default (GP-18)."
+        ),
+    )
+    detect_from_s: float = Field(
+        default=1.2,
+        gt=0,
+        le=30,
+        allow_inf_nan=False,
+        description=(
+            "Under live_language detected, the seconds of voiced speech a turn needs, from "
+            "where the speech detector heard it begin to where it last heard it stop (never "
+            "the silence after), for its second request naming no language; a shorter turn "
+            "keeps the call's current language. 1.2, registered for run H (D-038's amendment)."
         ),
     )
     classifier: Classifier = Field(

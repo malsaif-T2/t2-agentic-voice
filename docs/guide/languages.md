@@ -40,6 +40,24 @@ value sends each turn in the language a classifier heard (next section); whether
 measured before it is promised (plan 007's run H). Until then, a caller who will ask in English
 picks English in the client.
 
+## The call follows the caller into the other language
+
+`stt.live_language = "detected"` (D-038 as amended, provisional) lets a question or request in
+the agent's other language move the call there, both ways, with no new provider: Whisper's own
+detection decides. It is off by default (GP-18) until run H keeps it. Each request names the
+call's current language as under `session`; a turn with `stt.detect_from_s` (1.2) seconds of
+voiced speech or more, counted from where the speech detector heard it begin to where it last
+heard it stop (never the silence after it, which the classifier's gate counted), is also sent
+naming no language and with no prompt, at the same time, so the turn waits for no extra round
+trip. The call moves when that second request hears the other of the agent's languages (Groq's
+name of it mapped exactly, so "Armenian" is never Arabic) and the turn is a question or request:
+two words or more, and not only short replies ("yes", "okay", "thanks", «ايه», «تمام», «طيب»,
+in either script). Then the turn's heard words are that request's, its reply, voice and search
+follow them, and every later request names the new language, so the next short "yes" is heard in
+it. Otherwise the transcript in the current language stands and nothing moves. A shorter turn
+never detects. The rule is `domain/language_switch.py`'s; each long turn costs a second Whisper
+request.
+
 ## Each turn's language from a classifier
 
 `stt.live_language = "classified"` (D-086, provisional) sends each turn to Whisper in the

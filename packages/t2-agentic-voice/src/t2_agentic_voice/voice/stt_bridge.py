@@ -34,8 +34,9 @@ hold began (turn_hold.py's `TurnHeldFrame`) hands `TurnHeld` and sends its speec
 (`HoldResumedFrame`) cancels that request, then hands `HoldResumed`. When no speech followed its
 audio, the turn's own `Transcribed` is that request's result again, with no request.
 
-Every request is stt_requests.py's: each names the language `languages` gives it as it goes, with
-that language's Whisper prompt (`call_prompts`). The bridge tells `languages` of each turn's
+Every request is stt_requests.py's: each names the language `languages` gives it, with its
+Whisper prompt (`call_prompts`), and under `detect` a turn's own and held ones also go naming
+none, given the turn's voiced speech (`voiced_s`). The bridge tells `languages` of each turn's
 audio, its hold (whatever `early` says), its overlap and its close, and never waits on it.
 
 `drop` ends the call's side here (io.py's end): the held audio is dropped, never flushed, and
@@ -62,6 +63,7 @@ from pipecat.services.settings import STTSettings
 from pipecat.services.stt_service import STTService
 
 from t2_agentic_voice.core.logging import get_logger
+from t2_agentic_voice.domain.language_switch import DetectRule
 from t2_agentic_voice.domain.ports.speech_to_text import SpeechToText
 from t2_agentic_voice.voice.pipecat_events import FailureReport
 from t2_agentic_voice.voice.session.session_events import (
@@ -102,7 +104,7 @@ class TurnSTTBridge(STTService):
     overlap's parts, its events to `events`, its failures to `report`; `start_s` is the speech
     detector's start delay; `early`, a turn's `held` request at its hold; `prompts`, the call's
     Whisper prompt of each language (`call_prompts`; none by default); `languages`, each turn's
-    language (no classifier by default) (the module's)."""
+    language (no classifier by default); `detect`, a long turn's second request (the module's)."""
 
     def __init__(
         self,
@@ -114,6 +116,7 @@ class TurnSTTBridge(STTService):
         early: bool = False,
         prompts: Mapping[str, str] | None = None,
         languages: TurnLanguages | None = None,
+        detect: DetectRule | None = None,
     ) -> None:
         super().__init__(
             audio_passthrough=False,
@@ -139,9 +142,9 @@ class TurnSTTBridge(STTService):
             report=report,
             prompts=prompts or {},
             languages=self._languages,
+            detect=detect,
         )
-        self._dropped = False
-        self._early = early
+        self._dropped, self._early = False, early
 
     @property
     def supports_ttfs(self) -> bool:
@@ -236,7 +239,8 @@ class TurnSTTBridge(STTService):
         if began and turn.held is None:
             self._events.hand(TurnHeld(turn_id=turn.turn_id, at=now))
             audio = turn.request(int(TRAIL_S * self.sample_rate) * 2)
-            turn.held = self._requests.send(turn.turn_id, audio, "held")
+            voiced_s = turn.voiced_s(self.sample_rate)
+            turn.held = self._requests.send(turn.turn_id, audio, "held", voiced_s=voiced_s)
             turn.held_starts = turn.starts
         elif not began and turn.held is not None:
             held, turn.held = turn.held, None
@@ -271,7 +275,8 @@ class TurnSTTBridge(STTService):
             request = self._requests.reuse(reused, "turn")
         else:
             audio = turn.request(int(TRAIL_S * self.sample_rate) * 2)
-            request = self._requests.send(turn.turn_id, audio, "turn")
+            voiced_s = None if turn.overlap is not None else turn.voiced_s(self.sample_rate)
+            request = self._requests.send(turn.turn_id, audio, "turn", voiced_s=voiced_s)
         self._last = (turn.turn_id, request)
 
     def _window_due(self, turn: HeldTurn) -> None:

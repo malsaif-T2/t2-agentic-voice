@@ -25,9 +25,10 @@ EndReason = Literal["hangup", "caller_left", "max_call", "idle", "transport", "s
 # How the language a turn was sent to speech-to-text in was chosen: the session's (`session`:
 # no classifier runs), a classifier's verdict (`classified`), or the current language kept: the
 # speech too short to classify, the verdict late, the classifier busy or failed, its best share
-# under the rule's, or an overlap's part (domain/turn_language.py).
+# under the rule's, or an overlap's part (domain/turn_language.py); or Whisper's own detection,
+# which moved the call to the agent's other language (`detected`, domain/language_switch.py).
 LanguageBy = Literal[
-    "session", "classified", "short", "unsure", "late", "busy", "failed", "overlap"
+    "session", "classified", "short", "unsure", "late", "busy", "failed", "overlap", "detected"
 ]
 # The kind of the ICE candidate the browser's call selected (host, server reflexive, peer
 # reflexive, relayed), and how a relayed one reaches its TURN server.

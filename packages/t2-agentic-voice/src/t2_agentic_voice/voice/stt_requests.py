@@ -10,6 +10,16 @@ prompt: the call's `prompts`, built once a call by `call_prompts`, the prompt ru
 measured and kept (plan 006, Q23). A request that names no language, or one whose prompt holds no
 word, carries none, as W1 sent none; with `stt.send_prompt` off, none carries one.
 
+Under `stt.live_language = "detected"` (`detect_rule`), a turn's `held` or `turn` request whose
+turn held at least `stt.detect_from_s` seconds of voiced speech, and is no overlap, goes twice at
+once: as above, and naming no language with no prompt, for Whisper to detect it, its
+`Transcribing` by `detected`, so no time is lost waiting for one before the other. When
+domain/language_switch.py's `switch_to` says the turn moves the call, the turn's `Transcribed` is
+the detecting request's (`switched`), and once it is the turn's own, the call's current language
+moves to it (`TurnLanguages.listen_in`), so every later request names it; otherwise the request in
+the current language stands, its failure the turn's. A failed detecting request is logged by its
+kind alone and changes nothing.
+
 `drop` cancels every request in flight at the call's end, its `Transcribing` already handed.
 """
 
@@ -26,14 +36,20 @@ from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ProviderError, ProviderErrorKind
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.domain.declaration import VoiceAgent
+from t2_agentic_voice.domain.language_switch import DetectRule, switch_to
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, SpeechToText, Transcript
+from t2_agentic_voice.domain.turn_language import spoken_codes
 from t2_agentic_voice.domain.whisper_prompt import COMMAND_SPELLINGS, whisper_prompt
+from t2_agentic_voice.domain.words import heard_code
 from t2_agentic_voice.voice.pipecat_events import FailureReport
 from t2_agentic_voice.voice.session.session_events import Transcribed, TranscriptPart
 from t2_agentic_voice.voice.session_bridge import EventStream
-from t2_agentic_voice.voice.stt_language import TurnLanguages
+from t2_agentic_voice.voice.stt_language import Named, TurnLanguages
 
 log = get_logger(__name__)
+
+# What a detecting request's `Transcribing` names: no language, by Whisper's own detection.
+DETECTING = Named(language=None, by="detected")
 
 
 def call_prompts(agent: VoiceAgent, settings: VoiceSettings) -> dict[str, str]:
@@ -48,10 +64,20 @@ def call_prompts(agent: VoiceAgent, settings: VoiceSettings) -> dict[str, str]:
     return {code: text for code, text in prompts.items() if text}
 
 
+def detect_rule(agent: VoiceAgent, settings: VoiceSettings) -> DetectRule | None:
+    """When a call of `agent` also sends a turn naming no language: under `stt.live_language =
+    "detected"` for an agent of two codes or more, from `stt.detect_from_s`; else never."""
+    codes = tuple(code for code in map(heard_code, spoken_codes(agent)) if code is not None)
+    if settings.stt.live_language != "detected" or len(set(codes)) < 2:
+        return None
+    return DetectRule(from_s=settings.stt.detect_from_s, codes=codes)
+
+
 class SttRequests:
     """The requests of the bridge `processor` (its tasks, its sample rate, whether it is
     usable): each to `stt`, its events to `events`, its failures to `report`, each naming the
-    language `languages` gives it with that language's prompt of `prompts` (the module's)."""
+    language `languages` gives it with that language's prompt of `prompts`, and a long turn's
+    also naming none under `detect` (the module's)."""
 
     def __init__(
         self,
@@ -62,6 +88,7 @@ class SttRequests:
         report: FailureReport,
         prompts: Mapping[str, str],
         languages: TurnLanguages,
+        detect: DetectRule | None = None,
     ) -> None:
         self._processor = processor
         self._stt = stt
@@ -69,11 +96,18 @@ class SttRequests:
         self._report = report
         self._prompts = dict(prompts)
         self._languages = languages
+        self._detect = detect
         self._requests: set[asyncio.Task[Transcribed]] = set()
 
-    def send(self, turn_id: int, audio: bytes, part: TranscriptPart) -> asyncio.Task[Transcribed]:
-        """One request of the turn's `part`, on a task of its own (`transcribe`)."""
-        return self._track(self.transcribe(turn_id, audio, part))
+    def send(
+        self, turn_id: int, audio: bytes, part: TranscriptPart, *, voiced_s: float | None = None
+    ) -> asyncio.Task[Transcribed]:
+        """One request of the turn's `part`, on a task of its own (`transcribe`), also sent
+        naming no language when its turn held `voiced_s` seconds of voiced speech enough to
+        detect (None: an overlap's part, never)."""
+        rule = self._detect
+        detect = rule is not None and part in ("held", "turn") and rule.detects(voiced_s)
+        return self._track(self.transcribe(turn_id, audio, part, detect=detect))
 
     def reuse(
         self, source: asyncio.Task[Transcribed], part: TranscriptPart
@@ -91,9 +125,12 @@ class SttRequests:
         request.add_done_callback(self._requests.discard)
         return request
 
-    async def transcribe(self, turn_id: int, audio: bytes, part: TranscriptPart) -> Transcribed:
+    async def transcribe(
+        self, turn_id: int, audio: bytes, part: TranscriptPart, *, detect: bool = False
+    ) -> Transcribed:
         """One request of the turn's `part`, its `Transcribing` handed as it goes, and its one
-        `Transcribed`, handed and returned; none goes for no audio or an unusable bridge."""
+        `Transcribed`, handed and returned; none goes for no audio or an unusable bridge. With
+        `detect`, a second naming no language, at the same time (the module's)."""
         events, clock = self._events, self._events.clock
         heard = Transcribed(
             turn_id=turn_id, at=0.0, audio_s=0.0, sent_at=None, transcript=None, part=part
@@ -105,17 +142,30 @@ class SttRequests:
         clip = AudioClip(pcm16=audio, sample_rate=self._processor.sample_rate)
         sent_at, named = clock.now(), self._languages.named(turn_id, part)
         events.hand(named.transcribing(turn_id, at=sent_at, audio_s=clip.seconds, part=part))
-        transcript: Transcript | None = None
-        failure: ProviderErrorKind | None = None
-        retryable, language = False, named.language
+        language = named.language
         prompt = None if language is None else self._prompts.get(language)
-        try:
-            transcript = await self._stt.transcribe(clip, language=language, prompt=prompt)
-        except ProviderError as error:
-            failure, retryable = error.kind, error.retryable
-        except Exception as error:  # an adapter's bug: still exactly one result for the part
-            log.error("stt_request_failed", turn_id=turn_id, error=type(error).__name__)
-            failure = "server_error"
+        asked = self._ask(turn_id, clip, language, prompt)
+        moved = None
+        if detect and self._detect is not None:
+            detecting = DETECTING.transcribing(turn_id, at=sent_at, audio_s=clip.seconds, part=part)
+            events.hand(detecting)
+            (transcript, failure, retryable), found = await asyncio.gather(
+                asked, self._detecting(turn_id, clip)
+            )
+            if found is not None:
+                said = None if transcript is None else transcript.text
+                moved = switch_to(
+                    language,
+                    found.language,
+                    codes=self._detect.codes,
+                    named_text=said,
+                    detected_text=found.text,
+                )
+            if moved is not None and found is not None:
+                transcript = found.model_copy(update={"language": moved})
+                failure, retryable = None, False
+        else:
+            transcript, failure, retryable = await asked
         if failure is not None:
             self._report.provider_failed("speech_to_text", failure, retryable, turn_id=turn_id)
         heard = replace(
@@ -126,12 +176,39 @@ class SttRequests:
             transcript=transcript,
             failure=failure,
             retryable=retryable,
+            switched=moved is not None,
         )
+        if moved is not None and part == "turn":
+            self._languages.listen_in(moved)
         events.hand(heard)
         return heard
 
+    async def _ask(
+        self, turn_id: int, clip: AudioClip, language: str | None, prompt: str | None
+    ) -> tuple[Transcript | None, ProviderErrorKind | None, bool]:
+        """One request to the provider: its transcript, or its failure's kind and whether asking
+        again may succeed."""
+        try:
+            return await self._stt.transcribe(clip, language=language, prompt=prompt), None, False
+        except ProviderError as error:
+            return None, error.kind, error.retryable
+        except Exception as error:  # an adapter's bug: still exactly one result for the part
+            log.error("stt_request_failed", turn_id=turn_id, error=type(error).__name__)
+            return None, "server_error", False
+
+    async def _detecting(self, turn_id: int, clip: AudioClip) -> Transcript | None:
+        """The turn naming no language, with no prompt, for Whisper to detect it; None when it
+        failed, logged by its kind alone."""
+        transcript, failure, _ = await self._ask(turn_id, clip, None, None)
+        if failure is not None:
+            log.warning("stt_detect_failed", turn_id=turn_id, kind=failure)
+        return transcript
+
     async def _reused(self, source: asyncio.Task[Transcribed], part: TranscriptPart) -> Transcribed:
         heard = replace(await asyncio.shield(source), part=part, at=self._events.clock.now())
+        moved = None if heard.transcript is None else heard_code(heard.transcript.language)
+        if heard.switched and part == "turn" and moved is not None:
+            self._languages.listen_in(moved)
         self._events.hand(heard)
         return heard
 

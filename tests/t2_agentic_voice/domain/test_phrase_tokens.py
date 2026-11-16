@@ -57,3 +57,11 @@ def test_a_tag_has_its_primary_code_and_a_transcript_names_one() -> None:
         None,
         None,
     ]
+
+
+@pytest.mark.parametrize(
+    "named", ["Armenian", "Arabica", "ara", "Engl", "eng", "Norwegian Nynorsk", "ar_SA", " en"]
+)
+def test_a_name_only_starting_like_a_code_names_none_of_the_agents_languages(named: str) -> None:
+    """TD-011: Groq's names are matched exactly, so "Armenian" is never read as Arabic."""
+    assert heard_code(named) is None

@@ -56,11 +56,20 @@ class Words(BaseModel):
     no: tuple[str, ...] = ()
 
 
+# Whisper's own name of each of the library's languages, as Groq reports a language it detected
+# ("Arabic", "English"), in any case (TD-011).
+WHISPER_NAMES: dict[str, LanguageCode] = {"arabic": "ar", "english": "en"}
+
+
 def heard_code(language: str | None) -> LanguageCode | None:
-    """The primary code a transcript's language names, a code or the provider's name of it in
-    any case ("ar", "Arabic", "en-US"); None for another or none."""
+    """The primary code a transcript's language names, exactly: the code itself or with a region
+    ("ar", "en-US"), or Whisper's name of it (`WHISPER_NAMES`), in any case; None for another
+    language ("Armenian", "fr") or none (TD-011)."""
     named = (language or "").casefold()
-    return next((code for code in get_args(LanguageCode) if named.startswith(code)), None)
+    if named in WHISPER_NAMES:
+        return WHISPER_NAMES[named]
+    primary = named.split("-", 1)[0]
+    return next((code for code in get_args(LanguageCode) if primary == code), None)
 
 
 def rule_form(text: str) -> str:
