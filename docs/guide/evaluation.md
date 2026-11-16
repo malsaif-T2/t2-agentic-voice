@@ -240,14 +240,15 @@ run (evaluation.md, "Registering a measurement"). Then:
    Plan 002's measurement commit was 1c3c4dc, and all 13 of its runs were made in one worktree
    there.
 3. **Name every flag.** Every run needs `--answerer`, `--split`, `--out` and `--note`, and a
-   `groq` run also `--model`, `--timeout-s`, `--price-per-hour` and `--cap-usd`; a run missing
-   one is refused before anything is sent.
+   provider's run also `--timeout-s`, `--price-per-hour` and `--cap-usd` (a `groq` run
+   `--model` too); a run missing one is refused before anything is sent.
 
    | Flag | What it sets |
    | --- | --- |
-   | `--answerer` | `groq`, or `reference`, which sends nothing |
+   | `--answerer` | a speech-to-text provider, which sets `stt.provider` for the run whatever the environment holds: `groq` (Whisper), or one measured beside it (D-100): `elevenlabs` (`scribe_v3`), `speechmatics` (the `ar_en` pack), `cohere` (Transcribe Arabic, which detects no language, so not with `--language-hint auto`, and at most `--max-rpm 5` on its trial key) or `soniox` (`stt-async-v6`), each needing its key; or `reference`, which sends nothing. The scorecard and the history line record the provider's model, and its requests are billed as it bills (Groq at least 10 s each, the others the audio sent) |
+   | `--estimate-only` | log the run's dry estimate (its requests, the least seconds and dollars billed, the least minutes at `--max-rpm`) and stop, sending nothing and building no adapter, so it needs no key; every provider's run logs the same estimate before its smoke test |
    | `--split` | `dev` or `held-out`: a run covers one split, all of it |
-   | `--model` | `stt.model`: `whisper-large-v3` or `whisper-large-v3-turbo` |
+   | `--model` | `stt.model`: `whisper-large-v3` or `whisper-large-v3-turbo` (a `groq` run only) |
    | `--timeout-s` | `stt.timeout_s`, in seconds |
    | `--base-url` | Groq's address; left out, the SDK's own `https://api.groq.com`, whatever the environment or the env file holds |
    | `--language-hint` | the language sent: `label`, unless given, sends the item's label's (`ar`, or `en` for English); `auto` sends none |

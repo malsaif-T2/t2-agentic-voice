@@ -1,6 +1,8 @@
 """The answerers `poe eval` runs, by name: `reference` (`reference_answerer.py`), which gives each
-variant its own reference and sends nothing, and `groq` (`groq_answerer.py`), which asks Groq's
-Whisper through the library's speech-to-text port, with its pacer and budget. Each answerer
+variant its own reference and sends nothing, and one for each speech-to-text provider
+(`stt_arms.ARMS`: `groq`, Whisper, and those measured beside it, D-100), each asking that
+provider through the library's speech-to-text port, with its pacer and budget
+(`groq_answerer.py`). Each answerer
 lives in its own module; this one keeps what a run asks of any of them (`RunAnswerer`)
 and builds the one a run names (`make_answerer`). The optional `prototype-cache` answerer, a
 replay of the prototype's stored answers, is not built.
@@ -21,9 +23,10 @@ from ole5_voice.evals.groq_answerer import Budget, Clock, GroqAnswerer, Policy, 
 from ole5_voice.evals.models import Variant
 from ole5_voice.evals.reference_answerer import ReferenceAnswerer
 from ole5_voice.evals.runs import Answerer
+from ole5_voice.evals.stt_arms import ARMS, recorded_model
 from ole5_voice.evals.windows import Measure
 
-ANSWERERS = ("reference", "groq")
+ANSWERERS = ("reference", *ARMS)
 
 
 class RunAnswerer(Answerer, Protocol):
@@ -57,15 +60,15 @@ def make_answerer(
     clock: Clock = time.perf_counter,
     sleep: Sleep = asyncio.sleep,
 ) -> RunAnswerer:
-    """The answerer called `name`, built from `settings`: `groq` asks `stt`, by default the
-    `adapter` of the settings, with no cap and no price unless `budget` gives them."""
+    """The answerer called `name`, built from `settings`: a provider's asks `stt`, by default
+    the `adapter` of the settings, with no cap and no price unless `budget` gives them."""
     if name == "reference":
         return ReferenceAnswerer(measure)
-    if name != "groq":
+    if name not in ARMS:
         raise ValueError(f"no answerer is called {name!r}; one of {', '.join(ANSWERERS)}")
     return GroqAnswerer(
         adapter(settings) if stt is None else stt,
-        model=settings.stt.model,
+        model=recorded_model(settings, name),
         policy=policy or Policy(),
         budget=budget or Budget(price_per_hour_usd=0.0),
         measure=measure,
@@ -74,4 +77,6 @@ def make_answerer(
         run_name=run_name,
         clock=clock,
         sleep=sleep,
+        name=name,
+        minimum_s=ARMS[name].minimum_s,
     )

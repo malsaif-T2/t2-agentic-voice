@@ -1,5 +1,6 @@
-"""The `groq` answerer of `poe eval`: it asks Groq's Whisper through the library's speech-to-text
-port, with the run's pacer and budget, in a module of its own as each answerer is.
+"""The speech-to-text answerer of `poe eval`: it asks Groq's Whisper, or a provider measured
+beside it (`stt_arms.py`, D-100), through the library's speech-to-text port, with the run's pacer
+and budget, in a module of its own as each answerer is; its `name` is the provider's.
 
 It sends one request at a time, the starts paced to `--max-rpm`. A request the provider turns
 away is asked again, up to `--max-attempts` times in all, after a pause: the larger of the
@@ -7,11 +8,11 @@ provider's `retry-after` and 20 s for a rate limit, 3 s for another failure that
 the prototype's scorer paused (`Ole5-chatbot/scripts/stt_eval.py`, lines 575-585); after the
 last attempt, or on a refusal no retry can mend, the variant is a provider failure, an answer and
 not an exception. A variant still running at `--variant-timeout-s` is stuck. Before each request
-the run's `Budget` is charged what Groq bills for it, and a request that would take the run past
-`--cap-usd` is never sent. Each request goes in the language the run's policy sends every one
-in (run W's arm X sends `ar`, as an Arabic call does), or else the item's, with the policy's
-Whisper prompt for that language, if it holds one (run W's arm W1). No line it logs holds a
-transcript or names a variant.
+the run's `Budget` is charged what the provider bills for it (Groq: at least 10 s), and a request
+that would take the run past `--cap-usd` is never sent. Each request goes in the language the
+run's policy sends every one in (run W's arm X sends `ar`, as an Arabic call does), or else the
+item's, with the policy's Whisper prompt for that language, if it holds one (run W's arm W1).
+No line it logs holds a transcript or names a variant.
 """
 
 from __future__ import annotations
@@ -82,10 +83,11 @@ class Budget:
         self.requests += 1
 
 
-def least_billed(requests: Sequence[AnswerRequest]) -> float:
-    """The fewest seconds Groq bills for `requests`, each segment sent once: the cap's check
-    before a run starts (a retry, or a request over the cap, comes on top)."""
-    return sum(max(GROQ_MINIMUM_S, read_wav(path).seconds) for r in requests for path in r.segments)
+def least_billed(requests: Sequence[AnswerRequest], *, minimum_s: float = GROQ_MINIMUM_S) -> float:
+    """The fewest seconds a provider billing at least `minimum_s` a request (Groq's 10 s by
+    default) bills for `requests`, each segment sent once: the cap's check before a run starts
+    (a retry, or a request over the cap, comes on top)."""
+    return sum(max(minimum_s, read_wav(path).seconds) for r in requests for path in r.segments)
 
 
 @dataclass(frozen=True)
@@ -118,9 +120,10 @@ class Pacer:
 
 class GroqAnswerer:
     """Asks the speech-to-text port for each segment of a variant, or for each of its windows,
-    in the language its policy sends or the run hints, with its policy's prompt for it."""
+    in the language its policy sends or the run hints, with its policy's prompt for it; `name`
+    is the provider's, and each request is billed at least `minimum_s`."""
 
-    name = "groq"
+    name: str = "groq"
     spends = True
     needs_audio = True
 
@@ -137,7 +140,10 @@ class GroqAnswerer:
         run_name: str,
         clock: Clock,
         sleep: Sleep,
+        name: str = "groq",
+        minimum_s: float = GROQ_MINIMUM_S,
     ) -> None:
+        self.name, self._minimum_s = name, minimum_s
         self._stt, self._model, self._policy, self._budget = stt, model, policy, budget
         self._measure, self._reuse, self._tracing, self._run = measure, reuse, tracing, run_name
         self._clock, self._sleep = clock, sleep
@@ -201,7 +207,7 @@ class GroqAnswerer:
     ) -> Transcript | None:
         """One clip's transcript, asked again while the provider turns it away with a failure
         that may pass; None after the last attempt, or after a refusal no retry mends."""
-        billed = max(GROQ_MINIMUM_S, clip.seconds)
+        billed = max(self._minimum_s, clip.seconds)
         attempt = 0
         while True:
             attempt += 1
