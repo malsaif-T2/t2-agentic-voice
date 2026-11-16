@@ -33,7 +33,10 @@ turn and the call as it was heard to the events the session plays, within the re
   the session to say if the wait runs long (one a reply); each result goes back to the model
   framed as data, a result's card is shown once the guard passed its text, and the calls and
   results are kept for the call's next `KEPT_TURNS` turns, which the heard history does not
-  hold.
+  hold. Once the library's `switch_language` tool (actions/language_tool.py) moved the reply
+  into another of the agent's languages, the rest of the turn is in it: the system prompt, the
+  line after the results, the clauses' tag, the leak check and the tools' context, and
+  `LanguageMoved` tells the session.
 - **Actions** (the design's 6.4 and 8.2). A request offers the agent's actions beside its tools
   (agent/prompt.py's `tool_definitions`). Rule C: once the model calls an action in a request,
   its text after the call is dropped, unspoken and unblocked, with what the splitter held. The
@@ -60,6 +63,7 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator, Sequence
 
 from t2_agentic_voice.actions.action_runner import ActionRunner
+from t2_agentic_voice.actions.language_tool import switched_to
 from t2_agentic_voice.actions.record import ActionRecord
 from t2_agentic_voice.actions.runner import ToolRunner
 from t2_agentic_voice.actions.tools import ToolResult
@@ -73,6 +77,7 @@ from t2_agentic_voice.agent.context import (
     without_calls,
 )
 from t2_agentic_voice.agent.events import (
+    LanguageMoved,
     ModelReplied,
     ModelRequested,
     ReadBackRequested,
@@ -80,7 +85,7 @@ from t2_agentic_voice.agent.events import (
     ReplyScope,
     TalkerEvent,
 )
-from t2_agentic_voice.agent.language import call_register, reply_language
+from t2_agentic_voice.agent.language import call_register, reply_language, wording
 from t2_agentic_voice.agent.leaked_reasoning import LeakedReasoning
 from t2_agentic_voice.agent.prompt import (
     compose_prompt,
@@ -220,6 +225,12 @@ class Turn:
                 *done[1:],
             ]
             self.memory.keep(self.turn.turn_id, done)
+            moved = switched_to(answer.calls, results)
+            if moved is not None and moved != self.language:
+                self._moved(moved)  # the rest of the reply, in the language the caller asked for
+                prompt = compose_prompt(self.agent, language=moved, today=today, register=register)
+                messages[0] = ChatMessage.system(prompt)
+                yield LanguageMoved(language=moved)
             if self.tools.plan is not None:  # read back: nothing more of the model this turn
                 yield ReadBackRequested(plan=self.tools.plan)
                 break
@@ -238,6 +249,14 @@ class Turn:
             read_back=self.tools.plan is not None,
         )
         yield ReplyDone(unsaid_clauses=self.gate.questions.unsaid)
+
+    def _moved(self, tag: LanguageTag) -> None:
+        """The reply goes on in `tag`, which the `switch_language` tool moved it to: its clauses,
+        its leak check, its tools' context and its lines' wording."""
+        self.language = self.gate.language = tag
+        self.leak = LeakedReasoning(arabic=tag != "en")  # nothing held: each request closed it
+        self.ctx = self.tools.ctx = self.ctx.model_copy(update={"language": tag})
+        self.tools.wording = wording(tag, self.register)
 
     def _request(
         self, messages: Sequence[ChatMessage], tools: tuple[ToolSchema, ...], *, after_tools: bool

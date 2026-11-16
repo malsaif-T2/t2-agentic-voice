@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 
 from t2_agentic_voice.agent.talker import (
     ClauseBlocked,
+    LanguageMoved,
     ModelReplied,
     ModelRequested,
     ProgressDue,
@@ -35,6 +36,7 @@ from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.tracing_tts import CallTrace
 from t2_agentic_voice.domain.text.scripts import MAX_LABELS
 from t2_agentic_voice.voice.session.io import CallSetup
+from t2_agentic_voice.voice.session.language_moves import tool_moved
 from t2_agentic_voice.voice.session.open_reply import OpenReply, language_of
 from t2_agentic_voice.voice.session.read_back import Confirming
 from t2_agentic_voice.voice.session.report import TurnLog
@@ -156,6 +158,8 @@ class TalkPlayer:
             case ClauseBlocked(language=tag, reason=reason):
                 emit(GuardBlocked(call_id=call_id, turn_id=turn_id, at=wall, reason=reason))
                 await self._told(talk, reply, tag, at)
+            case LanguageMoved(language=tag):
+                talk.language = tag if tool_moved(self._setup, tag) is not None else talk.language
             case ReadBackRequested(plan=plan):  # its lines are templates: said, never guarded
                 talk.said, talk.language = talk.said + 1, plan.language
                 await self._confirming.read(reply, plan, at)

@@ -6,7 +6,10 @@ the caller moved the call to, in three ways:
   (`Transcribed.switched`): the speech-to-text bridge moved itself already
   (voice/stt_requests.py), and the session follows it;
 - a spoken switch request (domain/language_switch.py's `asked_language`), the fast path;
-- the talker's `switch_language` tool, for any other wording (actions/).
+- the talker's `switch_language` tool, for any other wording (actions/language_tool.py; the
+  talker's `LanguageMoved`).
+
+A move the bridge did not make itself is named to it after the step (`untold`, call.py).
 
 The session's notices, its fixed phrases, the echo, the overlap words and a reply's fallback
 tag read it; a reply follows each turn's heard language (agent/language.py), and a turn that asked
@@ -18,6 +21,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.core.settings.words import LanguageCode
 from t2_agentic_voice.domain.declaration import Language
 from t2_agentic_voice.domain.language_switch import asked_language
 
@@ -29,6 +33,7 @@ class CallLanguage:
     def __init__(self, language: Language, languages: Sequence[Language], *, moves: bool) -> None:
         self.language, self.moves = language, moves
         self._languages = tuple(languages)
+        self._told = language  # the language the speech-to-text bridge was last named
 
     @property
     def tag(self) -> LanguageTag:
@@ -56,12 +61,22 @@ class CallLanguage:
         asked = self.asked(text)
         return None if asked is None else asked.tag
 
-    def move(self, language: str | None) -> Language | None:
+    def move(self, language: str | None, *, told: bool = False) -> Language | None:
         """Move the call to the agent's language of `language` (a tag or a code): that
         language when the call moved, None when it may not move, the agent speaks no such
-        language, or the call is held in it already."""
+        language, or the call is held in it already. `told`: the speech-to-text bridge moved
+        to it already (`untold`)."""
         found = self.of(language) if self.moves else None
         if found is None or found.primary == self.language.primary:
             return None
         self.language = found
+        self._told = found if told else self._told
         return found
+
+    def untold(self) -> LanguageCode | None:
+        """The code to name to the speech-to-text bridge (`ListenIn`) when the call moved since
+        the bridge was last named its language, which it then is; None when it knows it."""
+        if self._told.primary == self.language.primary:
+            return None
+        self._told = self.language
+        return self.language.primary

@@ -939,6 +939,7 @@ What v1 must already have for it, all built for M3 to M5 anyway:
   - `knowledge_tool(kb, description=..., progress=...)` returns a read tool. It does one search per question, gives the talker the top `limit` passages whole to write its own spoken answer from (D-071), with every step of the best passage, and shows no card (D-075).
   - Both are optional: a team can write its own tool instead.
   - A generic Qdrant adapter comes later. Ole5's stays in the app until a second team needs one.
+- **The language switch** is the library's own read tool, `switch_language` (`actions/language_tool.py`, D-038's amendment). Under `stt.live_language = "detected"` the talker of an agent of two languages or more is given it, unless the agent declares a tool of that name. The model calls it when the caller asks for another language in words the short list of switch requests misses; the rest of that reply is in the new language, the talker gives `LanguageMoved`, and the session moves the call. A team declares nothing for it.
 
 ### 6.4 Tools and confirmed actions
 

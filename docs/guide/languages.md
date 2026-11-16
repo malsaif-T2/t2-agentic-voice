@@ -65,6 +65,14 @@ notices, its fixed phrases, the echo and the interruption rule's words are the n
 (`CallSetup.now`, `voice/session/call_language.py`), and the call report names a detected turn's
 language with `language_by = "detected"`. Under `session` and `auto` the call never moves.
 
+The list is a fast path only. For any other wording ("can we do this in English?", «ممكن نتكلم
+بلغة ثانية») the talker is given the library's `switch_language` tool
+(`actions/language_tool.py`), under `detected` and for an agent of two languages or more, unless
+the agent declares a tool of that name. The model calls it with the code asked for (`en`, `ar`);
+the rest of that reply is then in the new language (its prompt, its clauses' voice, its tools'
+context), the call moves, and the speech-to-text bridge is told after the step. A language the
+agent does not speak is refused to the model as a tool error, and the call stays where it is.
+
 ## Each turn's language from a classifier
 
 `stt.live_language = "classified"` (D-086, provisional) sends each turn to Whisper in the

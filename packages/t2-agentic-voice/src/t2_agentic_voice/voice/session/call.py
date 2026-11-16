@@ -49,6 +49,7 @@ from t2_agentic_voice.voice import protocol as wire
 from t2_agentic_voice.voice.session import session_events as on
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.call_life import CallLife
+from t2_agentic_voice.voice.session.commands import ListenIn
 from t2_agentic_voice.voice.session.echo import echo
 from t2_agentic_voice.voice.session.interrupter import Interrupter
 from t2_agentic_voice.voice.session.io import CallSetup, Commands
@@ -289,6 +290,8 @@ class CallSession:
         """After each step: an action's outcome due at a turn boundary said (action_job.py),
         then the client told what the agent is doing, when it changed."""
         if self._close.ended is None and self._close.connected:
+            if (code := self._setup.now.untold()) is not None:  # the talker's tool moved the call
+                await self._commands.run(ListenIn(language=code))
             if self._talking is not None:
                 await self._talking.yes.flush(self._setup.clock.now())
             confirming = self._confirming.active

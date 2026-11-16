@@ -2,6 +2,7 @@
 `stt.live_language = "detected"` a turn the detecting request heard in the agent's other language
 moves the call, its record naming the language, detected, with no `ListenIn` (the bridge moved
 itself); a spoken switch request moves it too, the bridge told, the talker's turn asking for it;
+the talker's `switch_language` tool (`LanguageMoved`) moves it, the bridge told after the step;
 the notices and the overlap words follow the moved language. Under `session`, the library's
 default (GP-18), nothing moves; and `CallLanguage`'s own rules."""
 
@@ -11,6 +12,7 @@ import asyncio
 import dataclasses
 
 import pytest
+from t2_agentic_voice.agent.talker import LanguageMoved
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.settings.stt import SttSettings
 from t2_agentic_voice.voice.protocol import Notice
@@ -27,12 +29,25 @@ from tests.t2_agentic_voice.voice.session.session_support import (
     report,
     sent,
 )
-from tests.t2_agentic_voice.voice.session.talker_support import AGENT, settle, talker_call
+from tests.t2_agentic_voice.voice.session.talker_support import (
+    AGENT,
+    Step,
+    answer,
+    settle,
+    talker_call,
+)
 
 DETECTED = VoiceSettings(env="test", stt=SttSettings(live_language="detected"))
 QUESTION = "what time does my flight to Riyadh leave"
 ASK_ENGLISH = "بالانجليزي لو سمحت"  # bil-ingleezi law samaht, in English please
+ASK_OTHER = "ممكن نتكلم بلغة ثانية"  # mumkin nitkallam bi-lugha thanya, can we use another language
 ENGLISH, ARABIC = AGENT.languages[0], AGENT.languages[1]
+
+
+def _switched(_: object) -> list[Step]:
+    """A reply whose `switch_language` tool moved it into English, then said a clause in it."""
+    said = answer("Sure, go ahead.")
+    return [*said[:2], LanguageMoved(language="en"), *said[2:]]
 
 
 async def _turn(
@@ -89,6 +104,45 @@ def test_a_spoken_switch_request_moves_the_call_and_its_reply(
     assert holding(ASK_ENGLISH, shown(caplog=caplog)) == []
 
 
+def test_the_talkers_switch_tool_moves_the_call_and_tells_the_bridge(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    io, _, talker = talker_call(DETECTED, _switched, language="ar-SA")
+
+    async def drive() -> None:
+        await greeted(io)
+        await _turn(io, 0, ASK_OTHER, "ar")
+        await play(io, 1)
+        await settle()
+        await io.clock.advance(GAP_S)
+        await _turn(io, 1, None, "en", failure="timeout")
+        await io.ending()
+        await io.close()
+
+    asyncio.run(drive())
+    assert talker.turns[0].asked is None  # no word of the list: the model's judgement
+    assert io.setup.now.language == ENGLISH
+    assert io.commands.of(ListenIn) == [ListenIn(language="ar"), ListenIn(language="en")]
+    assert sent(io, Notice) == [Notice(kind="error", text=ENGLISH.notices["error"])]
+    moved = [r for r in caplog.records if r.getMessage() == "call_language_moved"]
+    assert [getattr(r, "fields", {}).get("by") for r in moved] == ["tool"]
+    assert holding(ASK_OTHER, shown(caplog=caplog)) == []
+
+
+def test_under_session_the_switch_tool_moves_nothing() -> None:
+    io, _, _ = talker_call(VoiceSettings(env="test"), _switched, language="ar-SA")
+
+    async def drive() -> None:
+        await greeted(io)
+        await _turn(io, 0, ASK_OTHER, "ar")
+        await io.ending()
+        await io.close()
+
+    asyncio.run(drive())
+    assert io.setup.now.language == ARABIC
+    assert io.commands.of(ListenIn) == [ListenIn(language="ar")]
+
+
 def test_under_session_nothing_moves() -> None:
     """The library's default: a switch request is a turn like any other (GP-18)."""
     io, _, talker = talker_call(VoiceSettings(env="test"), language="ar-SA")
@@ -112,5 +166,7 @@ def test_the_call_language_moves_only_to_another_of_the_agents() -> None:
     assert now.asked_tag("English please") == "en"
     assert now.move("en") == ENGLISH and now.tag == "en"
     assert now.spoken == ["en", "ar-SA"]
+    assert now.untold() == "en" and now.untold() is None  # named to the bridge once
+    assert now.move("ar", told=True) == ARABIC and now.untold() is None
     fixed = CallLanguage(ARABIC, AGENT.languages, moves=False)
     assert fixed.move("en") is None and fixed.asked("English please") is None
