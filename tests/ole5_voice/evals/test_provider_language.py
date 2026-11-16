@@ -27,6 +27,7 @@ from ole5_voice.evals.run_parts import Parts
 from ole5_voice.evals.runs import SCORECARD_FILE
 from ole5_voice.evals.stt_arms import ARMS
 from t2_agentic_voice import ConfigurationError, ProviderError, VoiceSettings
+from t2_agentic_voice.domain.turn_language import LanguageRule, choose_language
 from t2_agentic_voice.evals import LanguageTurn
 from t2_agentic_voice.ports import AudioClip, Transcript
 
@@ -81,6 +82,19 @@ def test_a_providers_answer_becomes_the_scores_the_rule_reads() -> None:
     for other in (_heard("fr", 0.99), _heard(None)):
         unsure = scores_of(other, AMONG)
         assert (unsure.shares, unsure.mass) == ({"ar": 0.5, "en": 0.5}, 0.0)
+
+
+@pytest.mark.parametrize("probability", [0.25, 0.3, 0.49])
+def test_a_providers_low_score_never_makes_the_language_it_did_not_hear_the_best(
+    probability: float,
+) -> None:
+    unsure = scores_of(_heard("ar", probability), AMONG)
+    assert (unsure.shares, unsure.mass) == ({"ar": 0.5, "en": 0.5}, probability)
+    rule = LanguageRule(from_s=2.0, min_share=0.7)
+    assert choose_language("ar", unsure, speech_s=2.0, rule=rule).by == "unsure"
+    assert choose_language("en", unsure, speech_s=2.0, rule=rule).language == "en"
+    three = scores_of(_heard("ar", 0.4), ("ar", "en", "fr"))
+    assert three.best == ("ar", 0.4) and three.shares["en"] == pytest.approx(0.3)
 
 
 def test_a_classification_sends_no_language_or_prompt_and_is_billed_as_sent() -> None:

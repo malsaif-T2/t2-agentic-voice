@@ -7,8 +7,11 @@ hands a classifier, with no language named and no prompt, so the provider detect
 language itself. The language it heard (`Transcript.heard_language`, else, for Whisper on Groq,
 the `language` it reported) becomes the turn's scores: its probability (ElevenLabs'
 `language_probability`) its share, the rest shared among the agent's other codes; 1 when the
-provider gives no score (Whisper on Groq, Soniox); and an even share with no mass when it heard
-no language, or one not among the agent's codes, so the rule finds it unsure. Only the
+provider gives no score (Whisper on Groq, Soniox); an even share with that probability as the
+mass when it is below an even share, since the score is the provider's confidence in its top
+language among about a hundred and the rest is mostly languages outside the agent's, so no
+other code becomes the best; and an even share with no mass when it heard no language, or one
+not among the agent's codes. Both even shares leave the rule unsure. Only the
 providers that report a language take part (`PROVIDERS`); Speechmatics' pack and Cohere report
 none. It lives in the app's evals, never in the library: the library's classifiers send no
 audio anywhere (invariant 8), and this one sends every classified turn to the provider, paid.
@@ -58,6 +61,9 @@ def scores_of(transcript: Transcript, among: Sequence[str]) -> LanguageScores:
         even = 1 / len(among)
         return LanguageScores.parsed(dict.fromkeys(among, even), among=among, mass=0.0)
     share = 1.0 if transcript.language_probability is None else transcript.language_probability
+    even = 1 / len(among)
+    if share < even:  # the rest is mostly languages outside `among`: never another's best
+        return LanguageScores.parsed(dict.fromkeys(among, even), among=among, mass=share)
     rest = (1 - share) / (len(among) - 1)
     shares = {each: share if each == code else rest for each in among}
     return LanguageScores.parsed(shares, among=among, mass=share)
