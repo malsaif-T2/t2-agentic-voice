@@ -1,8 +1,9 @@
 """The shapes runs K and S share (plan 006's registration): the language tags a reply is held to,
-the judge's verdicts, what one turn of a `TextCall` did as a run keeps it (`HeardTurn`, read from
-the `evals` facade's turn data, never from the talker's own events), and what a run spent on each
-model (`ModelSpend`). Strict, as every model of the golden set's commands: a result read back is
-checked as it is read, and an error never echoes the value it refused.
+the judge's verdicts, and what one turn of a `TextCall` did as a run keeps it (`HeardTurn`, read
+from the `evals` facade's turn data, never from the talker's own events); what a run spent on
+each model is the `evals` facade's `ModelSpend`. Strict, as every model of the golden set's
+commands: a result read back is checked as it is read, and an error never echoes the value it
+refused.
 
 **The reply's language** is read from its own words, never from its clauses' tags: the library
 tags a clause by the caller's words (an MSA turn in an `ar-SA` call stays `ar-SA`), and a tag
@@ -27,7 +28,6 @@ from t2_agentic_voice.languages import register_of
 
 from ole5_voice.evals.knowledge_set import SpokenLanguage
 from ole5_voice.evals.models import Model
-from ole5_voice.evals.runs import ModelName
 
 # The library's language tags (`Language.tag`), which a reply is spoken in.
 Tag = Literal["ar-SA", "ar", "en"]
@@ -246,20 +246,3 @@ def _most(scripts: Iterable[Script | None]) -> Script | None:
     if not ranked or (len(ranked) == 2 and ranked[0][1] == ranked[1][1]):
         return None
     return ranked[0][0]
-
-
-class ModelSpend(Model):
-    """What a run sent to one model: its requests, those that were a retry of one turned away,
-    those that failed after every attempt, those whose provider reported no usage (counted at
-    their budget), the tokens read (the cached among them counted again) and written, and their
-    cost at the run's prices."""
-
-    model: ModelName
-    requests: int = Field(default=0, ge=0)
-    retried: int = Field(default=0, ge=0)
-    failed: int = Field(default=0, ge=0)
-    unreported: int = Field(default=0, ge=0)
-    input_tokens: int = Field(default=0, ge=0)
-    cached_tokens: int = Field(default=0, ge=0)
-    output_tokens: int = Field(default=0, ge=0)
-    cost_usd: float = Field(default=0.0, ge=0, allow_inf_nan=False)

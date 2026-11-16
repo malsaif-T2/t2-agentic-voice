@@ -11,6 +11,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from t2_agentic_voice import evals, get_logger
+from t2_agentic_voice.evals import run_refused
 
 from ole5_voice.evals import history
 from ole5_voice.evals.eot_score import Decision, judge
@@ -25,7 +26,6 @@ from ole5_voice.evals.languages_score import line_of, load_pass, scorecard_of, w
 from ole5_voice.evals.models import Split
 from ole5_voice.evals.run_lines import AnyLine
 from ole5_voice.evals.run_parts import DATA, Todo, marked_end
-from ole5_voice.evals.worktree import refused
 
 log = get_logger(__name__)
 AppendLine = Callable[[AnyLine, Path], None]  # `history.append_line`, or a test's
@@ -114,7 +114,7 @@ def read_condition_4(folders: Sequence[Path]) -> int:
     try:
         readings = read_passes(passes)
     except ValueError as error:
-        raise refused(
+        raise run_refused(
             str(error), "give the complete passes of one commit, two of them off"
         ) from None
     for reading in readings:

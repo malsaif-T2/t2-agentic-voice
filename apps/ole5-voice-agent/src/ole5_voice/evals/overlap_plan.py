@@ -32,6 +32,7 @@ from typing import Final
 
 from pydantic import BaseModel, ConfigDict, TypeAdapter
 from t2_agentic_voice import ConfigurationError, VoiceSettings
+from t2_agentic_voice.evals import run_refused
 
 from ole5_voice.evals.files import read_model
 from ole5_voice.evals.models import Name
@@ -40,7 +41,6 @@ from ole5_voice.evals.overlap_score import EXPECTED, in_set
 from ole5_voice.evals.run_parts import Todo
 from ole5_voice.evals.takes import ScriptLine
 from ole5_voice.evals.timing_run import TAGS
-from ole5_voice.evals.worktree import refused
 
 # The reply a clip whose own is not known is played over, by the language its call is held in:
 # a text no clip holds, of words no listed word is within one edit of (the agent's).
@@ -75,7 +75,9 @@ def read_lab_replies(folder: Path) -> dict[str, LabReply]:
     found = read_model(
         folder / REPLIES_JSON,
         _LAB,
-        lambda problem: refused(f"{REPLIES_JSON}: {problem}", "give --replies the lab's folder"),
+        lambda problem: run_refused(
+            f"{REPLIES_JSON}: {problem}", "give --replies the lab's folder"
+        ),
     )
     return {reply.id: reply for reply in found}
 
@@ -111,7 +113,7 @@ def overlap_of(
     if line is not None and line.reply is not None and lab is not None:
         known = lab.get(line.reply)
         if known is None or not known.said:
-            raise refused(
+            raise run_refused(
                 f"{REPLIES_JSON} holds no text of the reply {line.reply}",
                 "give --replies the lab's folder whose replies.json names it",
             )
@@ -150,7 +152,7 @@ def with_set(loaded: VoiceSettings, given: Sequence[tuple[str, object]]) -> Voic
         group, _, field = name.partition(".")
         values = data.get(group)
         if not isinstance(values, dict) or field not in values:
-            raise refused(
+            raise run_refused(
                 f"--set {name} names no setting", "name one of docs/generated/settings.md"
             )
         values[field] = value
@@ -159,7 +161,7 @@ def with_set(loaded: VoiceSettings, given: Sequence[tuple[str, object]]) -> Voic
         checked = VoiceSettings.model_validate(data, context={"prefix": loaded.prefix})
     except ConfigurationError:
         named = ", ".join(name for name, _ in given)
-        raise refused(
+        raise run_refused(
             f"a value of --set {named} is not one the settings take", "give one"
         ) from None
     return loaded.model_copy(update=dict(checked))

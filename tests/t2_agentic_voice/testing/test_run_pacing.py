@@ -1,14 +1,15 @@
-"""The pacers of a timing run (pacers.py): at most `limit` requests counted in any minute, room
-waited for between variants, each request counted when its variant ended."""
+"""The pacers of a measurement run (run_pacing.py): at most `limit` requests counted in any
+minute, room waited for between variants, each request counted when its variant ended."""
 
 from __future__ import annotations
 
 import asyncio
 
 import pytest
-from ole5_voice.evals.pacers import WINDOW_S, MinutePacer
+from t2_agentic_voice.evals import MinutePacer
+from t2_agentic_voice.testing.run_pacing import WINDOW_S
 
-from tests.ole5_voice.evals.run_support import FakeClock
+from tests.t2_agentic_voice.testing.run_fakes import FakeClock
 
 
 def most_in_a_minute(times: list[float]) -> int:

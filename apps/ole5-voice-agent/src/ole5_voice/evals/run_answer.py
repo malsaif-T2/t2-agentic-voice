@@ -10,6 +10,7 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 
 from t2_agentic_voice import get_logger
+from t2_agentic_voice.evals import Checkout
 
 from ole5_voice.evals import history
 from ole5_voice.evals.answerers import RunAnswerer
@@ -17,7 +18,6 @@ from ole5_voice.evals.groq_answerer import Budget, CapReachedError
 from ole5_voice.evals.models import Variant
 from ole5_voice.evals.run_parts import DATA, Parts, Plan, Progress
 from ole5_voice.evals.runs import Answer, RunInfo
-from ole5_voice.evals.worktree import Checkout
 
 log = get_logger(__name__)
 

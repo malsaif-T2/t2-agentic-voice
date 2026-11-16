@@ -34,6 +34,7 @@ from pathlib import Path
 from typing import Final
 
 from t2_agentic_voice import T2VoiceError, VoiceSettings, configure_logging, evals, get_logger
+from t2_agentic_voice.evals import MinutePacer, check_out, run_checkout, run_refused
 from t2_agentic_voice.groq import GroqChat
 from t2_agentic_voice.ports import ChatModel
 
@@ -45,14 +46,12 @@ from ole5_voice.evals.files import read_model
 from ole5_voice.evals.models import NAME_RULE, is_name
 from ole5_voice.evals.overlap_card import AppendLine, OverlapScorecard
 from ole5_voice.evals.overlap_plan import setting, with_set
-from ole5_voice.evals.pacers import MinutePacer
 from ole5_voice.evals.run_parts import DATA, Choice, Parts, audio_roots, load_plan
 from ole5_voice.evals.runs import SCORECARD_FILE
 from ole5_voice.evals.uncertain_card import UncertainRun, close_run
 from ole5_voice.evals.uncertain_rejudge import ReplayerFactory, rejudged
 from ole5_voice.evals.uncertain_run import Asking, Found, Prices, asked, request_of
 from ole5_voice.evals.uncertain_score import uncertain_overlaps
-from ole5_voice.evals.worktree import check_out, refused, run_checkout
 
 RPM: Final = 20  # chat requests a minute, at most (the agent's: under the key's limit)
 MAX_ATTEMPTS: Final = 3
@@ -156,14 +155,14 @@ def _source(path: Path) -> tuple[OverlapScorecard, Path]:
     file = path / SCORECARD_FILE if path.is_dir() else path
     card = read_model(file, OverlapScorecard, lambda problem: ValueError(problem))
     if card.run.split != "dev":
-        raise refused(
+        raise run_refused(
             "--overlaps is a held-out overlap run, whose scorecard holds no overlap's words: U's "
             "held-out pass replays H3's held-out clips live, the kept arm deciding each "
             "uncertain overlap as it comes (Q16), and is built once an arm passes on dev",
             "give the scorecard of a complete dev run of `poe overlap`, such as O1's",
         )
     if not card.complete:
-        raise refused(
+        raise run_refused(
             "--overlaps is not a complete dev overlap run",
             "give the scorecard of a complete dev run of `poe overlap`, such as O1's",
         )
@@ -176,14 +175,14 @@ def _run(args: argparse.Namespace, parts: UncertainParts) -> int:
     checkout = run_checkout(plan.folder, plan.git)
     out = check_out(args.out, checkout, plan.git)
     if not is_name(out.name):
-        raise refused(
+        raise run_refused(
             f"the --out folder's name, the run's, is not a name, which is {NAME_RULE}",
             "name the folder like u1-o1",
         )
     try:
         card, file = _source(args.overlaps)
     except ValueError:
-        raise refused(
+        raise run_refused(
             "--overlaps is not an overlap run's scorecard", "give a dev run's scorecard.json"
         ) from None
     choice = Choice(split="dev", roots=audio_roots(args.audio), needs_audio=True)
@@ -191,18 +190,20 @@ def _run(args: argparse.Namespace, parts: UncertainParts) -> int:
     again = asyncio.run(rejudged(card, recorded, parts.audio_call, settings))
     overlaps = uncertain_overlaps(card.model_copy(update={"variants": tuple(again.results)}))
     if not overlaps:
-        raise refused("--overlaps holds no overlap the rule left uncertain", "give O1's or O2's")
+        raise run_refused(
+            "--overlaps holds no overlap the rule left uncertain", "give O1's or O2's"
+        )
     todo = [(each, request_of(each, settings, args.temperature)) for each in overlaps]
     cached = args.price_input if args.price_cached is None else args.price_cached
     prices = Prices(input_usd=args.price_input, cached_usd=cached, output_usd=args.price_output)
     sent = [todo[0], *(() if args.smoke_only else todo)]  # the smoke test's, then each
     if (most := sum(prices.budget(request) for _, request in sent)) > args.cap_usd:
-        raise refused(
+        raise run_refused(
             f"the run's budget, ${most:.4f} at most, passes --cap-usd",
             "raise --cap-usd, or check the prices and --max-output-tokens",
         )
     if len(sent) > args.day_requests:
-        raise refused(
+        raise run_refused(
             f"the run sends {len(sent)} requests at least, more than --day-requests",
             "run it on a day with room, or give the requests the key may still send",
         )

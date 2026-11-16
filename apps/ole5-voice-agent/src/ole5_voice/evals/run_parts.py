@@ -23,6 +23,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from t2_agentic_voice import VoiceSettings, get_logger
+from t2_agentic_voice.evals import Git, RunClock, RunSleep, run_git, run_refused
 from t2_agentic_voice.ports import AudioClip, SpeechToText
 from t2_agentic_voice.tracing import Tracing
 
@@ -30,7 +31,6 @@ from ole5_voice.evals import cli, history, items, matcher, scorecard, split
 from ole5_voice.evals.answerers import adapter
 from ole5_voice.evals.audio import AudioFormatError, read_wav, sha256_file
 from ole5_voice.evals.files import read_lines
-from ole5_voice.evals.groq_answerer import Clock, Sleep
 from ole5_voice.evals.models import Item, Split, SplitFile, Variant
 from ole5_voice.evals.runs import (
     Answer,
@@ -41,7 +41,6 @@ from ole5_voice.evals.runs import (
     ScorecardWriter,
     VariantResult,
 )
-from ole5_voice.evals.worktree import Git, refused, run_git
 
 DATA = Path("apps", "ole5-voice-agent", "evals")  # the golden set's files, below a worktree's top
 log = get_logger(__name__)
@@ -73,8 +72,8 @@ class Parts:
     tracing: Callable[[VoiceSettings], Tracing] = Tracing.from_settings
     normalize: Callable[[str], str] = matcher.normalize
     now: Callable[[], datetime] = _now
-    clock: Clock = time.perf_counter  # monotonic; 15.6 ms steps for time.monotonic on Windows
-    sleep: Sleep = asyncio.sleep
+    clock: RunClock = time.perf_counter  # monotonic; 15.6 ms steps for time.monotonic on Windows
+    sleep: RunSleep = asyncio.sleep
 
 
 def audio_roots(values: Sequence[str]) -> dict[str, Path]:
@@ -85,7 +84,7 @@ def audio_roots(values: Sequence[str]) -> dict[str, Path]:
         problem = str(error)
     else:
         return roots
-    raise refused(f"--audio: {problem}", "give each root once, as --audio ROOT=FOLDER")
+    raise run_refused(f"--audio: {problem}", "give each root once, as --audio ROOT=FOLDER")
 
 
 @dataclass(frozen=True)
@@ -146,7 +145,7 @@ def marked_end(todo: Todo) -> float:
     """A paused request's turn end, the owner's last mark, in ms; refused when it has none."""
     marks = todo.variant.turn_ends_ms
     if not marks:
-        raise refused("a paused request has no turn end marked", "mark it in the recorder")
+        raise run_refused("a paused request has no turn end marked", "mark it in the recorder")
     return float(marks[-1])
 
 
@@ -173,10 +172,10 @@ def load_plan(data: Path, choice: Choice, parts: Parts) -> Plan:
         judge = parts.load_matcher(data / items.SPELLING_FILE)
         spelling = sha256_file(data / items.SPELLING_FILE)
     except (OSError, ValueError):  # a pydantic ValidationError is a ValueError
-        raise refused("the golden set's files do not load", "run `poe golden`") from None
+        raise run_refused("the golden set's files do not load", "run `poe golden`") from None
     sides = committed.items
     if {item.id for item in golden} != set(sides):
-        raise refused(
+        raise run_refused(
             "the committed split does not hold exactly the golden set's items",
             "write the split again, each committed item keeping its side "
             f"(`{split.KEEP_COMMAND}`), and commit it",
@@ -200,13 +199,13 @@ def load_plan(data: Path, choice: Choice, parts: Parts) -> Plan:
     ]
     log.info("unchecked_left_out", variants=len(named) - len(pairs), of=len(named))
     if named and not pairs:
-        raise refused(
+        raise run_refused(
             "the run has no variant the owner has checked",
             "confirm the takes in the recorder's review mode, import them, and run `poe golden`",
         )
     first = pairs[:1] if choice.split == "dev" else dev[:1]
     if not pairs or not first:
-        raise refused(
+        raise run_refused(
             "the run has no variant, or no dev variant for its smoke test",
             "check --split, --questions and the committed split",
         )
@@ -230,11 +229,11 @@ def _screened(pairs: list[tuple[Item, Variant]], path: Path) -> list[tuple[Item,
     not hold."""
     lines = read_lines(path)
     if lines is None:
-        raise refused("--questions cannot be read", "give a UTF-8 file")
+        raise run_refused("--questions cannot be read", "give a UTF-8 file")
     wanted = set(lines)
     unknown = wanted - {f"{item.id}/{variant.id}" for item, variant in pairs}
     if unknown:
-        raise refused(
+        raise run_refused(
             f"--questions names {len(unknown)} variant(s) the run's split does not hold",
             "name each as item/variant, from the dev split",
         )
@@ -252,7 +251,7 @@ def _request(
             paths.append(Path(ref.root, ref.path))
             continue
         if ref.root not in choice.roots:
-            raise refused(
+            raise run_refused(
                 f"the audio root {ref.root!r} has no --audio", f"pass --audio {ref.root}=<folder>"
             )
         path = choice.roots[ref.root] / ref.path
@@ -261,7 +260,7 @@ def _request(
         except (OSError, AudioFormatError):
             same = False
         if not same:
-            raise refused(
+            raise run_refused(
                 f"an audio file below the root {ref.root!r} is missing, not 16 kHz mono 16-bit "
                 "WAV, or not the file its manifest hashed",
                 f"run `poe golden --audio {ref.root}=<folder>`, which names it",
@@ -285,9 +284,9 @@ def clip_answers(
     except scorecard.EvalDataError:
         card = None
     if card is None:  # raised outside the handler, and naming no field of the file
-        raise refused("--clips-from is not a scorecard", "give a dev run's scorecard.json")
+        raise run_refused("--clips-from is not a scorecard", "give a dev run's scorecard.json")
     if (card.run.split, card.run.model, card.run.commit) != ("dev", model, commit):
-        raise refused(
+        raise run_refused(
             "--clips-from is not a dev run of this model at this commit",
             "give the model's first dev run at the measurement commit",
         )
@@ -307,7 +306,7 @@ class Progress:
 
     total: int
     results_file: Path | None  # None for a held-out run
-    clock: Clock
+    clock: RunClock
     began: float
     results: list[VariantResult] = field(default_factory=list)
     smoke_passed: bool = False

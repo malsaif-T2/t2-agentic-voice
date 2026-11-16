@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Final
 
 from t2_agentic_voice import get_logger
+from t2_agentic_voice.evals import run_refused
 
 from ole5_voice.evals import scorecard
 from ole5_voice.evals.detect_arm import detected_plan
@@ -46,7 +47,6 @@ from ole5_voice.evals.models import Variant
 from ole5_voice.evals.run_parts import Plan
 from ole5_voice.evals.runs import Answer, Scorecard
 from ole5_voice.evals.scorecard import EvalDataError
-from ole5_voice.evals.worktree import refused
 
 SETTING: Final = "run.language_from"  # how a run records the arm
 log = get_logger(__name__)
@@ -91,7 +91,7 @@ def language_arm(
     found, results = _pass(args.language_from, args.split, commit, plan.digest)
     by_variant = {(r.item, r.variant): r for r in results}
     if any((t.item.id, t.variant.id) not in by_variant for t in plan.todo):
-        raise refused(
+        raise run_refused(
             "the --language-from pass did not feed every variant of the run",
             "give a complete pass of the run's split, at this commit",
         )
@@ -131,7 +131,7 @@ def _detected(
 ) -> LanguageArm:
     """The arm of a detected pass (detect_arm.py), on dev against the call language's base."""
     if args.language_base is None:
-        raise refused(
+        raise run_refused(
             "a detected pass's arm reads each answer against the call language's baseline",
             "give --language-base",
         )
@@ -156,7 +156,7 @@ def _pass(
     try:
         found, results = load_pass(path)
     except EvalDataError as error:
-        raise refused(f"--language-from {error.message}", "give an H1 pass's folder") from None
+        raise run_refused(f"--language-from {error.message}", "give an H1 pass's folder") from None
     problems = (
         (not found.complete, "is not complete"),
         (found.run.commit != commit, "is not at this commit"),
@@ -167,7 +167,7 @@ def _pass(
     )
     for wrong, says in problems:
         if wrong:
-            raise refused(
+            raise run_refused(
                 f"the --language-from pass {says}", "give a complete pass of H1, at this commit"
             )
     return found, results
@@ -182,7 +182,7 @@ def _base(
     except EvalDataError:
         base = None
     if base is None:
-        raise refused("--language-base is not a scorecard", "give the baseline run's folder")
+        raise run_refused("--language-base is not a scorecard", "give the baseline run's folder")
     settings = base.run.settings
     same = (
         base.run.split == args.split
@@ -195,12 +195,14 @@ def _base(
         and base.complete
     )
     if not same:
-        raise refused(
+        raise run_refused(
             "--language-base is not a baseline of this call language and prompt: a complete "
             "run of the same model, commit and data, with no arm of its own",
             "give the baseline run of this --language-hint",
         )
     known = {r.variant for r in base.variants}
     if any(t.variant.id not in known for t in plan.todo):
-        raise refused("--language-base does not hold every variant", "give a whole dev baseline")
+        raise run_refused(
+            "--language-base does not hold every variant", "give a whole dev baseline"
+        )
     return base

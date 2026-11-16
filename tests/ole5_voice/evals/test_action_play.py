@@ -30,7 +30,6 @@ from ole5_voice.evals.action_play import ActionPlaying
 from ole5_voice.evals.action_scenarios import ActionScenario, ActionTurn
 from ole5_voice.evals.action_score import ActionPlayRecord, passage_numbers
 from ole5_voice.evals.action_setup import AgentFactory
-from ole5_voice.evals.chat_pacing import Limits, ModelPacer, PacedChat, Price, Spend
 from ole5_voice.evals.judge import Judge
 from ole5_voice.evals.kb_points import RecordingKnowledge
 from ole5_voice.tickets.mock import FILE_NAME
@@ -40,6 +39,9 @@ from t2_agentic_voice import ProviderError, VoiceSettings
 from t2_agentic_voice.agent.context import DECLINED
 from t2_agentic_voice.core.conversation import DeclineKind
 from t2_agentic_voice.evals import FakeKnowledgeBase, is_consent_check
+from t2_agentic_voice.testing.paced_chat import PacedChat
+from t2_agentic_voice.testing.run_pacing import Limits, ModelPacer
+from t2_agentic_voice.testing.run_spend import Price, Spend
 
 from tests.ole5_voice.evals.action_run_support import (
     GUIDE,

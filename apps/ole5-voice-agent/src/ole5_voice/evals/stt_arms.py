@@ -29,10 +29,10 @@ from dataclasses import dataclass, replace
 from typing import Final, Literal
 
 from t2_agentic_voice import VoiceSettings, get_logger
+from t2_agentic_voice.evals import run_refused
 
 from ole5_voice.evals.groq_answerer import GROQ_MINIMUM_S, least_billed
 from ole5_voice.evals.runs import AnswerRequest, cost_usd
-from ole5_voice.evals.worktree import refused
 
 log = get_logger(__name__)
 
@@ -137,7 +137,7 @@ def check_cost(
         least_minutes=round(requests / max_rpm, 1),
     )
     if least > cap_usd:
-        raise refused(
+        raise run_refused(
             f"the run's least cost, ${least:.4f}, passes --cap-usd",
             "raise --cap-usd, or check --price-per-hour",
         )

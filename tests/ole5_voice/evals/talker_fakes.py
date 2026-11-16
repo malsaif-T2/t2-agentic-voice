@@ -13,7 +13,6 @@ from dataclasses import dataclass, field
 from types import TracebackType
 from typing import Any, Final, Literal
 
-from ole5_voice.evals.chat_pacing import CapReachedError, DailyLimitError
 from ole5_voice.evals.judge import REGISTER_SYSTEM
 from ole5_voice.evals.talker_data import Tag, script_of
 from pydantic import BaseModel
@@ -30,6 +29,8 @@ from t2_agentic_voice.ports import (
     TextDelta,
     Usage,
 )
+from t2_agentic_voice.testing.run_pacing import DailyLimitError
+from t2_agentic_voice.testing.run_spend import CapReachedError
 
 TALKER = "openai/gpt-oss-120b"
 JUDGE = "llama-3.3-70b-versatile"

@@ -1,7 +1,8 @@
-"""Run K's times are the model's, never the run's pacing (talker_measure.py, chat_pacing.py;
-Q15): a variant whose talker's model has no room in the minute waits for it before its call, so
-its first token and first clause are unchanged by the wait; a request turned away and sent
-again inside the call leaves the variant no time, rather than one that holds the retry's wait.
+"""Run K's times are the model's, never the run's pacing (talker_measure.py, the library's
+paced_chat.py; Q15): a variant whose talker's model has no room in the minute waits for it before
+its call, so its first token and first clause are unchanged by the wait; a request turned away
+and sent again inside the call leaves the variant no time, rather than one that holds the retry's
+wait.
 On the library's real `TextCall`, on the system clock, the minute made short."""
 
 from __future__ import annotations
@@ -11,14 +12,13 @@ import time
 from pathlib import Path
 
 import pytest
-from ole5_voice.evals import pacers
-from ole5_voice.evals.chat_pacing import Limits, ModelPacer, PacedChat, Price, Spend
 from ole5_voice.evals.judge import Judge
 from ole5_voice.evals.kb_points import RecordingKnowledge, load_knowledge
 from ole5_voice.evals.talker_measure import Measuring, Todo
 from ole5_voice.evals.talker_score import VariantRecord
 from t2_agentic_voice import ProviderError, VoiceSettings
-from t2_agentic_voice.evals import TextCall
+from t2_agentic_voice.evals import Limits, ModelPacer, PacedChat, Price, Spend, TextCall
+from t2_agentic_voice.testing import run_pacing
 
 from tests.ole5_voice.evals.talker_fakes import JUDGE, TALKER, TOOL, FakeChat, agent
 from tests.ole5_voice.evals.talker_support import item, make_setup
@@ -78,7 +78,7 @@ def _measured(tmp_path: Path, chat: FakeChat, slept: _Slept, *, full: bool) -> V
 
 @pytest.fixture(autouse=True)
 def _short_minute(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(pacers, "WINDOW_S", WINDOW_S)
+    monkeypatch.setattr(run_pacing, "WINDOW_S", WINDOW_S)
 
 
 def test_a_wait_for_room_in_the_minute_is_never_in_the_variants_times(tmp_path: Path) -> None:

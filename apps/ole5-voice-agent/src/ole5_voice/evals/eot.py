@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Final, get_args
 
 from t2_agentic_voice import T2VoiceError, VoiceSettings, configure_logging, evals, get_logger
+from t2_agentic_voice.evals import check_out, run_checkout, run_refused
 
 from ole5_voice import LOGGERS
 from ole5_voice.evals import history, run_settings
@@ -55,7 +56,6 @@ from ole5_voice.evals.run_parts import (
     marked_end,
 )
 from ole5_voice.evals.runs import SCORECARD_FILE
-from ole5_voice.evals.worktree import check_out, refused, run_checkout
 
 ANSWERERS: Final = ("reference", "pipeline")
 LEAD_S: Final = 1.0  # digital silence before each clip (the registration's E)
@@ -187,7 +187,7 @@ def _run(
     checkout = run_checkout(parts.folder, parts.git)
     out = check_out(args.out, checkout, parts.git)
     if not is_name(out.name):
-        raise refused(
+        raise run_refused(
             f"the --out folder's name, the run's, is not a name, which is {NAME_RULE}",
             "name the folder like e1-dev",
         )
@@ -199,7 +199,9 @@ def _run(
     sets: tuple[EotSet, EotSet] = ("paused", "secondary")
     todo = [(t, sets[0]) for t in paused] + [(t, sets[1]) for t in others]
     if not paused:
-        raise refused("the split holds no paused request the owner has checked", "check --split")
+        raise run_refused(
+            "the split holds no paused request the owner has checked", "check --split"
+        )
     true_ends = [marked_end(each) for each in paused]
     info = EotRun(
         name=out.name,

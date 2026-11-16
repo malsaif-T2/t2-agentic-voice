@@ -8,8 +8,9 @@ stopped at the key's daily limit, the cap or an interrupt goes on in a new sessi
 over days rather than passing the key's daily limit. A held-out run keeps no result, so it is
 never resumed: it is run again whole.
 
-`requests_today` counts each model's requests in the shared history's lines of one UTC day,
-which a run's pacers start the day's count from; `history_accepts` says whether the shared
+`requests_today` counts each model's requests in the lines of one UTC day of the shared history
+and of every other app's run history (the library's day counter), which a run's pacers start the
+day's count from; `history_accepts` says whether the shared
 history can hold a line of this shape (`run_lines.AnyLine`), which a run asks before it starts,
 and `append_shared` adds one.
 """
@@ -22,6 +23,8 @@ from pathlib import Path
 from typing import Final
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
+from t2_agentic_voice.evals import Checkout, Git, check_out, every_history, run_refused
+from t2_agentic_voice.evals import requests_today as day_requests
 
 from ole5_voice.evals.files import parse_json, read_model, read_text, write_json
 from ole5_voice.evals.history import append_line, read_history
@@ -29,7 +32,6 @@ from ole5_voice.evals.models import NAME_RULE, is_name
 from ole5_voice.evals.run_lines import AnyLine
 from ole5_voice.evals.runs import SCORECARD_FILE
 from ole5_voice.evals.talker_data import TalkerDataError
-from ole5_voice.evals.worktree import Checkout, Git, check_out, refused
 
 RUN_FILE: Final = "run.json"
 RESULTS_FILE: Final = "results.jsonl"
@@ -58,16 +60,13 @@ def append_shared(line: BaseModel, history: Path) -> None:
 
 
 def requests_today(history: Path, today: date) -> Counter[str]:
-    """Each model's requests in the lines of `history` whose run began on `today` (UTC), from
-    every line that counts its requests by model; none when there is no history yet."""
-    found: Counter[str] = Counter()
-    if not history.exists():
-        return found
-    for line in read_history(history):
-        requests = getattr(line, "requests", None)
-        if isinstance(requests, dict) and line.time.date() == today:
-            found.update({str(model): int(n) for model, n in requests.items()})
-    return found
+    """Each model's requests in the lines of `history`, and of every other app's run history
+    beside it (the library's `every_history`), whose run began on `today` (UTC): the apps spend
+    on one key, so its day is counted once over all of them. The shared history is read strictly
+    first, as every reader of it reads it; none when there is no history yet."""
+    if history.exists():
+        read_history(history)
+    return day_requests(every_history(history), today)
 
 
 def folder_for(out: Path, *, resume: bool, checkout: Checkout, git: Git) -> RunFolder:
@@ -76,11 +75,13 @@ def folder_for(out: Path, *, resume: bool, checkout: Checkout, git: Git) -> RunF
     if resume:
         target = out.expanduser().resolve()
         if not (target / RUN_FILE).is_file():
-            raise refused(f"--resume: {target} holds no run", "give the --out of the stopped run")
+            raise run_refused(
+                f"--resume: {target} holds no run", "give the --out of the stopped run"
+            )
     else:
         target = check_out(out, checkout, git)
     if not is_name(target.name):
-        raise refused(
+        raise run_refused(
             f"the --out folder's name, the run's, is not a name, which is {NAME_RULE}",
             "name the folder like k1-dev-a",
         )
@@ -99,7 +100,7 @@ class RunFolder:
         earlier = self.run(type(run))
         fields = [name for name in type(run).model_fields if name != "started_at"]
         if differing := [name for name in fields if getattr(earlier, name) != getattr(run, name)]:
-            raise refused(
+            raise run_refused(
                 f"--resume: the run in --out differs in {', '.join(differing)}",
                 "go on at the same commit, with the same command line and data",
             )

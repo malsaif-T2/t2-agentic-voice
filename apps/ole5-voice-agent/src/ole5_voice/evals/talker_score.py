@@ -27,6 +27,7 @@ from datetime import datetime
 from typing import Annotated, Final, Literal, Self
 
 from pydantic import Field, model_validator
+from t2_agentic_voice.evals import ModelSpend
 
 from ole5_voice.evals.judge import Judged
 from ole5_voice.evals.knowledge_set import KnowledgeKind, SpokenLanguage
@@ -41,7 +42,7 @@ from ole5_voice.evals.runs import (
     pool_small,
 )
 from ole5_voice.evals.scorecard import quantile
-from ole5_voice.evals.talker_data import VERDICTS, Failure, HeardTurn, ModelSpend, Tag
+from ole5_voice.evals.talker_data import VERDICTS, Failure, HeardTurn, Tag
 
 # Why a run stopped before its end: its smoke test failed, the cap, the key's daily limit, an
 # interrupt, or an error it does not score (logged by its type, then raised).

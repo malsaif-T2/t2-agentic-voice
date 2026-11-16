@@ -26,7 +26,7 @@ from ole5_voice.evals.models import AudioRef, Item, Manifest, ManifestFile, Spli
 from ole5_voice.evals.recorder import RecorderServer
 from ole5_voice.evals.recorder_load import load_recorder
 from ole5_voice.evals.recorder_state import Recorder
-from ole5_voice.evals.worktree import GitResult
+from t2_agentic_voice.evals import GitResult
 
 from tests.ole5_voice.evals.fakes import FakeGoldenSet
 
@@ -188,7 +188,8 @@ def recorder_of(tree: Tree, *, golden: Sequence[Item] | None = None, **given: An
 
 def _no_git(args: Sequence[str], cwd: Path) -> GitResult:
     """A `git` that names no worktree, so the recorder knows only its own checkout, and no
-    test of it runs git (`test_worktree.py` runs the real one)."""
+    test of it runs git (`test_worktree.py` and the library's `test_run_checkout.py` run the
+    real one)."""
     return GitResult(128, "")
 
 

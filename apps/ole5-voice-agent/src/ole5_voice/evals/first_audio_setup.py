@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Final
 
 from t2_agentic_voice import VoiceAgent, VoiceSettings
+from t2_agentic_voice.evals import run_refused
 from t2_agentic_voice.groq import GroqChat, GroqSTT, GroqTTS
 from t2_agentic_voice.ports import ChatModel, SpeechToText, TextToSpeech
 from t2_agentic_voice.stores import PhraseCache
@@ -35,7 +36,6 @@ from ole5_voice.evals.overlap_card import AppendLine
 from ole5_voice.evals.overlap_plan import with_set
 from ole5_voice.evals.run_parts import Choice, Parts, Todo, audio_roots, load_plan
 from ole5_voice.evals.timing_run import TAGS
-from ole5_voice.evals.worktree import refused
 
 # The flags a run needs: its split, agent and arm, every model's settings, its prices and cap.
 NEEDED: Final = (
@@ -105,12 +105,12 @@ def agent_of(args: argparse.Namespace, load: Loader, closing: Closing) -> VoiceA
         kb = closing.add(knowledge_of(load, args.knowledge, run_settings.env_file_of(args)))
     agent = built_agent(load, args.agent, kb)
     if not agent.instructed:
-        raise refused(
+        raise run_refused(
             "--agent's factory gives no agent with instructions, whose calls run the talker",
             "name the app's factory of its talker's agent",
         )
     if args.no_tools and agent.tools:
-        raise refused(
+        raise run_refused(
             "--no-tools: the agent's factory gave tools with no knowledge base",
             "name a factory that gives the talker with no tool when given none",
         )
@@ -160,7 +160,7 @@ def prices_of(args: argparse.Namespace, settings: VoiceSettings, voices: Sequenc
     """The run's prices, a voice's from `--tts-price`; refused for a voice with none."""
     given = dict(args.tts_price)
     if unpriced := [model for model in voices if model not in given]:
-        raise refused(
+        raise run_refused(
             f"--tts-price names no price for {', '.join(unpriced)}",
             "give --tts-price MODEL=USD for each voice the agent speaks in",
         )
