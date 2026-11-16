@@ -110,6 +110,12 @@ NAMES = {
     },
     "t2_agentic_voice.evals": {
         "ActionSafetySuite",
+        "Repeat",
+        "cut_reply_share",
+        "find_repeat",
+        "first_clause",
+        "repeats_cut_reply",
+        "token_overlap",
         "AudioCall",
         "BlockedClause",
         "CapReachedError",
