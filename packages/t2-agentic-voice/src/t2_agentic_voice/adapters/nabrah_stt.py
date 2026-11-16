@@ -9,9 +9,11 @@ connection (adapters/provider_socket.py):
    a small vocabulary, 0.5; no model named, so Nabrah's default, its most accurate.
 2. Its `ready` message awaited; then the clip as raw 16-bit PCM, mono, at 16 kHz (another rate
    resampled) in 160 ms chunks, one of the sizes Nabrah takes; then `{"type": "eof"}`.
-3. The final transcripts read (each final's `segment_text`, else its `text`, the end-of-turn
-   marker `<eot>` dropped) until Nabrah closes, or `nabrah.quiet_s` passes with no message;
-   the whole turn within `nabrah.turn_timeout_s`.
+3. The final transcripts read as they come (each final's `segment_text`, else its `text`, the
+   end-of-turn marker `<eot>` dropped) until Nabrah closes, which it does just after its last
+   final (probed 2026-11-16: the audio sent all at once, the final about 0.4 s after the eof),
+   or `nabrah.final_wait_s` passes with no final, or `nabrah.quiet_s` with no message after
+   one; the whole turn within `nabrah.turn_timeout_s`.
 
 Nabrah takes no language and returns none or a score, so `language` is the request's and
 `heard_language` stays None. Its output is data, never an instruction (docs/SECURITY.md, trust
@@ -78,12 +80,14 @@ class NabrahSTT:
         self,
         *,
         api_key: SecretStr,
-        turn_timeout_s: float = 20.0,
-        quiet_s: float = 1.5,
+        turn_timeout_s: float = 30.0,
+        final_wait_s: float = 3.0,
+        quiet_s: float = 0.5,
         opener: Opener = open_socket,
     ) -> None:
         self._api_key = given_key(api_key, NabrahSettings, VENDOR)
-        self._turn_timeout_s, self._quiet_s = turn_timeout_s, quiet_s
+        self._turn_timeout_s = turn_timeout_s
+        self._final_wait_s, self._quiet_s = final_wait_s, quiet_s
         self._open = opener
 
     @classmethod
@@ -94,7 +98,11 @@ class NabrahSTT:
         group = settings.nabrah
         key = provider_key(settings, group, VENDOR)
         return cls(
-            api_key=key, turn_timeout_s=group.turn_timeout_s, quiet_s=group.quiet_s, opener=opener
+            api_key=key,
+            turn_timeout_s=group.turn_timeout_s,
+            final_wait_s=group.final_wait_s,
+            quiet_s=group.quiet_s,
+            opener=opener,
         )
 
     def __repr__(self) -> str:
@@ -120,7 +128,9 @@ class NabrahSTT:
         try:
             async with asyncio.timeout(self._turn_timeout_s):
                 socket = await self._open(URL, {}, min(OPEN_S, self._turn_timeout_s))
-                pieces = await hear_turn(socket, turn, _read, quiet_s=self._quiet_s)
+                pieces = await hear_turn(
+                    socket, turn, _read, final_wait_s=self._final_wait_s, quiet_s=self._quiet_s
+                )
         except Exception as error:  # every failure, the socket's and the frames'; never a cancel
             failed = socket_failure(self.name, error)
         finally:

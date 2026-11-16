@@ -60,7 +60,7 @@ def _nabrah(*replies: Reply, ready: list[Reply] | None = None) -> FakeSocket:
 
 def _settings(**nabrah: object) -> VoiceSettings:
     return VoiceSettings.model_validate(
-        {"env": "test", "nabrah": {"api_key": KEY, "quiet_s": 0.05, **nabrah}}
+        {"env": "test", "nabrah": {"api_key": KEY, "final_wait_s": 0.05, "quiet_s": 0.05, **nabrah}}
     )
 
 
@@ -165,7 +165,7 @@ def test_a_turn_past_its_timeout_is_a_timeout_and_a_cancel_stops_it_at_once() ->
 
     async def cancelled() -> None:
         socket = _nabrah()  # never says anything after the eof
-        stt = NabrahSTT.from_settings(_settings(quiet_s=10), opener=socket.opener)
+        stt = NabrahSTT.from_settings(_settings(final_wait_s=10), opener=socket.opener)
         task = asyncio.create_task(stt.transcribe(CLIP, language=None, prompt=None))
         while not socket.sent or socket.sent[-1] != EOF_MESSAGE:
             await asyncio.sleep(0)

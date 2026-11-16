@@ -43,9 +43,10 @@ def test_each_provider_key_is_optional_and_unset_by_default() -> None:
         "eu",
         "https://api.openai.com/v1",
     )
-    assert settings.telnyx.stt_model == "humain/realtime"
+    assert (settings.telnyx.stt_model, settings.telnyx.chunk_gap_ms) == ("humain/realtime", 50)
     for streamed in (settings.telnyx, settings.nabrah):
-        assert (streamed.turn_timeout_s, streamed.quiet_s) == (20.0, 1.5)
+        bounds = (streamed.turn_timeout_s, streamed.final_wait_s, streamed.quiet_s)
+        assert bounds == (30.0, 3.0, 0.5)
 
 
 @pytest.mark.parametrize("name", GROUPS)
@@ -92,7 +93,13 @@ def test_the_speechmatics_region_and_the_openai_address_are_checked() -> None:
 def test_the_telnyx_model_and_the_streamed_turns_bounds_are_checked() -> None:
     with pytest.raises(ConfigurationError, match=f"{PREFIX}TELNYX__STT_MODEL"):
         VoiceSettings.model_validate({"env": "test", "telnyx": {"stt_model": "humain/batch"}})
-    for name, field, bad in (("nabrah", "quiet_s", 0), ("telnyx", "turn_timeout_s", 121)):
+    bad_values = (
+        ("nabrah", "quiet_s", 0),
+        ("nabrah", "final_wait_s", 31),
+        ("telnyx", "turn_timeout_s", 121),
+        ("telnyx", "chunk_gap_ms", 24),
+    )
+    for name, field, bad in bad_values:
         with pytest.raises(ConfigurationError, match=f"{PREFIX}{name.upper()}__{field.upper()}"):
             VoiceSettings.model_validate({"env": "test", name: {field: bad}})
     model = "deepgram/nova-3"

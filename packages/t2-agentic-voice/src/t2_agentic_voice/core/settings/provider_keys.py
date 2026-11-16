@@ -4,7 +4,8 @@ a key inline or in its file, as the `groq` group's (core/settings/groq.py). Ever
 optional: with none, its provider is unavailable, and an adapter asked for it raises a
 ConfigurationError naming the setting to set. Groq stays the default and the fallback until a
 bake-off and the owner's ruling (D-100). The providers that hear a turn over a WebSocket
-(`telnyx`'s HUMAIN engine, `nabrah`) also bound the turn's time and the quiet that ends it."""
+(`telnyx`'s HUMAIN engine, `nabrah`) also bound the turn's time, the wait for its first final
+and the quiet that ends it."""
 
 from __future__ import annotations
 
@@ -152,10 +153,11 @@ class InworldSettings(ProviderKey):
 
 class StreamedTurn(ProviderKey):
     """A provider that hears a turn over its streaming WebSocket: how long one turn may take,
-    and the quiet after its last message that ends it when the provider does not close."""
+    how long the adapter waits for the provider's first final once the audio is sent, and the
+    quiet after a final that ends the turn when the provider does not close the socket."""
 
     turn_timeout_s: float = Field(
-        default=20.0,
+        default=30.0,
         gt=0,
         le=120,
         allow_inf_nan=False,
@@ -164,15 +166,26 @@ class StreamedTurn(ProviderKey):
             "to its last transcript; its time is measured, never assumed."
         ),
     )
+    final_wait_s: float = Field(
+        default=3.0,
+        gt=0,
+        le=30,
+        allow_inf_nan=False,
+        description=(
+            "Once the turn's audio is sent, the longest the adapter waits for the provider's "
+            "first final transcript; none by then, the turn heard no words. Part of the turn's "
+            "measured time."
+        ),
+    )
     quiet_s: float = Field(
-        default=1.5,
+        default=0.5,
         gt=0,
         le=10,
         allow_inf_nan=False,
         description=(
-            "Once the turn's audio is sent, how long a quiet socket (no message) means the "
-            "provider has said all it heard, when it does not close the socket itself; this "
-            "wait is part of the turn's measured time."
+            "Once a final transcript has come and the audio is sent, how long a quiet socket "
+            "(no message) means the provider has said all it heard, when it does not close the "
+            "socket itself; part of the turn's measured time."
         ),
     )
 
@@ -189,6 +202,18 @@ class TelnyxSettings(StreamedTurn):
             "The Telnyx speech-to-text model: humain/realtime (HUMAIN's Arabic engine with "
             "Arabic-English code-switching, on Telnyx's streaming WebSocket, the default), or "
             "deepgram/nova-3 or openai/whisper-large-v3-turbo (its batch endpoint)."
+        ),
+    )
+    chunk_gap_ms: int = Field(
+        default=50,
+        ge=25,
+        le=100,
+        description=(
+            "The wait between two 100 ms chunks of a turn's audio sent to a streamed model, in "
+            "milliseconds: 100 is real time, 50 (the default) twice as fast. HUMAIN's engine "
+            "dropped most of a turn sent all at once and the end of one sent four times as fast "
+            "(25), and heard two 5 s turns whole at 50 and 33 (probed 2026-11-16). A turn's "
+            "time grows by its length times this gap over 100."
         ),
     )
 

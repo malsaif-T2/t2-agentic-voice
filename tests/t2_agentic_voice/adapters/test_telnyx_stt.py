@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
@@ -52,7 +53,16 @@ def _telnyx(*replies: Reply) -> FakeSocket:
 
 def _settings(**telnyx: object) -> VoiceSettings:
     return VoiceSettings.model_validate(
-        {"env": "test", "telnyx": {"api_key": KEY, "quiet_s": 0.05, **telnyx}}
+        {
+            "env": "test",
+            "telnyx": {
+                "api_key": KEY,
+                "final_wait_s": 0.05,
+                "quiet_s": 0.05,
+                "chunk_gap_ms": 25,
+                **telnyx,
+            },
+        }
     )
 
 
@@ -84,20 +94,23 @@ def test_humains_engine_hears_the_turn_on_telnyxs_websocket() -> None:
         "model": ["humain/realtime"],
         "input_format": ["linear16"],
         "sample_rate": ["16000"],
-        "language": ["ar"],
+        "language": ["codeswitch"],  # whatever the request names: the module's docstring
     }
     assert headers == {"authorization": f"Bearer {KEY}"} and timeout_s == 10.0
-    assert sent_audio(socket) == CLIP.pcm16 + bytes(32_000)  # a second of silence after it
+    assert sent_audio(socket) == CLIP.pcm16 + bytes(48_000)  # 1.5 s of silence after it
     assert {len(m) for m in socket.sent if isinstance(m, bytes)} == {3200}
     assert socket.sent[-1] == CLOSE_STREAM and sent_json(socket) == [{"type": "CloseStream"}]
     assert (heard.text, heard.language, heard.heard_language) == (f"{HEARD} ok", "ar", None)
-    assert heard.confidence == pytest.approx(0.8) and heard.billed_seconds == 2.0
+    assert heard.confidence == pytest.approx(0.8) and heard.billed_seconds == 2.5
     assert socket.closes == 1
 
 
-def test_with_no_language_the_engine_code_switches_and_a_quiet_socket_ends_the_turn() -> None:
+def test_the_audio_goes_at_the_pace_and_a_quiet_socket_ends_the_turn() -> None:
     socket = _telnyx(_frame(HEARD, confidence=None))  # Telnyx never closes
+    started = time.monotonic()
     heard = _run(socket, language=None)
+    chunks = sum(isinstance(message, bytes) for message in socket.sent)
+    assert chunks == 25 and time.monotonic() - started >= 0.8 * chunks * 0.025
     assert parse_qs(urlsplit(socket.opened[0][0]).query)["language"] == ["codeswitch"]
     assert (heard.text, heard.language, heard.confidence) == (HEARD, None, None)
     silent = _run(_telnyx(closed()), language="en")
@@ -201,12 +214,12 @@ def test_a_turn_past_its_timeout_is_a_timeout_and_a_cancel_stops_it_at_once() ->
 
     hung = FakeSocket(never)
     with pytest.raises(ProviderError) as raised:
-        _run(hung, language="ar", turn_timeout_s=0.05, quiet_s=5)
+        _run(hung, language="ar", turn_timeout_s=0.05, final_wait_s=5, quiet_s=5)
     assert (raised.value.kind, raised.value.retryable, hung.closes) == ("timeout", True, 1)
 
     async def cancelled() -> None:
         socket = FakeSocket(never)
-        stt = TelnyxSTT.from_settings(_settings(quiet_s=10), opener=socket.opener)
+        stt = TelnyxSTT.from_settings(_settings(final_wait_s=10), opener=socket.opener)
         task = asyncio.create_task(stt.transcribe(CLIP, language=None, prompt=None))
         while not socket.sent or socket.sent[-1] != CLOSE_STREAM:
             await asyncio.sleep(0)

@@ -5,12 +5,16 @@ the model `telnyx.stt_model` names:
   which Telnyx runs only on its streaming WebSocket (`wss://api.telnyx.com/v2/speech-to-text/
   transcription`, engine `Humain`; its batch endpoint lists no such model, its docs read
   2026-11-16). One turn is one connection (adapters/provider_socket.py): the clip as raw 16-bit
-  PCM at its own rate in 100 ms chunks, then `TAIL_S` of silence so the engine ends the
-  utterance, then `CloseStream` (which an engine that has none ignores); the final transcripts
-  read until Telnyx closes, or `telnyx.quiet_s` passes with no message, the whole turn within
-  `telnyx.turn_timeout_s`. The language is the request's (`ar` or `en`), or `codeswitch` when it
-  names none. Each final's `confidence` is averaged into the transcript's `confidence`, from 0
-  to 1; Telnyx returns no language, so `heard_language` stays None.
+  PCM at its own rate in 100 ms chunks, sent `telnyx.chunk_gap_ms` apart (50 ms, twice real
+  time: the engine drops audio sent much faster), then `TAIL_S` of silence so the engine ends
+  the utterance, then `CloseStream` (which an engine that has none ignores); the final
+  transcripts read as they come, until Telnyx closes, or `telnyx.final_wait_s` passes with no
+  final, or `telnyx.quiet_s` with no message after one, the whole turn within
+  `telnyx.turn_timeout_s`. The language sent is always `codeswitch`: probed on 2026-11-16, `ar`
+  got no transcript at all, `ar-SA` none on one of two turns, and `en` the same Arabic as
+  `codeswitch`; the transcript's `language` stays the request's. Each final's `confidence` is
+  averaged into the transcript's `confidence`, from 0 to 1; Telnyx returns no language, so
+  `heard_language` stays None.
 - `deepgram/nova-3` or `openai/whisper-large-v3-turbo`: Telnyx's OpenAI-style batch endpoint
   (`POST /v2/ai/audio/transcriptions`, multipart), by raw HTTPS (adapters/provider_http.py), the
   clip as WAV, the language named when the request names one, `stt.timeout_s` for the request.
@@ -66,7 +70,7 @@ MODEL: Final[TelnyxSttModel] = "humain/realtime"
 # The engine each model Telnyx runs only on its WebSocket is named by there.
 STREAMED: Final[dict[str, str]] = {"humain/realtime": "Humain"}
 CODESWITCH: Final = "codeswitch"  # HUMAIN's language for Arabic and English in one turn
-TAIL_S: Final = 1.0  # the silence after a turn's audio, in seconds, so the engine ends it
+TAIL_S: Final = 1.5  # the silence after a turn's audio, in seconds, so the engine ends it
 CHUNK_S: Final = 0.1  # each audio message's length, in seconds
 # Where Telnyx processes and keeps speech-to-text requests, as far as its pages say (read
 # 2026-11-16); its data terms are to be read before callers' audio goes (docs/SECURITY.md).
@@ -95,14 +99,18 @@ class TelnyxSTT:
         api_key: SecretStr,
         timeout_s: float,
         model: TelnyxSttModel = MODEL,
-        turn_timeout_s: float = 20.0,
-        quiet_s: float = 1.5,
+        turn_timeout_s: float = 30.0,
+        final_wait_s: float = 3.0,
+        quiet_s: float = 0.5,
+        chunk_gap_ms: int = 50,
         transport: httpx.AsyncBaseTransport | None = None,
         opener: Opener = open_socket,
     ) -> None:
         self._api_key = given_key(api_key, TelnyxSettings, VENDOR)
         self._model = model
-        self._timeout_s, self._turn_timeout_s, self._quiet_s = timeout_s, turn_timeout_s, quiet_s
+        self._timeout_s, self._turn_timeout_s = timeout_s, turn_timeout_s
+        self._final_wait_s, self._quiet_s = final_wait_s, quiet_s
+        self._gap_s = chunk_gap_ms / 1000
         self._http = http_client(timeout_s=timeout_s, transport=transport)
         self._open = opener
 
@@ -114,7 +122,7 @@ class TelnyxSTT:
         transport: httpx.AsyncBaseTransport | None = None,
         opener: Opener = open_socket,
     ) -> TelnyxSTT:
-        """The adapter the settings describe: `telnyx`' key, model and turn bounds, and
+        """The adapter the settings describe: `telnyx`' key, model, chunk gap and turn bounds, and
         `stt.timeout_s`; a ConfigurationError naming `T2V_TELNYX__API_KEY` (under the settings'
         prefix) when no key is set."""
         group = settings.telnyx
@@ -123,7 +131,9 @@ class TelnyxSTT:
             timeout_s=settings.stt.timeout_s,
             model=group.stt_model,
             turn_timeout_s=group.turn_timeout_s,
+            final_wait_s=group.final_wait_s,
             quiet_s=group.quiet_s,
+            chunk_gap_ms=group.chunk_gap_ms,
             transport=transport,
             opener=opener,
         )
@@ -165,7 +175,7 @@ class TelnyxSTT:
             "model": self._model,
             "input_format": "linear16",
             "sample_rate": clip.sample_rate,
-            "language": language or CODESWITCH,
+            "language": CODESWITCH,
         }
         url = f"{STREAM_URL}?{urlencode(query)}"
         headers = {"authorization": f"Bearer {self._api_key.get_secret_value()}"}
@@ -175,13 +185,16 @@ class TelnyxSTT:
             opening=(),
             audio=chunks(clip.pcm16 + tail, size),
             closing=(json.dumps({"type": "CloseStream"}),),
+            gap_s=self._gap_s,
         )
         socket: Socket | None = None
         failed: ProviderError | None = None
         try:
             async with asyncio.timeout(self._turn_timeout_s):
                 socket = await self._open(url, headers, min(OPEN_S, self._turn_timeout_s))
-                pieces = await hear_turn(socket, turn, _read, quiet_s=self._quiet_s)
+                pieces = await hear_turn(
+                    socket, turn, _read, final_wait_s=self._final_wait_s, quiet_s=self._quiet_s
+                )
         except Exception as error:  # every failure, the socket's and the frames'; never a cancel
             failed = socket_failure(self.name, error)
         finally:

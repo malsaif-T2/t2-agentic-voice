@@ -7,10 +7,12 @@ one request).
   compression, no keepalive pings (a turn is short), and a logger that logs nothing: websockets'
   debug log writes the handshake's headers and every frame, a key among them.
 - `hear_turn`: sends the opening messages, waits for the provider's ready message when it sends
-  one, sends the audio in chunks as fast as the socket takes them, then the closing messages,
-  and reads what the provider heard: each message the vendor's `read` turns into a `Piece` (an
-  error frame raises). The turn ends when the provider closes the socket, or once everything is
-  sent and `quiet_s` passes with no message; the whole turn is bounded by `turn_timeout_s`.
+  one, sends the audio in chunks (as fast as the socket takes them, or `gap_s` apart for an
+  engine that must hear it near real time), then the closing messages, and reads what the
+  provider heard: each message the vendor's `read` turns into a `Piece` (an error frame
+  raises), as it comes, while the audio is still being sent. Once everything is sent, the turn
+  ends when the provider closes the socket, or when `final_wait_s` passes with no final yet,
+  or `quiet_s` with no message after one; the caller bounds the whole turn.
 - `socket_failure`: every failure a ProviderError as `http_failure` makes one (the provider,
   the failure's class, a handshake's HTTP status or a close code), never a frame's text.
 """
@@ -97,17 +99,23 @@ async def open_socket(url: str, headers: Mapping[str, str], open_timeout_s: floa
 
 @dataclass(frozen=True)
 class Turn:
-    """What a turn sends: its opening messages, its audio chunks and its closing messages, and
-    the ready message the provider sends before it takes audio, if it sends one."""
+    """What a turn sends: its opening messages, its audio chunks (`gap_s` apart) and its closing
+    messages, and the ready message the provider sends before it takes audio, if it sends one."""
 
     opening: Sequence[Message]
     audio: Iterable[bytes]
     closing: Sequence[Message] = ()
     ready: Callable[[Message], bool] | None = None
+    gap_s: float = 0.0
 
 
 async def hear_turn(
-    socket: Socket, turn: Turn, read: Callable[[Message], Piece | None], *, quiet_s: float
+    socket: Socket,
+    turn: Turn,
+    read: Callable[[Message], Piece | None],
+    *,
+    final_wait_s: float,
+    quiet_s: float,
 ) -> list[Piece]:
     """Every piece the provider sent for `turn` on `socket`, in order (the module's docstring);
     the caller bounds the whole turn and closes the socket."""
@@ -119,19 +127,52 @@ async def hear_turn(
         if turn.ready(message):
             break
         _keep(read(message), pieces)
+    arrived = asyncio.Event()
+    reading = asyncio.create_task(_read_all(socket, read, pieces, arrived))
+    try:
+        await _send_audio(socket, turn)
+        while not reading.done():
+            arrived.clear()
+            wait_s = quiet_s if any(piece.final for piece in pieces) else final_wait_s
+            came = asyncio.ensure_future(arrived.wait())
+            done, _ = await asyncio.wait(
+                {reading, came}, timeout=wait_s, return_when="FIRST_COMPLETED"
+            )
+            came.cancel()
+            if not done:
+                break  # quiet: nothing came in the wait
+    finally:
+        reading.cancel()
+    failed = reading.exception() if reading.done() and not reading.cancelled() else None
+    if failed is not None:
+        raise failed
+    return pieces
+
+
+async def _send_audio(socket: Socket, turn: Turn) -> None:
     for chunk in turn.audio:
         await socket.send(chunk)
+        if turn.gap_s:
+            await asyncio.sleep(turn.gap_s)
     for message in turn.closing:
         await socket.send(message)
+
+
+async def _read_all(
+    socket: Socket,
+    read: Callable[[Message], Piece | None],
+    pieces: list[Piece],
+    arrived: asyncio.Event,
+) -> None:
+    """Read the provider's messages into `pieces`, `arrived` set at each, until it closes the
+    socket in order."""
     while True:
         try:
-            async with asyncio.timeout(quiet_s):
-                message = await socket.recv()
-        except TimeoutError:
-            return pieces
+            message = await socket.recv()
         except ConnectionClosedOK:
-            return pieces
+            return
         _keep(read(message), pieces)
+        arrived.set()
 
 
 async def close_quietly(socket: Socket | None) -> None:

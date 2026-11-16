@@ -99,9 +99,11 @@ Telnyx: speech-to-text through its engines, HUMAIN's Arabic engine among them; m
 | --- | --- | --- | --- | --- |
 | `T2V_TELNYX__API_KEY` | secret, or unset | unset | — | The provider's API key; unset, its adapters are unavailable and say so when chosen. Or give api_key_file instead. |
 | `T2V_TELNYX__API_KEY_FILE` | path, or unset | unset | — | Or the full path of a file outside the repository that holds only the key, so the key can live outside .env. |
-| `T2V_TELNYX__TURN_TIMEOUT_S` | number | `20` | seconds | The longest one turn may take over the provider's WebSocket, from the connection to its last transcript; its time is measured, never assumed. |
-| `T2V_TELNYX__QUIET_S` | number | `1.5` | seconds | Once the turn's audio is sent, how long a quiet socket (no message) means the provider has said all it heard, when it does not close the socket itself; this wait is part of the turn's measured time. |
+| `T2V_TELNYX__TURN_TIMEOUT_S` | number | `30` | seconds | The longest one turn may take over the provider's WebSocket, from the connection to its last transcript; its time is measured, never assumed. |
+| `T2V_TELNYX__FINAL_WAIT_S` | number | `3` | seconds | Once the turn's audio is sent, the longest the adapter waits for the provider's first final transcript; none by then, the turn heard no words. Part of the turn's measured time. |
+| `T2V_TELNYX__QUIET_S` | number | `0.5` | seconds | Once a final transcript has come and the audio is sent, how long a quiet socket (no message) means the provider has said all it heard, when it does not close the socket itself; part of the turn's measured time. |
 | `T2V_TELNYX__STT_MODEL` | one of humain/realtime, deepgram/nova-3, openai/whisper-large-v3-turbo | `humain/realtime` | — | The Telnyx speech-to-text model: humain/realtime (HUMAIN's Arabic engine with Arabic-English code-switching, on Telnyx's streaming WebSocket, the default), or deepgram/nova-3 or openai/whisper-large-v3-turbo (its batch endpoint). |
+| `T2V_TELNYX__CHUNK_GAP_MS` | integer | `50` | milliseconds | The wait between two 100 ms chunks of a turn's audio sent to a streamed model, in milliseconds: 100 is real time, 50 (the default) twice as fast. HUMAIN's engine dropped most of a turn sent all at once and the end of one sent four times as fast (25), and heard two 5 s turns whole at 50 and 33 (probed 2026-11-16). A turn's time grows by its length times this gap over 100. |
 
 ## `humain`
 
@@ -120,8 +122,9 @@ Nabrah: Saudi Arabic speech-to-text on its streaming WebSocket; measured beside 
 | --- | --- | --- | --- | --- |
 | `T2V_NABRAH__API_KEY` | secret, or unset | unset | — | The provider's API key; unset, its adapters are unavailable and say so when chosen. Or give api_key_file instead. |
 | `T2V_NABRAH__API_KEY_FILE` | path, or unset | unset | — | Or the full path of a file outside the repository that holds only the key, so the key can live outside .env. |
-| `T2V_NABRAH__TURN_TIMEOUT_S` | number | `20` | seconds | The longest one turn may take over the provider's WebSocket, from the connection to its last transcript; its time is measured, never assumed. |
-| `T2V_NABRAH__QUIET_S` | number | `1.5` | seconds | Once the turn's audio is sent, how long a quiet socket (no message) means the provider has said all it heard, when it does not close the socket itself; this wait is part of the turn's measured time. |
+| `T2V_NABRAH__TURN_TIMEOUT_S` | number | `30` | seconds | The longest one turn may take over the provider's WebSocket, from the connection to its last transcript; its time is measured, never assumed. |
+| `T2V_NABRAH__FINAL_WAIT_S` | number | `3` | seconds | Once the turn's audio is sent, the longest the adapter waits for the provider's first final transcript; none by then, the turn heard no words. Part of the turn's measured time. |
+| `T2V_NABRAH__QUIET_S` | number | `0.5` | seconds | Once a final transcript has come and the audio is sent, how long a quiet socket (no message) means the provider has said all it heard, when it does not close the socket itself; part of the turn's measured time. |
 
 ## `stt`
 
