@@ -107,7 +107,8 @@ def test_a_failing_search_raises_for_every_read() -> None:
 def test_a_slow_search_answers_after_its_wait() -> None:
     started = time.monotonic()
     flights = asyncio.run(_airline(search_mode="slow").departures("RUH", "LHR", date(2026, 12, 17)))
-    assert time.monotonic() - started >= 0.2
+    # Windows' monotonic clock ticks about every 15.6 ms, so a 0.2 s wait can read 0.188 s.
+    assert time.monotonic() - started >= 0.2 - 0.02
     assert [d.flight.number for d in flights] == [401, 403]
     days = asyncio.run(_airline().calendar("RUH", "IST", date(2027, 1, 1), date(2027, 1, 3)))
     assert [d.fare for d in days] == [1920, 1730, 1700]
