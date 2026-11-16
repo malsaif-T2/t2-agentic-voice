@@ -630,6 +630,10 @@ be1a588 and the last kept arm; the trusted check (0.5) holds back only defaults 
 
 ### Phase F · The flight-booking demo agent (the owner's request of 2026-11-16, Q23)
 
+The main agent shown and worked on (Q23). Its build spec, the mock airline, the tools, the booking
+action, the page, run F and the build order, is [flight-voice-agent.md](../../design/flight-voice-agent.md),
+written and reviewed on 2026-11-16 (D-101).
+
 | # | Change | Where | Effort | Gain | Measured by | Risk |
 | --- | --- | --- | --- | --- | --- | --- |
 | F.1 | The app: its settings, server, page and persona, on the library's public API only (ARCH-PUBLIC), registered in `harness.toml` beside Ole5 | `apps/flight-voice-agent/`, `harness.toml`, the root `pyproject.toml` | medium | a second app proving the library general | the gate; a call through the page | the harness's app rules |

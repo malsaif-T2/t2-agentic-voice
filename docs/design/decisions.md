@@ -3658,3 +3658,29 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   (D-076); testers are told whose service hears them (plan 010, Q3).
 - **Evidence:** the owner's words above; plan 010's provider guide of 2026-11-16 (the
   accounts, their data settings and the names of the keys' settings).
+
+## D-101 · The flight-booking agent is the second app and the main agent shown; Ole5 is the check that a change is general · 2026-11-16 · Accepted (the owner's request and answers to plan 010's Q23, 2026-11-16)
+
+- **Context:** plan 010 set out to take the voice to the level of top-tier voice agents, measured
+  on Ole5's calls. On 2026-11-16 the owner gave the agent a teardown of a public airline-concierge
+  demo they admired and asked: "For the sake of comparison, lets make our voice agent do a similar
+  use-case (flight booking), and let make the ole5 as a reference or an assurance that both benefit
+  from the improvements and a prove that the improvements are general, but lets make the demo and
+  testing and comparing using the flight booking agent." Then: "I want the flight agent to be our
+  main agent we show and work on."
+- **Decision:** a second app, `apps/flight-voice-agent/` (package `flight_voice`), built only on
+  the library's public API like Ole5, with a mock airline, read-only tools and one action, the
+  booking, read back in full and confirmed by a clear spoken yes (invariant 1), never by a typed
+  code. Every option is spoken; the page may also show cards mirroring what was said, never
+  needed (the owner's answer "Spoken + optional cards"). It has its own page on its own port, a
+  male Saudi voice, and a persona and an airline named by the owner. It is the main agent shown,
+  and its scripted calls (run F) are plan 010's demo and main test set; Ole5's sets rerun after
+  each change to a shared part, as the check that the change is general. Its build spec is
+  [flight-voice-agent.md](flight-voice-agent.md).
+- **Consequences:** the library gains what a second app needs (the access-code route, the call's
+  date, spoken numbers by register, card rows, the measurement's paced model), each used by Ole5
+  too. The library's checks and docs count two apps. Nothing is copied from the demo's brand, text
+  or prompt.
+- **Evidence:** the owner's words above, and their answers to Q23 of 2026-11-16: "Spoken +
+  optional cards (Recommended)", "Read-back + spoken yes (Recommended)", "A male Saudi voice, name
+  later (Recommended)", "Its own page (Recommended)".
