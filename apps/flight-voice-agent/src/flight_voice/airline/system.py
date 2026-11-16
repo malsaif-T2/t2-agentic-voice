@@ -22,6 +22,7 @@ from flight_voice.airline.airports import Code
 from flight_voice.airline.bookings import AirlineError, Booking, BookingStore
 from flight_voice.airline.dates import RIYADH, riyadh_today
 from flight_voice.airline.profile import TRAVELER, Insights, Traveler, insights
+from flight_voice.airline.schedule import Cabin
 
 SearchMode = Literal["answer", "fail", "slow"]
 SEARCH_MODES: Final[tuple[SearchMode, ...]] = get_args(SearchMode)
@@ -98,11 +99,11 @@ class Airline:
         return schedule.departures(origin, destination, day)
 
     async def calendar(
-        self, origin: Code, destination: Code, first: date, last: date
+        self, origin: Code, destination: Code, first: date, last: date, cabin: Cabin = "economy"
     ) -> tuple[fares.FareDay, ...]:
-        """Each day's cheapest economy fare from `first` to `last`, as the search mode says."""
+        """Each day's cheapest fare in `cabin` from `first` to `last`, as the search mode says."""
         await self._search()
-        return fares.calendar(origin, destination, first, last)
+        return fares.calendar(origin, destination, first, last, cabin)
 
     async def profile(self, traveler_id: str) -> Profile | None:
         """The profile of `traveler_id`, or `None` for a traveler the airline does not know, as

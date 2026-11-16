@@ -41,11 +41,19 @@ def context(tag: Tag = "en", call_id: str = CALL_ID, caller: Caller = CALLER) ->
     return CallContext(caller=caller, call_id=call_id, language=tag)
 
 
-def run(tool: Tool, tag: Tag = "en", call_id: str = CALL_ID, **arguments: Any) -> ToolResult:
-    """`tool` run by the library's runner on `arguments`, sent as JSON, in a call in `tag`."""
+def run(
+    tool: Tool,
+    tag: Tag = "en",
+    call_id: str = CALL_ID,
+    *,
+    caller: Caller = CALLER,
+    **arguments: Any,
+) -> ToolResult:
+    """`tool` run by the library's runner on `arguments`, sent as JSON, in a call in `tag` for
+    `caller` (the demo traveler by default)."""
     request = ToolCallRequest(id="t-1", name=tool.name, arguments=json.dumps(arguments))
     runner = ToolRunner([tool])
-    return asyncio.run(runner.run(request, context(tag, call_id), clock=SYSTEM_CLOCK))
+    return asyncio.run(runner.run(request, context(tag, call_id, caller), clock=SYSTEM_CLOCK))
 
 
 def data(result: ToolResult) -> dict[str, Any]:

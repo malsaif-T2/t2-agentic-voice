@@ -103,7 +103,9 @@ def _problem(issue: DateProblem, leg: LegKind, tag: Tag) -> ToolResult:
     )
 
 
-def _not_served(why: str, tag: Tag) -> ToolResult:
+def not_served(why: str, tag: Tag) -> ToolResult:
+    """`not_served`, for a city (`not_served_city`) or a route (`not_served_route`), with the
+    cities the airline serves."""
     served, served_msa = said(served_cities, tag)
     return result(NotServed(served_said=served, served_said_msa=served_msa, say=SAY[why]))
 
@@ -129,9 +131,9 @@ def search_flights(airline: Airline, trips: TripBook) -> Tool:
         end = find_airport(destination)
         start = airport(draft.origin) if origin is None else find_airport(origin)
         if end is None or start is None:
-            return _not_served("not_served_city", tag)
+            return not_served("not_served_city", tag)
         if not route_served(start.code, end.code):
-            return _not_served("not_served_route", tag)
+            return not_served("not_served_route", tag)
         out = resolve_departure(depart, today)
         if isinstance(out, DateProblem):
             return _problem(out, "outbound", tag)

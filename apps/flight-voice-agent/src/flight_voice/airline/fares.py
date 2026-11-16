@@ -1,5 +1,5 @@
 """The mock airline's fares and seats: every fare one way, per person, in Saudi riyals, in whole
-tens; the fare calendar, each day's cheapest economy fare; and the seats left in each cabin.
+tens; the fare calendar, each day's cheapest fare in a cabin; and the seats left in each cabin.
 
 Nothing is random. What varies by flight and date comes from SHA-256 of a fixed seed and the
 value's parts (`h`), never Python's `hash()`, which is salted per process, so every process and
@@ -121,19 +121,22 @@ def seats_left(flight: Flight, day: date, cabin: Cabin) -> int:
 
 @dataclass(frozen=True)
 class FareDay:
-    """One day of the fare calendar: its cheapest economy fare, or `None` with no flight."""
+    """One day of the fare calendar: its cheapest fare in a cabin, or `None` with no flight."""
 
     day: date
     fare: int | None
 
 
-def calendar(origin: Code, destination: Code, first: date, last: date) -> tuple[FareDay, ...]:
-    """Each day from `first` to `last`, both kept, with its cheapest economy fare (its cheapest
-    flight's); a day with no flight is `None`, never a made-up fare."""
+def calendar(
+    origin: Code, destination: Code, first: date, last: date, cabin: Cabin = "economy"
+) -> tuple[FareDay, ...]:
+    """Each day from `first` to `last`, both kept, with its cheapest fare in `cabin` (its
+    cheapest flight's); a day with no flight selling it is `None`, never a made-up fare."""
     days = []
     day = first
     while day <= last:
-        fares = [economy_fare(d) for d in departures(origin, destination, day)]
+        sold = (fare(d, cabin) for d in departures(origin, destination, day))
+        fares = [f for f in sold if f is not None]
         days.append(FareDay(day, min(fares) if fares else None))
         day += timedelta(days=1)
     return tuple(days)
