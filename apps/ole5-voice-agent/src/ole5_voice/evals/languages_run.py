@@ -26,7 +26,7 @@ variant alone and appends no line. Every pass of run H runs at one commit, each 
 kept aside until the last has run (plan 007's "Run H").
 
 `--read RUN ...` reads the complete passes of one commit, split and data, exactly two of them
-off, and logs condition 4 for each classifier pass (languages_score.read_passes), writing
+off, and logs condition 4 for each classifier pass (languages_reading.read_passes), writing
 nothing.
 """
 

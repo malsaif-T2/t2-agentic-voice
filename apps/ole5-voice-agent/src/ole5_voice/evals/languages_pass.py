@@ -20,13 +20,8 @@ from ole5_voice.evals.languages_card import (
     LanguagesLine,
     LanguagesRun,
 )
-from ole5_voice.evals.languages_score import (
-    line_of,
-    load_pass,
-    read_passes,
-    scorecard_of,
-    write_pass,
-)
+from ole5_voice.evals.languages_reading import read_passes
+from ole5_voice.evals.languages_score import line_of, load_pass, scorecard_of, write_pass
 from ole5_voice.evals.models import Split
 from ole5_voice.evals.run_lines import AnyLine
 from ole5_voice.evals.run_parts import DATA, Todo, marked_end
