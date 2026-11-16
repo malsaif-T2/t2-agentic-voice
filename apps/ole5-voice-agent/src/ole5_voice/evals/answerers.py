@@ -16,10 +16,11 @@ from collections.abc import Mapping
 from typing import Protocol
 
 from t2_agentic_voice import Providers, VoiceSettings
+from t2_agentic_voice.evals import RunClock, RunSleep
 from t2_agentic_voice.ports import SpeechToText
 from t2_agentic_voice.tracing import Tracing
 
-from ole5_voice.evals.groq_answerer import Budget, Clock, GroqAnswerer, Policy, Sleep
+from ole5_voice.evals.groq_answerer import Budget, GroqAnswerer, Policy
 from ole5_voice.evals.models import Variant
 from ole5_voice.evals.reference_answerer import ReferenceAnswerer
 from ole5_voice.evals.runs import Answerer
@@ -57,8 +58,8 @@ def make_answerer(
     reuse: Mapping[Variant, str] | None = None,
     tracing: Tracing | None = None,
     run_name: str = "run",
-    clock: Clock = time.perf_counter,
-    sleep: Sleep = asyncio.sleep,
+    clock: RunClock = time.perf_counter,
+    sleep: RunSleep = asyncio.sleep,
 ) -> RunAnswerer:
     """The answerer called `name`, built from `settings`: a provider's asks `stt`, by default
     the `adapter` of the settings, with no cap and no price unless `budget` gives them."""

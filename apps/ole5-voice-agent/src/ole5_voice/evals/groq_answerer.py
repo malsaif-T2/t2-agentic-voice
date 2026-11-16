@@ -23,6 +23,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 
 from t2_agentic_voice import ProviderError, get_logger
+from t2_agentic_voice.evals import RunClock, RunSleep
 from t2_agentic_voice.ports import AudioClip, SpeechToText, Transcript
 from t2_agentic_voice.tracing import Tracing
 
@@ -50,8 +51,6 @@ RETRY_PAUSE_S = 3.0  # the pause after another failure that may pass (stt_eval.p
 
 log = get_logger(__name__)
 
-Clock = Callable[[], float]  # seconds, from any start: `time.perf_counter`, monotonic and fine
-Sleep = Callable[[float], Awaitable[None]]
 _Send = Callable[[AudioClip, str | None], Awaitable[Transcript]]
 
 
@@ -111,7 +110,7 @@ class Policy:
 class Pacer:
     """Spaces the starts of requests at least 60 / `max_rpm` seconds apart."""
 
-    def __init__(self, max_rpm: int, clock: Clock, sleep: Sleep) -> None:
+    def __init__(self, max_rpm: int, clock: RunClock, sleep: RunSleep) -> None:
         self._gap = 60 / max_rpm
         self._clock, self._sleep = clock, sleep
         self._last: float | None = None
@@ -144,8 +143,8 @@ class GroqAnswerer:
         reuse: Mapping[Variant, str],
         tracing: Tracing | None,
         run_name: str,
-        clock: Clock,
-        sleep: Sleep,
+        clock: RunClock,
+        sleep: RunSleep,
         name: str = "groq",
         minimum_s: float = GROQ_MINIMUM_S,
         extra_s: float = 0.0,

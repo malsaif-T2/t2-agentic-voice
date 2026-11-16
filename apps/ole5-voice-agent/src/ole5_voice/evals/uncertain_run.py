@@ -10,7 +10,7 @@ the run's temperature. **The answer** is the facade's `uncertain_overlap_answer`
 text in lower case with everything but its letters dropped: `stop`, `goon` (go on) or else
 `unclear`.
 
-**Limits** (`Asking`): one request at a time, paced at `--rpm` a minute (pacers.py); before each,
+**Limits** (`Asking`): one request at a time, at `--rpm` a minute (a `MinutePacer`); before each,
 the run stops at `--day-requests`, the requests the key may still send today (the port reads no
 rate-limit header, so the owner gives it from Groq's console), and at `--cap-usd`, each request
 charged its budget, the most it can cost (`Prices.budget`), until its usage gives what it did
@@ -34,11 +34,15 @@ from pathlib import Path
 from typing import Final, Literal
 
 from t2_agentic_voice import ProviderError, VoiceSettings, get_logger
-from t2_agentic_voice.evals import uncertain_overlap_answer, uncertain_overlap_request
+from t2_agentic_voice.evals import (
+    MinutePacer,
+    RunClock,
+    RunSleep,
+    uncertain_overlap_answer,
+    uncertain_overlap_request,
+)
 from t2_agentic_voice.ports import ChatModel, ChatRequest, TextDelta, Usage
 
-from ole5_voice.evals.groq_answerer import Clock, Sleep
-from ole5_voice.evals.pacers import MinutePacer
 from ole5_voice.evals.uncertain_score import (
     ArmAnswer,
     UncertainOverlap,
@@ -116,8 +120,8 @@ class Asking:
     day_requests: int
     max_attempts: int
     item_timeout_s: float
-    clock: Clock
-    sleep: Sleep
+    clock: RunClock
+    sleep: RunSleep
     requests: int = 0
     spent_usd: float = 0.0
     input_tokens: int = 0

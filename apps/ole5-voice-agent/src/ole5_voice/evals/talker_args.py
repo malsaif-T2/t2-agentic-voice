@@ -29,19 +29,28 @@ from typing import Final, get_args
 
 from pydantic import BaseModel
 from t2_agentic_voice import LlmSettings, VoiceAgent, VoiceSettings, get_logger
-from t2_agentic_voice.evals import TextCall
+from t2_agentic_voice.evals import (
+    Git,
+    Limits,
+    ModelPacer,
+    PacedChat,
+    Price,
+    RunClock,
+    RunSleep,
+    Spend,
+    TextCall,
+    run_git,
+    run_refused,
+)
 from t2_agentic_voice.groq import GroqChat
 from t2_agentic_voice.ports import ChatModel
 
 from ole5_voice.evals import cli, run_folder, run_settings
-from ole5_voice.evals.chat_pacing import Limits, ModelPacer, PacedChat, Price, Spend
 from ole5_voice.evals.cli import EFFORTS, amount, count, seconds
 from ole5_voice.evals.factories import load_factory
-from ole5_voice.evals.groq_answerer import Clock, Sleep
 from ole5_voice.evals.judge import JUDGE_MODEL
 from ole5_voice.evals.models import NAME_RULE, is_name
 from ole5_voice.evals.talker_call import CallFactory
-from ole5_voice.evals.worktree import Git, refused, run_git
 
 MODELS: Final = get_args(LlmSettings.model_fields["model"].annotation)  # `llm.model`'s choices
 INPUT_BUDGET: Final = 6000  # tokens a request is budgeted to read: the prompt, history, passages
@@ -89,8 +98,8 @@ class TalkerParts:
     history_accepts: Callable[[BaseModel], bool] = run_folder.history_accepts
     requests_today: Callable[[Path, date], Counter[str]] = run_folder.requests_today
     now: Callable[[], datetime] = _now
-    clock: Clock = time.perf_counter
-    sleep: Sleep = asyncio.sleep
+    clock: RunClock = time.perf_counter
+    sleep: RunSleep = asyncio.sleep
 
 
 def price(text: str) -> tuple[str, Price]:
@@ -250,7 +259,7 @@ def pacing(
     given |= {name: dict(getattr(args, name)) for name in _LIMITS}
     for name, values in given.items():
         if lacking := [model for model in models if model not in values]:
-            raise refused(
+            raise run_refused(
                 f"--{name} names nothing for {', '.join(lacking)}",
                 f"give --{name} MODEL=... for the talker's model and the judge's",
             )
@@ -294,14 +303,14 @@ def check_budget(
     spent = paced.spend.cost_usd()
     log.info("run_estimate", units=units, most_usd=round(one * units, 4), spent_usd=spent)
     if spent + one > args.cap_usd:
-        raise refused(
+        raise run_refused(
             f"--cap-usd {args.cap_usd:g} leaves no room for one more (spent {spent:.4f})",
             "raise the cap, within the plan's",
         )
     for model, n in requests.items() if whole_day else ():
         pacer = paced.pacers[model]
         if (left := pacer.limits.rpd - pacer.today) < n * units:
-            raise refused(
+            raise run_refused(
                 f"{model}'s daily limit leaves {left} requests today, and the run may send "
                 f"{n * units}",
                 "run it on a day with room, since a held-out run is never resumed",

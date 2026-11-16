@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Final
 
 from pydantic import TypeAdapter
+from t2_agentic_voice.evals import Git, run_git, worktree_tops
 
 from ole5_voice.evals import items as golden_items
 from ole5_voice.evals.files import read_model
@@ -45,7 +46,6 @@ from ole5_voice.evals.takes import (
     TakeSidecar,
     parse_review_file,
 )
-from ole5_voice.evals.worktree import Git, run_git, worktree_tops
 
 _REPO: Final = EVALS.parents[2]  # the checkout the recorder's code is in
 _REPLIES: Final = TypeAdapter(list[Reply])

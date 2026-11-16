@@ -24,9 +24,8 @@ from pathlib import Path
 from typing import TypeVar
 
 from t2_agentic_voice import VoiceAgent
+from t2_agentic_voice.evals import run_refused
 from t2_agentic_voice.ports import KnowledgeBase
-
-from ole5_voice.evals.worktree import refused
 
 AgentFactory = Callable[[KnowledgeBase | None], VoiceAgent]
 KnowledgeFactory = Callable[[Path | None], KnowledgeBase]
@@ -39,14 +38,14 @@ def load_factory(spec: str) -> Callable[..., object]:
     module, colon, name = spec.partition(":")
     fix = "name a callable of the Ole5 app as ole5_voice.<module>:<name>"
     if not colon or not module.startswith("ole5_voice.") or not name.isidentifier():
-        raise refused(f"{spec} is not a module:name inside ole5_voice", fix)
+        raise run_refused(f"{spec} is not a module:name inside ole5_voice", fix)
     found: object
     try:
         found = getattr(importlib.import_module(module), name)
     except (ImportError, AttributeError):
         found = None
     if not callable(found):
-        raise refused(f"{spec} names no callable", fix)
+        raise run_refused(f"{spec} names no callable", fix)
     return found
 
 
@@ -55,7 +54,7 @@ def knowledge_of(load: Loader, spec: str, env_file: Path | None) -> KnowledgeBas
     none."""
     kb = load(spec)(env_file)
     if not callable(getattr(kb, "search", None)):
-        raise refused(f"--knowledge {spec} gave no knowledge base", "name its factory")
+        raise run_refused(f"--knowledge {spec} gave no knowledge base", "name its factory")
     return kb  # type: ignore[return-value]  # its `search` is checked above
 
 
@@ -64,7 +63,7 @@ def agent_of(load: Loader, spec: str, kb: KnowledgeBase | None) -> VoiceAgent:
     gives no `VoiceAgent`."""
     agent = load(spec)(kb)
     if not isinstance(agent, VoiceAgent):
-        raise refused(f"--agent {spec} gave no VoiceAgent", "name the agent's factory")
+        raise run_refused(f"--agent {spec} gave no VoiceAgent", "name the agent's factory")
     return agent
 
 

@@ -218,7 +218,7 @@ class Speaker:
         reply = self.playback.reply(reply_id)
         if reply is None or reply.ended_at is not None:
             return False
-        await self.send(ShowCard(title=card.title, steps=card.steps, source=card.source))
+        await self.send(ShowCard.of(card))
         return True
 
     async def close(self, reply_id: ReplyId, at: float) -> None:

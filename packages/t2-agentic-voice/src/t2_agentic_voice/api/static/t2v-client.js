@@ -6,7 +6,7 @@
 //   startButton.onclick = async () => {
 //     const call = await VoiceClient.start({ base: "/voice", getToken, language: "ar-SA" });
 //     call.on("caption", (c) => show(c.speaker, c.text, c.final, c.cut));
-//     call.on("card", (c) => showCard(c.title, c.steps, c.source)); // source: null when none
+//     call.on("card", (c) => showCard(c.title, c.steps, c.rows, c.source)); // source: null when none
 //     call.on("state", (s) => status(s.state));     // listening | thinking | speaking | confirming
 //     call.on("notice", (n) => tell(n.kind, n.text)); // busy | error | cut_off | ended, in the call's language
 //     call.on("ended", (e) => done(e.reason));
@@ -38,8 +38,10 @@
 // with `textContent`, never as HTML.
 //
 // A reply says its answer short aloud and sends the whole to the screen as a `card`: a title,
-// its steps in order and the source they come from (null when there is none), handed to the
-// page as one `card` event, a card that is not one dropped. A page shows it beside the captions,
+// its steps in order, its option rows in order (each a title, a detail and a value, text or
+// null, and a mark of CARD_MARKS or null, which a page maps to a style, never to markup) and
+// the source they come from (null when there is none), handed to the page as one `card` event,
+// a card that is not one dropped, a row that is not one dropped from its card. A page shows it beside the captions,
 // a new card in place of the last. The `state` is one of t2v/1's four, `thinking` while the
 // agent's talker or one of its tools works on a reply that has no audio yet; any other is
 // dropped.
@@ -539,14 +541,47 @@ function iceServer(server) {
 }
 
 // A `card` as the page gets it, its fields as voice/protocol.py's `ShowCard` holds them (a
-// title of at least one character, its steps a list of text, its source text or null), or null
-// for a message that is not one.
+// title of at least one character, its steps a list of text, its rows a list, none from a
+// session that sends no rows, its source text or null), or null for a message that is not one.
 function cardOf(message) {
   const { title, steps, source } = message;
   if (typeof title !== "string" || title === "") return null;
   if (!Array.isArray(steps) || !steps.every((step) => typeof step === "string")) return null;
   if (source !== null && typeof source !== "string") return null;
-  return { v: PROTOCOL, type: "card", title, steps: [...steps], source };
+  const rows = message.rows === undefined ? [] : message.rows;
+  if (!Array.isArray(rows)) return null;
+  return { v: PROTOCOL, type: "card", title, steps: [...steps], rows: rowsOf(rows), source };
+}
+
+// What a card's row may be marked as (domain/cards.py's `CARD_MARKS`), and the most rows a
+// card holds (`MAX_ROWS`).
+const CARD_MARKS = ["best", "chosen", "unavailable"];
+const MAX_ROWS = 8;
+
+// A card's rows, each kept only when it is one as `CardRow` holds it: a title of 1 to 80
+// characters, a detail of up to 120 and a value of up to 40, each text or null, and a mark of
+// CARD_MARKS or null; at most MAX_ROWS of them, in order.
+function rowsOf(rows) {
+  const fits = (value, most) =>
+    typeof value === "string" && value.trim() !== "" && [...value].length <= most;
+  const optional = (value, most) => value === null || value === undefined || fits(value, most);
+  const row = (r) =>
+    r !== null &&
+    typeof r === "object" &&
+    !Array.isArray(r) &&
+    fits(r.title, 80) &&
+    optional(r.detail, 120) &&
+    optional(r.value, 40) &&
+    (r.mark === null || r.mark === undefined || CARD_MARKS.includes(r.mark));
+  return rows
+    .filter(row)
+    .slice(0, MAX_ROWS)
+    .map((r) => ({
+      title: r.title,
+      detail: r.detail ?? null,
+      value: r.value ?? null,
+      mark: r.mark ?? null,
+    }));
 }
 
 function milliseconds(value) {
@@ -694,8 +729,9 @@ function devPage(page) {
     shown.parts[c.speaker === "agent" ? c.clause : 0] = c.cut ? `${c.text} [cut]` : c.text;
     shown.item.textContent = `${c.speaker}: ${shown.parts.filter(Boolean).join(" ")}`;
   };
-  // The newest card in place of the last: its title, its steps numbered and its source, each
-  // line in the direction of its own first strong character (dir="auto").
+  // The newest card in place of the last: its title, its steps numbered, its rows (each its
+  // texts on one line, its mark as the line's data-mark) and its source, each line in the
+  // direction of its own first strong character (dir="auto").
   const card = (c) => {
     const text = (tag, value) => {
       const node = page.createElement(tag);
@@ -705,8 +741,14 @@ function devPage(page) {
     };
     const steps = page.createElement("ol");
     steps.append(...c.steps.map((step) => text("li", step)));
+    const rows = c.rows.length ? [page.createElement("ul")] : [];
+    for (const r of c.rows) {
+      const item = text("li", [r.title, r.detail, r.value].filter(Boolean).join(" · "));
+      if (r.mark) item.dataset.mark = r.mark;
+      rows[0].append(item);
+    }
     const source = c.source === null ? [] : [text("p", `Source: ${c.source}`)];
-    $("card").replaceChildren(text("h3", c.title), steps, ...source);
+    $("card").replaceChildren(text("h3", c.title), steps, ...rows, ...source);
   };
   const volume = (v) => ($("volume").textContent = `${Math.round(v.level * 100)}%`);
   $("start").addEventListener("click", async () => {

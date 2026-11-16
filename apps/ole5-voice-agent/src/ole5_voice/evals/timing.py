@@ -34,6 +34,7 @@ from t2_agentic_voice import (
     evals,
     get_logger,
 )
+from t2_agentic_voice.evals import MinutePacer, check_out, run_checkout, run_refused
 from t2_agentic_voice.events import ModelUsage
 from t2_agentic_voice.groq import GroqSTT, GroqTTS
 from t2_agentic_voice.ports import SpeechToText, TextToSpeech
@@ -45,7 +46,6 @@ from ole5_voice.evals.cli import amount, count, model_price, require, seconds
 from ole5_voice.evals.eot import LEAD_S, PAUSED_KIND, TAIL_S
 from ole5_voice.evals.files import write_json
 from ole5_voice.evals.models import NAME_RULE, is_name
-from ole5_voice.evals.pacers import MinutePacer
 from ole5_voice.evals.run_lines import AnyLine, TimingLine
 from ole5_voice.evals.run_parts import DATA, Choice, Parts, Todo, audio_roots, load_plan
 from ole5_voice.evals.runs import SCORECARD_FILE
@@ -68,7 +68,6 @@ from ole5_voice.evals.timing_score import (
     metrics,
     summed,
 )
-from ole5_voice.evals.worktree import check_out, refused, run_checkout
 
 STT_RPM: Final = 10  # Whisper requests a minute, at most (the registration's T)
 TTS_RPM: Final = 5  # requests a minute to each Orpheus model, at most
@@ -144,7 +143,7 @@ def _checked(settings: VoiceSettings, args: argparse.Namespace) -> dict[str, flo
     prices = dict(args.tts_price)
     models = sorted({settings.tts.languages[language.tag].model for language in AGENT.languages})
     if unpriced := [model for model in models if model not in prices]:
-        raise refused(
+        raise run_refused(
             f"--tts-price names no price for {', '.join(unpriced)}",
             "give --tts-price MODEL=USD for each Orpheus model the run speaks",
         )
@@ -230,7 +229,7 @@ def _run(args: argparse.Namespace, parts: TimingParts) -> int:
     checkout = run_checkout(plan_parts.folder, plan_parts.git)
     out = check_out(args.out, checkout, plan_parts.git)
     if not is_name(out.name):
-        raise refused(
+        raise run_refused(
             f"the --out folder's name, the run's, is not a name, which is {NAME_RULE}",
             "name the folder like t1",
         )
@@ -238,7 +237,7 @@ def _run(args: argparse.Namespace, parts: TimingParts) -> int:
     plan = load_plan(checkout.top / DATA, choice, plan_parts)
     todo = [t for t in plan.todo if t.item.kind == PAUSED_KIND and t.item.language in TAGS]
     if not todo or any(not t.variant.turn_ends_ms for t in todo):
-        raise refused(
+        raise run_refused(
             "the dev split holds no paused request, or one with no turn end marked",
             "mark each in the recorder, and check the committed split",
         )

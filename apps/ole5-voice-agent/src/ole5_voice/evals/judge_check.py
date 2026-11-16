@@ -28,6 +28,7 @@ from typing import Final
 
 from pydantic import Field, ValidationError
 from t2_agentic_voice import T2VoiceError, configure_logging, get_logger
+from t2_agentic_voice.evals import Git, inspect_checkout, run_git
 
 from ole5_voice import LOGGERS
 from ole5_voice.evals.files import first_problem, read_model, read_text
@@ -37,7 +38,6 @@ from ole5_voice.evals.run_parts import DATA
 from ole5_voice.evals.runs import SCORECARD_FILE
 from ole5_voice.evals.talker_data import VERDICTS, HeardTurn, TalkerDataError, Verdict
 from ole5_voice.evals.talker_score import TalkerScorecard, VariantRecord
-from ole5_voice.evals.worktree import Git, inspect, run_git
 
 SHEET_SIZE: Final = 24
 MOST_DISAGREEMENTS: Final = 3
@@ -184,7 +184,7 @@ def card_text(turn: HeardTurn) -> str:
 def _answers(
     card: TalkerScorecard, drawn: Sequence[VariantRecord], args: argparse.Namespace, git: Git
 ) -> list[SheetAnswer]:
-    checkout = inspect(Path.cwd() if args.folder is None else args.folder, git)
+    checkout = inspect_checkout(Path.cwd() if args.folder is None else args.folder, git)
     data = load_knowledge(checkout.top / DATA, args.points_text)
     if data.digest != card.run.data_digest:
         raise TalkerDataError(

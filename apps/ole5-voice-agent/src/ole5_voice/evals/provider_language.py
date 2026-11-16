@@ -31,11 +31,11 @@ from collections.abc import Sequence
 from typing import Final, Literal
 
 from t2_agentic_voice import Providers, VoiceSettings, get_logger
+from t2_agentic_voice.evals import run_refused
 from t2_agentic_voice.ports import AudioClip, LanguageScores, SpeechToText, Transcript
 
 from ole5_voice.evals.runs import cost_usd
 from ole5_voice.evals.stt_arms import ARMS, SttArm
-from ole5_voice.evals.worktree import refused
 
 log = get_logger(__name__)
 # The providers whose answer names the language they heard, in `ARMS`' order.
@@ -140,7 +140,7 @@ def check_pass_cost(
         cap_usd=cap_usd,
     )
     if most_usd > cap_usd:
-        raise refused(
+        raise run_refused(
             f"the pass's most cost, ${most_usd:.4f}, passes --cap-usd",
             "raise --cap-usd, or check --price-per-hour",
         )

@@ -38,7 +38,7 @@ from typing import ClassVar, Final
 
 from pydantic import BaseModel
 from t2_agentic_voice import get_logger
-from t2_agentic_voice.evals import TextCall
+from t2_agentic_voice.evals import TextCall, run_checkout, run_refused
 
 from ole5_voice.evals.action_call import ActionCallFactory
 from ole5_voice.evals.action_card import ActionRun, ActionScorecard, scorecard
@@ -81,7 +81,6 @@ from ole5_voice.evals.talker_args import (
     shown,
 )
 from ole5_voice.evals.talker_score import PriceShown, Session, Stopped
-from ole5_voice.evals.worktree import refused, run_checkout
 from ole5_voice.tickets.tools import with_ticket_claims
 
 REPEATS: Final = 3  # each scenario three times (the registration's run A)
@@ -140,7 +139,7 @@ def _built(args: argparse.Namespace, parts: ActionParts, closing: Closing) -> in
     history = data_dir / HISTORY_FILE
     held_out = args.split == "held-out"
     if held_out and parts.held_out_run(history):
-        raise refused(
+        raise run_refused(
             "the shared history holds a complete held-out run of A, and held-out is read once",
             "record its result; a target missed goes to the plan's Future improvements",
         )

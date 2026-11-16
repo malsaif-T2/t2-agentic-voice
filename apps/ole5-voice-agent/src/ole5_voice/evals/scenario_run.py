@@ -25,6 +25,7 @@ from typing import ClassVar, Final
 
 from pydantic import BaseModel
 from t2_agentic_voice import get_logger
+from t2_agentic_voice.evals import run_checkout, run_refused
 
 from ole5_voice.evals.cli import count
 from ole5_voice.evals.factories import Closing
@@ -59,7 +60,6 @@ from ole5_voice.evals.talker_lines import scenario_line
 from ole5_voice.evals.talker_measure import TALKER_REQUESTS
 from ole5_voice.evals.talker_run import agent_of
 from ole5_voice.evals.talker_score import PriceShown, Session, Stopped
-from ole5_voice.evals.worktree import refused, run_checkout
 
 REPEATS: Final = 3  # each scenario three times (the registration's S)
 _DESCRIPTION = "Play run S's scripted calls with the kept arm, each three times, into --out."
@@ -80,9 +80,13 @@ def _scenarios(data_dir: Path, data: KnowledgeData) -> tuple[Scenario, ...]:
     try:
         found = load_scenarios(data_dir / SCENARIOS_DIR)
     except GoldenSetError as error:
-        raise refused(f"the scenarios cannot be read ({error})", "fix them; `poe check`") from None
+        raise run_refused(
+            f"the scenarios cannot be read ({error})", "fix them; `poe check`"
+        ) from None
     if broken := problems(found, list(data.items.values())):
-        raise refused(f"the scenarios break {len(broken)} rule(s), first: {broken[0]}", "fix them")
+        raise run_refused(
+            f"the scenarios break {len(broken)} rule(s), first: {broken[0]}", "fix them"
+        )
     data.check_texts([data.items[t.item] for s in found for t in s.turns if t.item])
     return found
 

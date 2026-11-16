@@ -11,7 +11,7 @@ failure, in the call, its search or the reference search, makes the variant a `p
 (a model request that failed after every attempt too, though the talker caught it), its limit
 passed (or a moment the call waited for in vain) a `stuck` one, and a judge with no valid verdict
 or no clear register (asked on its own, judge.py) a `judge` one: each counted apart. When the cap
-or the key's daily limit stops a request (`chat_pacing`), the variant is dropped unscored
+or the key's daily limit stops a request (`PacedChat`), the variant is dropped unscored
 (`StopRun`), so a resumed run measures it again.
 
 **Its times are the model's** (Q15), never the run's pacing: before its call, outside its limit,
@@ -37,9 +37,8 @@ from t2_agentic_voice import (
     VoiceSettings,
     get_logger,
 )
+from t2_agentic_voice.evals import CapReachedError, DailyLimitError, PacedChat, RunClock
 
-from ole5_voice.evals.chat_pacing import CapReachedError, DailyLimitError, PacedChat
-from ole5_voice.evals.groq_answerer import Clock
 from ole5_voice.evals.judge import PASSING, Judge, Judged
 from ole5_voice.evals.kb_points import TOP, KnowledgeData, RecordingKnowledge
 from ole5_voice.evals.knowledge_set import KnowledgeItem, KnowledgeVariant
@@ -112,7 +111,7 @@ class Measuring:
     call_language: CallLanguage
     timeout_s: float
     call: CallFactory
-    clock: Clock
+    clock: RunClock
 
     def call_tag(self, todo: Todo) -> Tag:
         if self.call_language == "first":

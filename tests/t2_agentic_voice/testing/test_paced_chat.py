@@ -1,6 +1,6 @@
-"""The paced chat model of runs K and S (chat_pacing.py): each request paced within the minute's
-requests and tokens, refused at the day's limit and at the cap, a request turned away sent again
-after its retry-after, and every request counted, at its usage or its budget."""
+"""The paced, capped chat model of a measurement run (paced_chat.py): each request paced within
+the minute's requests and tokens, refused at the day's limit and at the cap, a request turned
+away sent again after its retry-after, and every request counted, at its usage or its budget."""
 
 from __future__ import annotations
 
@@ -8,9 +8,8 @@ import asyncio
 from collections.abc import AsyncIterator, Sequence
 
 import pytest
-from ole5_voice.evals.chat_pacing import (
-    OUTPUT_BUDGET,
-    RETRY_WAIT_S,
+from t2_agentic_voice import ProviderError
+from t2_agentic_voice.evals import (
     CapReachedError,
     DailyLimitError,
     Limits,
@@ -19,13 +18,21 @@ from ole5_voice.evals.chat_pacing import (
     Price,
     Spend,
 )
-from t2_agentic_voice import ProviderError
-from t2_agentic_voice.ports import ChatEvent, ChatMessage, ChatRequest, Done, TextDelta, Usage
+from t2_agentic_voice.ports import (
+    ChatEvent,
+    ChatMessage,
+    ChatRequest,
+    DataFlow,
+    Done,
+    TextDelta,
+    Usage,
+)
+from t2_agentic_voice.testing.paced_chat import OUTPUT_BUDGET, RETRY_WAIT_S
 
-from tests.ole5_voice.evals.run_support import FakeClock
-from tests.ole5_voice.evals.talker_fakes import FLOW
+from tests.t2_agentic_voice.testing.run_fakes import FakeClock
 
 MODEL = "openai/gpt-oss-20b"
+FLOW = DataFlow(provider="none", processed_in="the test", stored_in="nowhere", retention="none")
 USAGE = Usage(input_tokens=1000, output_tokens=100)
 
 

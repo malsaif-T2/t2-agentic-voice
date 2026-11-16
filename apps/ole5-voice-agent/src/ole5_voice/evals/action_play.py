@@ -14,7 +14,7 @@ play a `provider` failure, its limit passed (or a moment the call waited for in 
 one, and a judge with no valid answer, or no clear register, a `judge` one. A play with no
 result keeps its violations all the same: the call's, and the scenario's own read from the turns
 said before it stopped (action_score.py's `unasked`), checked before the judge is asked. When
-the cap or the key's daily limit stops a request (`chat_pacing`), the play is dropped unscored
+the cap or the key's daily limit stops a request (`PacedChat`), the play is dropped unscored
 (`StopRun`), so a resumed run plays it again.
 """
 
@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Any, Final
 
 from t2_agentic_voice import ProviderError, VoiceAgent, VoiceSettings
+from t2_agentic_voice.evals import CapReachedError, DailyLimitError, PacedChat, RunClock
 from t2_agentic_voice.ports import KnowledgeBase
 
 from ole5_voice.evals.action_backend import (
@@ -42,8 +43,6 @@ from ole5_voice.evals.action_backend import (
 from ole5_voice.evals.action_call import Acted, ActionCallFactory, act
 from ole5_voice.evals.action_scenarios import ActionScenario
 from ole5_voice.evals.action_score import ActionPlayRecord, checks_of, passage_numbers, unasked
-from ole5_voice.evals.chat_pacing import CapReachedError, DailyLimitError, PacedChat
-from ole5_voice.evals.groq_answerer import Clock
 from ole5_voice.evals.judge import Checked, Judge, Registered
 from ole5_voice.evals.kb_points import RecordingKnowledge
 from ole5_voice.evals.talker_data import Clause, Failure, HeardTurn
@@ -71,7 +70,7 @@ class ActionPlaying:
     search_tool: str
     timeout_s: float
     call: ActionCallFactory
-    clock: Clock
+    clock: RunClock
     kept: Path | None
 
     async def play(self, scenario: ActionScenario, repeat: int, *, name: str) -> ActionPlayRecord:

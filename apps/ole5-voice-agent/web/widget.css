@@ -61,6 +61,10 @@ button.talk[aria-pressed="true"] { background: var(--accent); border-color: var(
 .card .steps { margin: 0; padding: 0; }
 .card .steps li { margin-block: 4px; margin-inline-start: 1.8em; }
 .card .muted { margin: 6px 0 0; }
+.card .rows { list-style: none; margin: 6px 0 0; padding: 0; }
+.card .rows li { margin-block: 4px; }
+.card .rows li[data-mark="best"], .card .rows li[data-mark="chosen"] { font-weight: 600; }
+.card .rows li[data-mark="unavailable"] { color: var(--muted); text-decoration: line-through; }
 .message { color: var(--bad); min-height: 1.6em; margin: 4px 0; }
 .captions { list-style: none; margin: 0; padding: 0; }
 .captions li { padding: 8px 12px; border-radius: 8px; margin: 6px 0; }

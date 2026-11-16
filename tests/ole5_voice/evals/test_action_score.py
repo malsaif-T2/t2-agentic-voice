@@ -31,10 +31,10 @@ from ole5_voice.evals.action_score import (
     unasked,
 )
 from ole5_voice.evals.action_setup import CHECK, asks, requests_of
-from ole5_voice.evals.chat_pacing import Price
 from ole5_voice.evals.talker_data import Clause, HeardTurn
 from ole5_voice.evals.talker_score import Session
 from pydantic import ValidationError
+from t2_agentic_voice.evals import Price
 
 from tests.ole5_voice.evals.action_run_support import JUDGE, TALKER, committed
 from tests.ole5_voice.evals.action_run_support import made_up_run as _run

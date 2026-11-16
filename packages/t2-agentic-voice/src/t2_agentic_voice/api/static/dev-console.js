@@ -642,16 +642,26 @@ function caption(c) {
   shown.item.querySelector(".words").textContent = shown.parts.filter(Boolean).join(" ");
 }
 
+// A card's option row on one line, its texts joined, its mark (one of the client's closed set)
+// as the line's data-mark, never as markup.
+function row(r) {
+  const text = [r.title, r.detail, r.value].filter(Boolean).join(" · ");
+  return el("li", { dir: "auto", text, "data-mark": r.mark ?? undefined });
+}
+
 function card(c) {
   if (!c) {
     $("card").hidden = true;
     return;
   }
-  $("card").replaceChildren(
+  // A part a card has not (no rows, no source) is left out, never put in as the text "null".
+  const parts = [
     el("h3", { dir: "auto", text: c.title }),
     el("ol", {}, c.steps.map((step) => el("li", { dir: "auto", text: step }))),
+    c.rows.length ? el("ul", { class: "rows" }, c.rows.map(row)) : null,
     c.source ? el("p", { class: "muted small", text: `Source: ${c.source}` }) : null,
-  );
+  ];
+  $("card").replaceChildren(...parts.filter(Boolean));
   $("card").hidden = false;
 }
 

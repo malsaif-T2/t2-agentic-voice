@@ -205,18 +205,28 @@ function caption(c) {
   shown.parts[index].classList.toggle("cut", c.cut === true);
 }
 
+// One line of a card in its own direction (dir="auto"), its text as text; and its option rows,
+// when it has any, each one line, its mark (the client's closed set) as the line's data-mark.
+const cardLine = (text) =>
+  Object.assign(document.createElement("li"), { dir: "auto", textContent: text });
+function rows(c) {
+  const list = Object.assign(document.createElement("ul"), { className: "rows" });
+  for (const r of c?.rows ?? []) {
+    const item = cardLine([r.title, r.detail, r.value].filter(Boolean).join(" · "));
+    if (r.mark) item.dataset.mark = r.mark;
+    list.append(item);
+  }
+  return list.children.length ? [list] : [];
+}
+
 // The newest card in place of the last, or none (`null`, a new call's).
 function card(c) {
-  const steps = (c?.steps ?? []).map((text) => {
-    const step = document.createElement("li");
-    step.dir = "auto";
-    step.textContent = text;
-    return step;
-  });
+  const steps = (c?.steps ?? []).map((text) => cardLine(text));
   $("card-title").textContent = c?.title ?? "";
   $("card-steps").replaceChildren(...steps);
   $("card-source-name").textContent = c?.source ?? "";
   $("card-source").hidden = !c?.source;
+  $("card").replaceChildren($("card-title"), $("card-steps"), ...rows(c), $("card-source"));
   $("card").hidden = !c;
 }
 

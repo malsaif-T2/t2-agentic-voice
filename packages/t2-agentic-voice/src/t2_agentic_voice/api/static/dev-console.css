@@ -123,6 +123,9 @@ input[type="text"] { width: 120px; }
 .caption.agent .who { color: var(--accent); }
 .card { background: var(--sunk); border-radius: 8px; padding: 8px 12px; }
 .card ol { margin: 4px 0; padding-inline-start: 20px; }
+.card .rows { list-style: none; margin: 4px 0; padding: 0; }
+.card .rows li[data-mark="best"], .card .rows li[data-mark="chosen"] { font-weight: 600; }
+.card .rows li[data-mark="unavailable"] { text-decoration: line-through; }
 
 /* The three columns. */
 .layout { display: grid; grid-template-columns: 230px minmax(0, 1fr) 330px; gap: 12px; align-items: start; }

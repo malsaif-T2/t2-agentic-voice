@@ -33,6 +33,7 @@ from typing import Final
 
 from pydantic import BaseModel, ConfigDict
 from t2_agentic_voice import Caller
+from t2_agentic_voice.evals import run_refused
 from t2_agentic_voice.ports import KnowledgeBase, Passage
 
 from ole5_voice.evals.files import parse_json, read_text
@@ -46,7 +47,6 @@ from ole5_voice.evals.knowledge_set import (
     load_knowledge_items,
 )
 from ole5_voice.evals.talker_data import Tag, TalkerDataError
-from ole5_voice.evals.worktree import refused
 from ole5_voice.passages import passage_id
 
 TOP: Final = 5  # retrieval counts an expected point among the first five passages
@@ -179,7 +179,7 @@ class KnowledgeData:
     def check_texts(self, items: Sequence[KnowledgeItem]) -> None:
         """Refused when an expected point of `items` has no text for the judge."""
         if lacking := sorted({p for item in items for p in item.expected} - set(self.texts)):
-            raise refused(
+            raise run_refused(
                 f"--points-text holds no text for {len(lacking)} expected point(s), "
                 f"such as {lacking[0]}",
                 "give the snapshot of every point of the knowledge base",
@@ -194,7 +194,7 @@ def load_knowledge(data: Path, points_text: Path, others: Sequence[Path] = ()) -
         items = load_knowledge_items(folder)
         points = read_toml(folder / POINTS_FILE, Points)
     except GoldenSetError as error:
-        raise refused(
+        raise run_refused(
             f"the knowledge set cannot be read ({error})", "fix it; `poe check`"
         ) from None
     index = PointIndex(points)

@@ -6,7 +6,7 @@ reply held to Arabic in a question of its own (judge.py's `Judge.register`). A p
 failure, in the call, its searches or a model request the talker caught, makes the play a
 `provider` failure, its limit passed (or a moment the call waited for in vain) a `stuck` one, and
 a judge with no valid answer, or no clear register, a `judge` one. When the cap or the key's
-daily limit stops a request (`chat_pacing`), the play is dropped unscored (`StopRun`), so a
+daily limit stops a request (`PacedChat`), the play is dropped unscored (`StopRun`), so a
 resumed run plays it again.
 """
 
@@ -17,9 +17,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from t2_agentic_voice import ProviderError, VoiceAgent, VoiceSettings
+from t2_agentic_voice.evals import CapReachedError, DailyLimitError, PacedChat, RunClock
 
-from ole5_voice.evals.chat_pacing import CapReachedError, DailyLimitError, PacedChat
-from ole5_voice.evals.groq_answerer import Clock
 from ole5_voice.evals.judge import Checked, Judge, Registered
 from ole5_voice.evals.kb_points import KnowledgeData, RecordingKnowledge
 from ole5_voice.evals.knowledge_set import KnowledgeItem
@@ -44,7 +43,7 @@ class Playing:
     search_tool: str
     timeout_s: float
     call: CallFactory
-    clock: Clock
+    clock: RunClock
 
     async def play(self, scenario: Scenario, repeat: int) -> PlayRecord:
         """One play of `scenario`, checked; StopRun when the cap or the day's limit stopped

@@ -19,15 +19,14 @@ from dataclasses import dataclass, field
 from typing import Final, Literal, Protocol
 
 from t2_agentic_voice import Language, VoiceAgent, VoiceSettings, get_logger
-from t2_agentic_voice.evals import EchoTiming, PhraseAudio
+from t2_agentic_voice.evals import EchoTiming, MinutePacer, PhraseAudio, RunSleep
 from t2_agentic_voice.events import ModelUsage
 from t2_agentic_voice.ports import AudioClip, SpeechToText, TextToSpeech
 
 from ole5_voice.evals.audio import read_wav
 from ole5_voice.evals.eot import LEAD_S, TAIL_S
-from ole5_voice.evals.groq_answerer import GROQ_MINIMUM_S, Sleep
+from ole5_voice.evals.groq_answerer import GROQ_MINIMUM_S
 from ole5_voice.evals.models import Language as ItemLanguage
-from ole5_voice.evals.pacers import MinutePacer
 from ole5_voice.evals.run_parts import Todo
 from ole5_voice.evals.timing_score import TimingResult, cost, failure_of, judged
 
@@ -107,7 +106,7 @@ class Measuring:
     echo_timings: EchoTimings
     pacers: Mapping[str, MinutePacer]
     prices: Prices
-    sleep: Sleep
+    sleep: RunSleep
     usages: list[ModelUsage] = field(default_factory=list)  # every call's, in order
     phrase_requests: int = 0
 

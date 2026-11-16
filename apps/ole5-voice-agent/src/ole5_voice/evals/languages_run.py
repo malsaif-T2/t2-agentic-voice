@@ -53,6 +53,7 @@ from t2_agentic_voice import (
     evals,
     get_logger,
 )
+from t2_agentic_voice.evals import check_out, run_checkout, run_refused
 from t2_agentic_voice.ports import LanguageClassifier
 
 from ole5_voice import LOGGERS
@@ -95,7 +96,6 @@ from ole5_voice.evals.run_parts import (
 )
 from ole5_voice.evals.runs import cost_usd
 from ole5_voice.evals.stt_arms import ARMS
-from ole5_voice.evals.worktree import check_out, refused, run_checkout
 
 _DESCRIPTION = "Measure each turn's language on the golden set, offline, into a new folder --out."
 log = get_logger(__name__)
@@ -197,7 +197,7 @@ def _run(
     checkout = run_checkout(parts.folder, parts.git)
     out = check_out(args.out, checkout, parts.git)
     if not is_name(out.name):
-        raise refused(
+        raise run_refused(
             f"the --out folder's name, the run's, is not a name, which is {NAME_RULE}",
             "name the folder like lid1-dev-silero",
         )

@@ -299,6 +299,20 @@ run (evaluation.md, "Registering a measurement"). Then:
    the measurement commit. plan 002 carried each of its 13 lines so (`Plan 002: history, run R1` and
    the like).
 
+### What every app's runs share
+
+A run of your own that spends (scripted calls on a real chat model, say) takes its money, its
+limits and its refusals from the `evals` facade, as Ole5's and the flight agent's runs do
+(D-101), so every app stops at the same cap and counts one key's day once:
+
+| Name | What it gives |
+| --- | --- |
+| `PacedChat(inner, pacers=, spend=, input_budget=, attempts=, sleep=)` | A `ChatModel` around your adapter: each request waits for room in its model's minute, is refused at the day's limit (`DailyLimitError`) or past the cap (`CapReachedError`), each setting `stopped`, and a request turned away before any event is sent again after its `retry-after`, up to `attempts` sends; every send is counted at its usage, or at its budget when the provider reported none |
+| `ModelPacer(Limits(rpm, tpm, rpd), used_today=, clock=, sleep=)`, `MinutePacer` | One model's requests and tokens in any minute and its requests of the day; a `RunClock` (`time.perf_counter`) and a `RunSleep` (`asyncio.sleep`) a test replaces |
+| `Spend(prices=, cap_usd=, before_usd=)`, `Price`, `ModelUse`, `ModelSpend` | What the run spent by model at your prices (USD per million tokens), a resumed run's earlier sessions included, and each model's spend as a strict model your run files keep |
+| `requests_today(histories, day)`, `every_history(history)`, `RunHistoryError` | Each model's requests on a UTC day over the run histories given; `every_history` finds every app's history at the same path under `apps/`. A line is counted when it holds `requests` (an object of each model's count) and `time`; a line it cannot read stops the run |
+| `run_checkout(folder)`, `check_out(out, checkout)`, `inspect_checkout`, `run_refused` | The checks before a run: a clean linked worktree, never the main checkout, and an `--out` folder that is new, outside every worktree that may be removed, and inside the repository only where git ignores it; a refusal is an `InvalidRequestError` with a FIX |
+
 ## Reading a scorecard
 
 A run writes `scorecard.json` into its `--out` folder, labelled `"speakers": "one speaker"`:

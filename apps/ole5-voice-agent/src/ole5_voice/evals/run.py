@@ -2,7 +2,7 @@
 evaluation.md's "Running" says.
 
 Before anything is sent, a run refuses the main checkout and a dirty tree, an `--out` that exists
-or that git would track (`worktree.py`), audio that is not the file its manifest hashed, and a
+or that git would track (`check_out`), audio that is not the file its manifest hashed, and a
 provider's run whose least cost (each request once, billed as it bills; a windows run's aside)
 would pass `--cap-usd`, its dry estimate logged first (`stt_arms.py`; `--estimate-only` stops
 there). Each speech-to-text provider is an answerer of its name: `groq`, or one beside it (D-100).
@@ -38,6 +38,7 @@ from t2_agentic_voice import (
     configure_logging,
     get_logger,
 )
+from t2_agentic_voice.evals import check_out, run_checkout, run_refused
 
 from ole5_voice import LOGGERS
 from ole5_voice.evals.answerers import ANSWERERS, make_answerer
@@ -60,7 +61,6 @@ from ole5_voice.evals.run_settings import GROQ_BASE_URL, MODELS, load_settings, 
 from ole5_voice.evals.runs import RunInfo, holds_placeholder
 from ole5_voice.evals.stt_arms import ARMS, arm_problem, arm_settings, check_cost, recorded_model
 from ole5_voice.evals.windows import measurer
-from ole5_voice.evals.worktree import check_out, refused, run_checkout
 
 RESULTS_FILE = "results.jsonl"  # a dev run's results, one line each as it finishes
 _DESCRIPTION = "Run an answerer over the golden set, writing its results and scorecard into --out."
@@ -164,7 +164,7 @@ def _run(
     checkout = run_checkout(parts.folder, parts.git)
     out = check_out(args.out, checkout, parts.git)
     if not is_name(out.name):
-        raise refused(
+        raise run_refused(
             f"the --out folder's name, the run's, is not a name, which is {NAME_RULE}",
             "name the folder like r1-large-v3",
         )

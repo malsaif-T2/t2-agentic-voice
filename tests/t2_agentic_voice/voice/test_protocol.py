@@ -15,6 +15,7 @@ import pytest
 from pydantic import ValidationError
 from t2_agentic_voice.core.errors import InvalidRequestError
 from t2_agentic_voice.core.events import MAX_INDEX, MAX_MS
+from t2_agentic_voice.domain.cards import Card, CardRow
 from t2_agentic_voice.voice.protocol import (
     CLIENT_MESSAGES,
     MAX_CLIENT_MESSAGE_BYTES,
@@ -305,11 +306,29 @@ def test_each_session_message_goes_out_with_its_version_and_type() -> None:
     assert (wire(greeting)["turn_id"], sent[2]["reply_id"], sent[2]["clause"]) == (None,) * 3
     cut = Caption(speaker="agent", text="x", final=True, reply_id=5, clause=2, cut=True)
     assert wire(cut)["cut"] is True and sent[2]["cut"] is False
-    assert sent[3] == {"v": 1, "type": "card", "title": "x", "steps": ["a", "b"], "source": None}
+    card = {"v": 1, "type": "card", "title": "x", "steps": ["a", "b"], "rows": [], "source": None}
+    assert sent[3] == card
     assert (sent[4], sent[5]) == (
         {"v": 1, "type": "duck", "level": 0.25},
         {"v": 1, "type": "unduck"},
     )
+
+
+def test_a_card_goes_out_with_its_rows_as_the_tool_gave_them() -> None:
+    rows = (CardRow(title="09:10 to 16:15", value="2,450 SAR", mark="best"), CardRow(title="b"))
+    card = Card(title="Riyadh to London", steps=("Nonstop",), rows=rows, source="timetable")
+    assert wire(ShowCard.of(card)) == {
+        "v": 1,
+        "type": "card",
+        "title": "Riyadh to London",
+        "steps": ["Nonstop"],
+        "rows": [
+            {"title": "09:10 to 16:15", "detail": None, "value": "2,450 SAR", "mark": "best"},
+            {"title": "b", "detail": None, "value": None, "mark": None},
+        ],
+        "source": "timetable",
+    }
+    assert ShowCard.of(Card(title="x")) == ShowCard(title="x")
 
 
 @pytest.mark.parametrize(
@@ -330,6 +349,9 @@ def test_each_session_message_goes_out_with_its_version_and_type() -> None:
         (Notice, {"kind": "ended", "text": ""}),
         (ShowCard, {"title": "", "steps": ()}),
         (ShowCard, {"title": "x", "steps": "a"}),  # not a list of steps
+        (ShowCard, {"title": "x", "rows": [{"title": "a", "mark": "top"}]}),  # not a mark
+        (ShowCard, {"title": "x", "rows": [{"title": "a" * 81}]}),
+        (ShowCard, {"title": "x", "rows": "a"}),
         (Duck, {"level": 1.5}),
         (Duck, {"level": -0.1}),
         (Duck, {"level": float("nan")}),
