@@ -176,6 +176,10 @@ cmd = "python -m ole5_voice.evals.scenario_run"
 help = "Play run A's scripted ticket calls over one split, each three times, against the mock ticket system (spends: as eval-talker; gpt-oss-120b at medium and a $10 cap unless named)"
 cmd = "python -m ole5_voice.evals.action_run"
 
+[tool.poe.tasks.eval-flights]
+help = "Run F: the flight agent's scripted calls over one split, each three times, on the mock airline, checked in code (spends: model, effort and cap on its command line; --out under the main checkout's var/runs)"
+cmd = "python -m flight_voice.evals.run"
+
 [tool.poe.tasks.record]
 help = "Record and review the golden set's new takes in Chrome, on a page served on 127.0.0.1"
 cmd = "python -m ole5_voice.evals.recorder"

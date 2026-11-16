@@ -330,6 +330,14 @@ given after the task's name:
   (a stuck play checked on the turns said before it stuck), appending an action line each
   session (it spends, refused past its cap by a dry estimate; refuses the main checkout, and a
   held-out run unless named, or once one is complete);
+- `uv run poe eval-flights` (`flight_voice/evals/run.py`) is run F: the flight agent's scripted
+  calls over one split, each played three times through `TextCall` on the system clock with the
+  app's agent and the real talker, against a new mock airline per play, every fact checked in
+  code and no judge; a scenario passes in two of three plays, one violation in any play breaks
+  the hard constraint; refused past its cap by a dry estimate, on the main checkout, a dirty
+  tree, and an `--out` inside the worktree or in use; a smoke play first, then each scenario
+  once and again, resumed with `--resume`; one flight line a session in the app's own history,
+  which the library's day counter reads with Ole5's;
 - `uv run poe uncertain` (`uncertain.py`) is run U: a model's verdict on the overlaps the rule
   left uncertain in a stored dev overlap run, against the rule's, appending an uncertain line (it
   spends);

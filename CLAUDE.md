@@ -26,7 +26,7 @@ This file is a **map, not a manual**. Open the linked doc when your task touches
 ## Commands
 
 Run everything as `uv run poe <task>` (`uv run poe` lists tasks). Every task that makes a run
-refuses the main checkout: `eval`, `eot`, `overlap`, `eval-timing`, `eval-languages`, runs K0, K, S, A, U, T.
+refuses the main checkout: `eval`, `eot`, `overlap`, `eval-timing`, `eval-languages`, `eval-flights`, runs K0, K, S, A, U, T.
 
 | Task | Purpose |
 | --- | --- |
@@ -36,7 +36,7 @@ refuses the main checkout: `eval`, `eot`, `overlap`, `eval-timing`, `eval-langua
 | `golden` · `record` | Validate the golden set and freeze its expected answers · record and review its takes (a page on 127.0.0.1). |
 | `eval` · `eval-compare` · `eval-history` | Run an answerer over the golden set · compare two runs (sign test by item) · render the run history. |
 | `eot` · `overlap` · `eval-timing` · `eval-languages` | Where the turns end on the golden set, offline · its overlap clips replayed over a reply (`pipeline` spends) · the time of each step of an echo call (spends) · each turn's language from a classifier, run H's H1, offline, or from a speech-to-text provider's own language, which spends (`--read` gives condition 4). |
-| `knowledge-depth` · `eval-talker` · `eval-talker-compare` · `eval-talker-keep` · `judge-check` · `eval-scenarios` · `eval-actions` · `uncertain` · `first-audio` · `first-audio-listen` | Run K0, the passages' depth: each answerable dev variant searched once, the k kept (no chat model) · run K, one arm over one split of the knowledge set (spends) · compare two dev runs (sign test by item, the noise) · its keep rule · the owner's check of the judge · run S's scripted calls (spends) · run A's scripted ticket calls over one split, against the mock ticket system (spends; held-out only when named, and once) · run U, a model's verdict on a stored overlap run's uncertain overlaps · run T, the time to first audio of the agent's replies to the recorded requests (each spends) · ten of T1's replies and a sheet for the owner's listen, or the sheet read back. |
+| `knowledge-depth` · `eval-talker` · `eval-talker-compare` · `eval-talker-keep` · `judge-check` · `eval-scenarios` · `eval-actions` · `uncertain` · `first-audio` · `first-audio-listen` · `eval-flights` | Run K0, the passages' depth: each answerable dev variant searched once, the k kept (no chat model) · run K, one arm over one split of the knowledge set (spends) · compare two dev runs (sign test by item, the noise) · its keep rule · the owner's check of the judge · run S's scripted calls (spends) · run A's scripted ticket calls over one split, against the mock ticket system (spends; held-out only when named, and once) · run U, a model's verdict on a stored overlap run's uncertain overlaps · run T, the time to first audio of the agent's replies to the recorded requests (each spends) · ten of T1's replies and a sheet for the owner's listen, or the sheet read back · run F, the flight agent's scripted calls over one split, each three times, on the mock airline, checked in code (spends; `--out` an absolute folder under the main checkout's `var/runs`). |
 | `settings-ref` | Write `docs/generated/settings.md` and `.env.example` from the library's settings model. |
 
 Add a row for every task the project adds. Add dependencies with `uv add <pkg>` (`--dev` for
@@ -86,7 +86,7 @@ packages/t2-agentic-voice/src/t2_agentic_voice/   the library; public API: __ini
 apps/ole5-voice-agent/   the Ole5 app, src/ole5_voice/ and its widget in web/: the public API alone
   evals/      the golden set's commands (data in apps/ole5-voice-agent/evals/, no audio)
 apps/flight-voice-agent/   the flight agent (D-101): src/flight_voice/ (its mock airline in
-  airline/, its server on 7862, its scripted calls' model in evals/), web/, evals/calls/
+  airline/, its server on 7862, its scripted calls' model and runner in evals/), web/, evals/calls/
 examples/minimal/src/minimal_example/   the smallest app: the quickstart, a test of the library
 scripts/      the harness: the checks of arch, docs, gc and quality, and their helpers; all
               read harness.toml through harness_config.py

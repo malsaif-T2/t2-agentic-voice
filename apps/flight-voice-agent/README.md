@@ -20,7 +20,7 @@ Its build spec is [flight-voice-agent.md](../../docs/design/flight-voice-agent.m
 | `src/flight_voice/agent.py`, `persona.py`, `instructions/` | The declaration the runtime runs: Saudi Arabic, then English, Riyadh's fixed UTC+3 (D-106), the seven read tools and `book_trip`; the persona's greetings, progress lines, instructions, the airline code's pronunciation and the vocabulary, all built from the names in the settings, each line a call speaks as written held to the lines' rule (no stop, wait, repeat, listening or send word, no booking's claim). |
 | `src/flight_voice/settings.py`, `traveler.py` | Its settings under `FLIGHT_VOICE_` (every one is in [.env.example](../../.env.example)) and the library's under `T2V_`; the demo traveler every join token names. |
 | `src/flight_voice/server.py`, `routes.py` | The server on 127.0.0.1:7862: the page's files with the library's page headers, the token route (`POST /token`, 50 tokens a day), `GET /api/profile`, and on this machine alone `GET /api/bookings` and `POST /api/demo/reset`; the library's router under `/voice`, its test console under `env` dev. |
-| `src/flight_voice/evals/`, `evals/calls/` | Its scripted calls, one TOML file each, dev or held-out: the caller's turns (words, said over the reply or a read-back, or the client's Stop) and what each reply is expected to do (the tools called and what they held, every date beside the form the caller's words name, the trip read back, with no total, the outcome line, words said and never said, the language and register, the length); the model that reads them at the boundary (`scenarios.py`), the capabilities a call may wait for (`NEEDS`), and the rules a set keeps (`rules.py`: every expected date resolved by the airline's own date code, every flight read back flying on its day with seats, every kind in dev and held-out, no leg a dev and a held-out call share). |
+| `src/flight_voice/evals/`, `evals/calls/` | Its scripted calls, one TOML file each, dev or held-out: the caller's turns (words, said over the reply or a read-back, or the client's Stop) and what each reply is expected to do (the tools called and what they held, every date beside the form the caller's words name, the trip read back, with no total, the outcome line, words said and never said, the language and register, the length); the model that reads them at the boundary (`scenarios.py`), the capabilities a call may wait for (`NEEDS`), and the rules a set keeps (`rules.py`: every expected date resolved by the airline's own date code, every flight read back flying on its day with seats, every kind in dev and held-out, no leg a dev and a held-out call share); and their runner, `poe eval-flights`: one play of a call through the library's `TextCall` with this agent and the real talker on a new mock airline (`call.py`), each turn's checks and the play's in code (`checks.py`, the long-call checks from the library's repeat measures), the records, the scorecard and the history line (`score.py`, `folder.py`), and the run itself (`run.py`, `run_setup.py`). |
 | `web/` | Its page, plain HTML, CSS and JavaScript on the library's client: the airline's mark and name, "Your trips", the traveler, "Start over" (asked first) and the language toggle (Arabic first, right to left; it sets the call's starting language); the orb and the state line following the call; the lines the caller could say, as text; the cards mirroring what was said, the newest first, at most three; the conversation and the options (the access code, kept in the page's memory alone, the box to record the call, push to talk) folded away. Every text is our own (`texts.js`) and set as text. |
 
 Everything in the mock airline is fixed data or computed from fixed data, so the same inputs give
@@ -49,5 +49,30 @@ the five past trips. `FLIGHT_VOICE_TODAY` pins the airline's today (`live` by de
 `FLIGHT_VOICE_*_MODE` settings make its searches, its profile or its bookings fail, slow down or
 time out for a demo of each.
 
-Its scripted calls (`evals/calls/`, f01 to f28 the dev set) are read and checked by the tests;
-their runner comes next.
+## Its scripted calls (run F)
+
+Its scripted calls (`evals/calls/`, f01 to f28 the dev set) are read and checked by the tests,
+and played by `poe eval-flights`, which spends: each scenario of one split three times, on the
+system clock with this agent and the real talker (`openai/gpt-oss-120b` at medium unless
+`--model` and `--effort` say otherwise), against a new mock airline each play with the
+scenario's modes and its today pinned, every fact checked in code (no judge). Run it from a
+clean linked worktree at the commit it measures, never the main checkout, into a new absolute
+folder under the main checkout's `var/runs/`, as Ole5's runs do:
+
+```bash
+uv run --offline poe eval-flights --split dev --out C:/path/to/main-checkout/var/runs/f-dev-1   --env-file C:/path/to/main-checkout/.env
+```
+
+It prints a dry estimate of its most spend before anything is sent and is refused past
+`--cap-usd` (10); a smoke play (the first dev scenario once) must end with no failed, retried or
+refused request and no violation; then every scenario is played once, then again, until each
+has its `--repeats`. Its progress lines are identifiers and verdicts, never a text. The folder
+gets each play's record (`plays.jsonl`, each turn's words kept for reading a failure),
+`sessions.jsonl`, `scorecard.json` and `scorecard.md`; a scenario passes when every check holds
+in at least two of its three plays, and one violation in any play breaks the hard constraint.
+Each session appends one line to `evals/history.jsonl`, which the library's day counter reads
+with Ole5's, so both apps' runs share the key's day: commit that line before `--resume`, which
+goes on with a run stopped by the cap, the day's limit or an interrupt, each play played once.
+It exits 0 when the run is complete, 1 when it is not, 2 when it is refused. `--price` and
+`--limits` give another model's price and limits; the defaults are `gpt-oss-120b`'s as Ole5's
+runs give them.
