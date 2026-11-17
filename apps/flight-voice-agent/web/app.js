@@ -14,7 +14,7 @@
 // cards and notices included, is set with textContent.
 
 import { VoiceClient } from "./voice/client/1/t2v-client.js";
-import { Cards } from "./cards.js";
+import { Cards, complete, rowsOf } from "./cards.js";
 import { Made, Trips, startOver } from "./bookings.js";
 import { fill, wordsOf } from "./texts.js";
 
@@ -117,12 +117,24 @@ function state(text, now = "") {
   $("orb").dataset.state = now;
 }
 
-// The review segment's status: waiting for the yes while the read-back plays, then booked with
-// its reference once the booking this call made is found (bookings.js's `Made`).
+// The review segment's status: waiting for the yes from when the whole trip is shown for review
+// (or a read-back is asked) while the call goes on, then booked with its reference once the
+// booking this call made is found (bookings.js's `Made`); the state `now`, "" once it ended.
 async function reviewed(now) {
   const ref = await made.seen(now);
-  const waiting = now === "confirming" ? words().waiting : "";
+  const waiting = made.asked && now ? words().waiting : "";
   cards.setStatus(ref ? fill(words().bookedRef, { ref }) : waiting);
+}
+
+// A card, in its segment (cards.js): a leg's card lists a new leg, so the last booking is
+// forgotten; the whole trip's review card waits for the yes.
+function carded(card) {
+  cards.add(card);
+  if (card?.slot === "outbound" || card?.slot === "return") made.forget();
+  if (card?.slot === "review" && complete(rowsOf(card)) && !made.reference) {
+    made.ask();
+    cards.setStatus(words().waiting);
+  }
 }
 
 function message(text) {
@@ -194,7 +206,7 @@ function ended(e) {
   running(false);
   state(words().ended);
   if (e.reason === "transport") message(words().lost);
-  reviewed("").then(showTrips);
+  trips.load().then(() => reviewed("")).then(showTrips);
 }
 
 async function start() {
@@ -224,7 +236,7 @@ async function start() {
           reviewed(s.state);
         },
         caption,
-        card: (c) => cards.add(c),
+        card: carded,
         notice: (n) => message(n.text),
         ended,
       },

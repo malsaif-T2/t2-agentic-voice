@@ -65,7 +65,8 @@ from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.io import CallSetup, Guarded
 from t2_agentic_voice.voice.session.model_word import model_word
 from t2_agentic_voice.voice.session.open_reply import language_of
-from t2_agentic_voice.voice.session.read_back import Confirming, ReadBack
+from t2_agentic_voice.voice.session.read_back import Confirming
+from t2_agentic_voice.voice.session.read_back_times import ReadBack
 from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.scope import CancelScope
 from t2_agentic_voice.voice.session.turn_book import TurnBook
@@ -181,6 +182,11 @@ class YesAsks:
     def busy(self) -> bool:
         """Whether a request is in flight."""
         return self._ask is not None
+
+    def after(self, heard: HeardWords) -> bool:
+        """Whether the request in flight is for words begun after `heard`'s (held_yes.py)."""
+        began = None if self._ask is None else self._ask.heard.speech_at
+        return began is not None and heard.speech_at is not None and heard.speech_at < began
 
     def start(
         self,

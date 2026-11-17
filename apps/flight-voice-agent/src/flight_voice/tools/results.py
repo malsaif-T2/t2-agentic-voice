@@ -172,11 +172,15 @@ class NothingListed(_Result):
 
 class Unclear(_Result):
     """A pick that names no listed option, or more than one: the options it could mean (all
-    those listed when it names none)."""
+    those listed when it names none), how many they are and the first and last departure times
+    among them (listing.py's `unclear`)."""
 
     status: Literal["unclear_choice"] = "unclear_choice"
     leg: LegKind
     options: tuple[Option, ...]
+    count: int = 0
+    first_departs: str | None = None
+    last_departs: str | None = None
     say: str = SAY["unclear_choice"]
 
 

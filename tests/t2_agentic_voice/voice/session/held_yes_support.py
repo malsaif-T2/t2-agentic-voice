@@ -8,9 +8,11 @@ from typing import Any
 
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.events import ConfirmationAnswered
+from t2_agentic_voice.core.settings.turns import TurnSettings
 from t2_agentic_voice.domain.text.invisible import provider_text
 from t2_agentic_voice.domain.words import PRESET_WORDS
 from t2_agentic_voice.voice.session.call import CallSession
+from t2_agentic_voice.voice.session.held_yes import LAG_S
 
 from tests.t2_agentic_voice.session_fakes import FakeSessionIO
 from tests.t2_agentic_voice.voice.session.overlap_support import (
@@ -42,6 +44,8 @@ KHALAS_YES = f"{KHALAS} yes"
 ASKS = AGENT.model_copy(update={"ask_on_unlisted_answers": True})
 UNPLACED = "sounds fine to me"  # words on none of CONSENT's lists
 ECHO = provider_text(SUMMARY_SPOKEN)  # the summary heard back
+# How long a held yes waits after the summary's end before it books (held_yes.py's Booked).
+BOOK_WAIT_S = TurnSettings().vad_start_ms / 1000 + LAG_S
 
 
 def scripted_rule(rule: FakeRule) -> FakeRule:
@@ -85,5 +89,9 @@ async def summary_plays(io: FakeSessionIO) -> None:
 
 
 async def summary_ends(io: FakeSessionIO, **given: Any) -> None:
+    """The summary's last clause plays whole now, then the time a held yes waits after it
+    passes (held_yes.py's Booked)."""
     await io.clause_played(1, 0, **{"audio_s": 2.0, **given})
+    await settle()
+    await io.clock.advance(BOOK_WAIT_S)
     await settle()

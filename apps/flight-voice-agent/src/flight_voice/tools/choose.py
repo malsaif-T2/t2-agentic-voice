@@ -3,7 +3,8 @@ change.py's).
 
 `choose_flight` reads the pick against the options last listed for the leg, in the order said
 (`picks.py`): a leg with nothing listed is `nothing_listed`; a pick that names no option, or
-several, is `unclear_choice` with the options it could mean; a picked flight short of seats for
+several, is `unclear_choice` with the options it could mean (listing.py's `unclear`, every one
+listed, said as briefly as their listing, when it names none); a picked flight short of seats for
 every traveler is `no_seats`, with the cabins that have them and the other flights listed that
 have seats. Then the leg is chosen, and what comes next is said: on a round trip whose return is
 not chosen, the return day's flights, listed as a search lists them; once every leg is chosen,
@@ -26,7 +27,7 @@ from flight_voice.airline.fares import seats_left
 from flight_voice.airline.system import Airline, AirlineUnavailableError
 from flight_voice.said import Tag
 from flight_voice.tools import cards
-from flight_voice.tools.listing import listable, listed_again, listing, options
+from flight_voice.tools.listing import listable, listed_again, listing, options, unclear
 from flight_voice.tools.picks import CHOICE, Choice, departure_of, pick
 from flight_voice.tools.results import (
     SAY,
@@ -35,7 +36,6 @@ from flight_voice.tools.results import (
     NoSeats,
     NothingListed,
     Option,
-    Unclear,
     _Result,
     date_said,
     result,
@@ -79,7 +79,7 @@ def choose_flight(airline: Airline, trips: TripBook) -> Tool:
         named = pick(choice, shown, draft.cabin, draft.travelers)
         if len(named) != 1:
             could = again(named or list(shown), draft, airline, tag)
-            return result(Unclear(leg=leg, options=could))
+            return result(unclear(leg, could, named=bool(named)))
         (one,) = named
         if seats_left(departure_of(one).flight, one.day, draft.cabin) < draft.travelers:
             return _full(leg, one, draft, airline, tag)

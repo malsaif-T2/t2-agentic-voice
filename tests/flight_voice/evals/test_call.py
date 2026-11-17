@@ -4,8 +4,9 @@ own agent over a new mock airline, the model a fake (`FunctionLLM`): no key and 
 caller asks for a one-way trip to Dubai tomorrow, picks the earliest, and says yes over the
 closing question; the play's reads hold the tools, the read-back with the airline's total, the
 booking done, and every check holds. A stop cuts a reply, a play with no booking expected
-books nothing, a clause the guard blocked is read with its text, and a model that never answers
-leaves the play stuck, its turns read."""
+books nothing, a clause the guard blocked is read with its text, a bare yes over the summary as
+the last turn books before the play ends when held (f31's shape) and ends it unbooked when not,
+and a model that never answers leaves the play stuck, its turns read."""
 
 from __future__ import annotations
 
@@ -190,6 +191,35 @@ def test_a_clause_the_guard_blocked_is_read_with_its_text() -> None:
     (turn,) = read.turns
     assert turn is not None and turn.blocked == 1 and turn.blocked_texts == (claimed,)
     assert all("482913" not in c.text for c in turn.heard)
+
+
+def _yes_over_the_summary(*, held: bool) -> tuple[Scenario, PlayRead]:
+    """f31's shape: a bare yes said over the summary, 2 s in, as the last turn, with
+    `interruptions.yes_over_read_back` on when `held`."""
+    last = {"says": "Yes.", "when": "read_back", "after_s": 2.0, "outcome": "done"}
+    scenario = _scenario(turns=[*ONE_WAY["turns"][:2], last])
+    settings = VoiceSettings.model_validate(
+        {"env": "test", "interruptions": {"yes_over_read_back": held}}
+    )
+    llm = FunctionLLM(_talker)
+    return scenario, asyncio.run(play(scenario, llm, settings, clock="virtual"))
+
+
+def test_a_yes_held_over_the_summary_as_the_last_turn_books_before_the_play_ends() -> None:
+    scenario, read = _yes_over_the_summary(held=True)
+    third = read.turns[2]
+    assert read.failure is None and third is not None
+    assert third.confirmed and third.ended == "done"
+    assert read.writes == 1 and len(read.made) == 1
+    assert failures(scenario, read) == ()
+
+
+def test_a_yes_over_the_summary_with_none_held_ends_the_play_unbooked_not_stuck() -> None:
+    scenario, read = _yes_over_the_summary(held=False)
+    third = read.turns[2]
+    assert read.failure is None and third is not None and not third.confirmed
+    assert read.writes == 0 and read.made == ()
+    assert [f.check for f in failures(scenario, read) if f.turn == 3] != []
 
 
 def test_a_model_that_never_answers_leaves_the_play_stuck_with_its_turns_read() -> None:

@@ -11,13 +11,16 @@ question (`closing_question`), while a tool of the reply runs (`tool_running`: t
 it said as a task, since `user` returns only once its reply is written on the system clock), or
 once the agent is silent. Before a turn said once the agent is silent, the call goes on until a
 booking its words confirmed has ended and its line was said; after the last turn, until its
-reply is no longer pending and the booking has ended. A **stop** (`stop = true`) is the client's
-Stop, `after_s` after the moment `at` names began: `TextCall` has no public wait for a moment
-without words, so the moment is read as the reply before it being written (`agent_speaking`,
-`read_back`, `closing_question`) or its words handed (`tool_running`), and `after_s` counts from
-there. A write or a last reply still running after `limit_s` on the wall clock, a moment the
-call waits for in vain, or the play's whole limit passed leave the play `stuck` (a provider's
-error: `provider`); what it did is still read, as it stands, for the turns said before.
+reply is no longer pending and the booking has ended; a last turn said over a summary, first
+until its words confirmed the booking or no reply has played for `HELD_S`, since a yes held
+there books only once the summary played whole (D-108). A **stop** (`stop = true`) is the
+client's Stop, `after_s` after the moment `at` names began: `TextCall` has no public wait for a
+moment without words, so the moment is read as the reply before it being written
+(`agent_speaking`, `read_back`, `closing_question`) or its words handed (`tool_running`), and
+`after_s` counts from there. A write or a last reply still running after `limit_s` on the wall
+clock, a moment the call waits for in vain, or the play's whole limit passed leave the play
+`stuck` (a provider's error: `provider`); what it did is still read, as it stands, for the turns
+said before.
 
 **What a turn did** (`TurnRead`): its reply's clauses, those heard and those the guard blocked,
 its tool calls and cards; as it stood when the caller next spoke, whether the read-back the
@@ -32,7 +35,7 @@ import asyncio
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date
-from typing import Any, Final, Literal, get_args
+from typing import Final, Literal
 
 from pydantic import JsonValue
 from t2_agentic_voice import ProviderError, VoiceAgent, VoiceSettings
@@ -43,15 +46,13 @@ from flight_voice.agent import declare
 from flight_voice.airline.bookings import Booking, BookingStore, Leg, priced
 from flight_voice.airline.system import Airline
 from flight_voice.booking.draft import BOOK_TRIP
+from flight_voice.evals.call_wait import OutcomeKind, holds, outcome_of, settle, wait_held
 from flight_voice.evals.scenarios import ReadBack, Scenario, Turn
 from flight_voice.traveler import demo_caller
 from flight_voice.trip import TripBook
 
-STEP_S: Final = 0.1  # how far the call moves on between two looks at it
 LIMIT_S: Final = 120.0  # wall seconds a booking's write, or the last reply, may take to end
 TURN_S: Final = 90.0  # a play's whole limit, a turn's share
-OutcomeKind = Literal["done", "failed", "unknown"]
-OUTCOME_KINDS: Final[tuple[OutcomeKind, ...]] = get_args(OutcomeKind)
 Stuck = Literal["stuck", "provider"]
 ClockKind = Literal["virtual", "system"]
 # Builds a call as `TextCall(agent, llm=..., settings=..., caller=..., language=..., today=...)`.
@@ -128,23 +129,6 @@ class PlayRead:
     writes: int = 0
 
 
-def _holds(check: Callable[..., None], *args: Any, **values: Any) -> bool:
-    try:
-        check(*args, **values)
-    except AssertionError:
-        return False
-    return True
-
-
-def _ended(turn: TextTurn) -> OutcomeKind | None:
-    return next((k for k in OUTCOME_KINDS if _holds(turn.expect.action_ended, BOOK_TRIP, k)), None)
-
-
-def _writing(said: Sequence[TextTurn]) -> bool:
-    """Whether a booking a turn of `said` confirmed has not ended, its lines said, yet."""
-    return any(_holds(t.expect.confirmed, BOOK_TRIP) and _ended(t) is None for t in said)
-
-
 @dataclass
 class _Saying:
     """The turns said so far by their scenario place, what each had shown when the caller
@@ -160,8 +144,8 @@ class _Saying:
             if n not in self.shown:
                 values = self.expected.get(n, {})
                 self.shown[n] = (
-                    _holds(turn.expect.read_back, **values),
-                    _holds(turn.expect.asked_again),
+                    holds(turn.expect.read_back, **values),
+                    holds(turn.expect.asked_again),
                 )
 
     def read(self, count: int, call: TextCall, airline: Airline, failure: Stuck | None) -> PlayRead:
@@ -184,24 +168,11 @@ class _Saying:
             cards=len(turn.cards),
             read_back=read_back,
             asked_again=asked_again,
-            confirmed=_holds(turn.expect.confirmed, BOOK_TRIP),
-            ended=_ended(turn),
+            confirmed=holds(turn.expect.confirmed, BOOK_TRIP),
+            ended=outcome_of(turn),
             blocked=len(turn.blocked),
             blocked_texts=tuple(c.text for c in turn.blocked),
         )
-
-
-async def _settle(call: TextCall, said: Sequence[TextTurn], limit_s: float, *, last: bool) -> None:
-    """The call moved on until no booking is being written (and, for the `last` turn, its reply
-    is no longer pending); a pending last reply after `limit_s` is a TimeoutError."""
-    loop = asyncio.get_running_loop()
-    deadline = loop.time() + limit_s
-    while (last and said and said[-1].fate == "pending") or _writing(said):
-        if loop.time() >= deadline:
-            if last and said and said[-1].fate == "pending":
-                raise TimeoutError("the last turn's reply never ended")
-            return
-        await call.advance(STEP_S)
 
 
 async def _say(call: TextCall, turn: Turn) -> TextTurn:
@@ -231,7 +202,7 @@ async def _said_all(call: TextCall, turns: Sequence[Turn], limit_s: float, sayin
                 if turn.after_s:
                     await call.advance(turn.after_s)
                 if turn.when is None:
-                    await _settle(call, list(saying.said.values()), limit_s, last=False)
+                    await settle(call, list(saying.said.values()), limit_s, last=False)
                 saying.look()
                 if _next_runs_a_tool(turns, n):
                     answering = (n, asyncio.create_task(_say(call, turn)))
@@ -241,7 +212,10 @@ async def _said_all(call: TextCall, turns: Sequence[Turn], limit_s: float, sayin
                 earlier, task = answering
                 answering = None
                 saying.said[earlier] = await task
-        await _settle(call, list(saying.said.values()), limit_s, last=True)
+        said = list(saying.said.values())
+        if turns and turns[-1].when == "read_back":
+            await wait_held(call, said, saying.said.get(len(turns) - 1), limit_s)
+        await settle(call, said, limit_s, last=True)
     finally:
         if answering is not None:  # the turn before one that stuck, kept when it was said
             earlier, task = answering

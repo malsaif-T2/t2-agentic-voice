@@ -13,8 +13,9 @@ A `ReadBackReceipt` says one read-back's summary played whole: it holds the acti
 that was read back, as JSON text, and the reply, so a receipt for one draft cannot confirm
 another after a correction. `summary_played_at` is when the transport reported the summary's
 last clause played and `question_ended_at` the same for the closing question, None while it
-plays; `summary_began_at` is when its first clause began to play (its first audio queued), which
-a yes held over the summary is read against (D-108), None when the session did not give it. All
+plays; `summary_began_at` is when the summary could first be heard (its first audio queued, or
+once the clause of the reply before it played, whichever is later), which a yes held over the
+summary is read against (D-108), None when the session did not give it. All
 are the transport's own reports, never the browser's and with no tail after the
 audio. The session builds the receipt when the yes rule is called, so a verdict or a turn that
 lands after the last clause can still deny it one.

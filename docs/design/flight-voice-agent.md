@@ -147,12 +147,17 @@ apps/flight-voice-agent/
                                  and date words behind L4's function names; deleted
                                  when L4 lands                                           <=200
     tools/__init__.py            flight_tools(airline, trips) -> the seven tools            <=40
-    tools/results.py             result models, fixed `say` hints, failure messages      <=260
+    tools/results.py             result models, failure messages                         <=260
+    tools/says.py                the fixed `say` strings                                 <=200
     tools/cards.py               the card for each result, and its evidence texts        <=220
     tools/search.py              search_flights                                          <=280
+    tools/overview.py            the search over a span of days, its calendar card       <=200
+    tools/listing.py             a leg's options, their order and the listing's say      <=220
+    tools/picks.py               a pick as the caller said it, read against the listing  <=160
     tools/calendar.py            fare_calendar                                           <=200
     tools/cabins.py              compare_cabins                                          <=180
-    tools/choose.py              choose_flight, change_trip                              <=280
+    tools/choose.py              choose_flight                                           <=280
+    tools/change.py              change_trip                                             <=200
     tools/trip_view.py           get_trip                                                <=140
     tools/profile.py             traveler_profile                                        <=200
     booking/__init__.py                                                                   <=20
@@ -163,6 +168,7 @@ apps/flight-voice-agent/
     evals/__init__.py                                                                     <=20
     evals/scenarios.py           run F's scenario model, its capabilities, `problems()`  <=300
     evals/call.py                the seam to TextCall: play one scenario                  <=300
+    evals/call_wait.py           how a play waits on its call (bookings, a held yes)      <=300
     evals/checks.py              each turn's checks, L's checks, the play's              <=300
     evals/score.py               play records, the scorecard, the history line           <=260
     evals/run.py                 `poe eval-flights`: arguments, refusals, estimate,
@@ -574,7 +580,10 @@ words, and say when to call them. Each one's schema is the only thing the talker
   part-of-day picks, and 2 of 3 "latest" ones, as a time or a number; f10's "this one" after a
   one-flight listing went as a time or the cheapest.)
 - Checks: a list was shown for that leg (`nothing_listed`, `say`: "Search first."); the choice
-  matches exactly one shown option (`unclear_choice` with the options that match); seats.
+  matches exactly one shown option (`unclear_choice` with the options that match, each said by
+  time and fare; or, when it matches none, every option listed with its count and first and
+  last departure times, said as briefly as their listing, `unclear_choice_brief` for three or
+  four, a full one as full, `_full`; compare_cabins' alike, listing.py's `unclear`); seats.
 - Result `ok`: the chosen leg; for a round trip with the return not chosen, the return flights
   of the return day, listed as search lists them (`shown.return` set), `say`: "Say the choice
   back in a few words, then the return flights as their listing's say (returns.say) asks, and
@@ -1074,12 +1083,16 @@ panel:   Your trips: each booking (route, dates, travelers, cabin, fare, referen
   return card, the simpler of the two ways: no tool sends a second card), and a pick a change
   drops is no longer marked, since each card says the picks anew. An outbound card that keeps
   no return pick is a new search and clears the return segment; every leg card clears the review
-  and the extra card; a review card that no longer holds the return's pick (the trip made one
-  way) clears the return segment, so a one-way trip shows none. The review segment's status line
-  reads "Waiting for your yes" / «ننتظر موافقتك» while the read-back plays, then "Booked ·
-  Reference …" / «تم الحجز · رقم الحجز …» once "Your trips", loaded at the call's start and again
-  after the read-back, holds a booking it did not (`bookings.js`'s `Made`; none when the list
-  did not load at the start).
+  and the extra card; a review card that no longer holds the return's pick, or one of the whole
+  trip (its total) with one leg picked (the trip made one way, before or after a return pick),
+  clears the return segment, so a one-way trip shows none. The review segment's status line
+  reads "Waiting for your yes" / «ننتظر موافقتك» from when the whole trip's review card comes,
+  so while the read-back plays (the call need never show `confirming`: a yes held over the
+  summary books with no state between), then "Booked · Reference …" / «تم الحجز · رقم الحجز …»
+  once "Your trips", loaded at the call's start and again at each state after that card or a
+  read-back, holds a booking it did not (`bookings.js`'s `Made`; none when the list did not
+  load at the start). A leg's card after it forgets that booking, so a later trip of the call
+  never shows it.
 - **The language toggle** sets the call's starting language (`VoiceClient.start({language})`)
   and the page's texts and direction. Mid-call, the caller switches by voice (plan 010's 2.5).
 - **"Your trips"** refreshes when a call starts and ends, after a read-back until the booking

@@ -129,6 +129,25 @@ def test_a_pick_that_names_none_gives_every_option_listed() -> None:
     assert sum(1 for o in found["options"] if o.get("mark") == "cheapest") == 1
 
 
+def test_a_pick_that_names_none_of_four_has_them_said_as_briefly_as_their_listing() -> None:
+    """The owner's ruling of 2026-11-17 ("Brief, voice only"): a pick that names no flight of
+    three or four listed has them said by their count, first and last times and the cheapest,
+    never each by time and fare; two it could mean are each said so."""
+    call = Call()
+    listed = call.search(destination="Jeddah", depart=DEC_17, one_way=True)
+    full = any(not o["seats_ok"] for o in listed["options"])
+    found = data(call.choose("outbound", {"pick": "fare", "fare_sar": 1}))
+    assert found["say"] == SAY["unclear_choice_brief_full" if full else "unclear_choice_brief"]
+    times = sorted(o["departs"] for o in listed["options"])
+    assert (found["count"], found["first_departs"], found["last_departs"]) == (
+        len(times),
+        times[0],
+        times[-1],
+    )
+    two = data(call.choose("outbound", {"pick": "part_of_day", "part": "morning"}))
+    assert two["say"] == SAY["unclear_choice"] and len(two["options"]) == 2
+
+
 def test_a_picked_flight_short_of_seats_offers_the_cabins_and_flights_that_have_them() -> None:
     sold_out = business_sold_out("RUH", "CAI")
     assert sold_out is not None

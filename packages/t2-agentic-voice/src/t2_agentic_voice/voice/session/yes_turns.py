@@ -69,6 +69,7 @@ from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.held_yes import HeldBy, HeldYes
 from t2_agentic_voice.voice.session.io import CallSetup, Guarded
 from t2_agentic_voice.voice.session.read_back import Confirming
+from t2_agentic_voice.voice.session.read_back_heard import takes
 from t2_agentic_voice.voice.session.read_back_moved import moved_since, read_moved
 from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.speaker import Speaker
@@ -152,19 +153,21 @@ class YesTurns:
             asks=self.asks,
             talk=talk,
             book=self._judged,
+            guarded=guarded,
+            sync=sync,
         )
 
     def takes(self, heard: HeardWords | None, turn: TurnLog) -> bool:
-        """Whether `heard`, `turn`'s own words, are the yes rule's (read_back.py's `takes`)."""
+        """Whether `heard`, `turn`'s words, are the yes rule's (read_back_heard.py's `takes`)."""
         over = turn.over_reply
-        return heard is not None and self._confirming.takes(heard.speech_at, over=over)
+        return heard is not None and takes(self._confirming, heard.speech_at, over=over)
 
     async def answer(self, turn: TurnLog, heard: HeardWords, at: float) -> None:
         """Take `turn`, its words `heard`, as the answer to the current read-back, at `at`: the
         yes rule's word on it, then what follows, or first a chat model's word on words its
         lists leave unplaced, for an agent that asks (the module's docstring)."""
         read_back = self._confirming.read_back
-        if read_back is None:  # never so: `takes` said it answers one
+        if read_back is None or self.held.stale(heard):  # never so; or before words judged now
             return
         await self.asks.cancel()  # a newer answer: an earlier one's request decides nothing
         plan = read_back.plan
@@ -262,11 +265,8 @@ class YesTurns:
         """The yes rule's word on `heard`, `receipt` the read-back's of `plan`, checked
         (`_checked`): unclear when the rule fails."""
         try:
-            words, confirming, env = (
-                self._confirming.words(plan),
-                self._confirming,
-                self._setup.settings.env,
-            )
+            confirming, env = self._confirming, self._setup.settings.env
+            words = confirming.words(plan)
             said = said_of(confirming, plan, heard.speech_at) if confirming.holds_yes else None
             outcome = decide(heard, receipt, words=words, env=env, said=said)
         except Exception as error:  # a bug: never a yes

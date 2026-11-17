@@ -4,7 +4,8 @@ cheapest of those with seats marked (`options`), and the listing with how many f
 and its first and last departure times (`spread`), the fare's basis, and the fixed `say` for it
 (`listing`): one or two said each by its time and fare, three or four briefly, by their count,
 their first and last times and the cheapest, the others only when the caller asks (the owner's
-ruling). A listing after one of another day (`again`) asks for its day first.
+ruling). A listing after one of another day (`again`) asks for its day first. A pick that names
+no option listed is said back as briefly (`unclear`).
 
 The order said is the numbers' order, the card's rows', so "the third one" is the third on the
 card: in departure order, unless the cheapest with a seat for every traveler leaves last of four:
@@ -23,7 +24,16 @@ from flight_voice.airline.fares import fare, seats_left
 from flight_voice.airline.schedule import Cabin, Departure
 from flight_voice.said import Tag, words
 from flight_voice.tools.picks import departure_of
-from flight_voice.tools.results import SAY, DateSaid, Duration, Listing, Option, date_said, said
+from flight_voice.tools.results import (
+    SAY,
+    DateSaid,
+    Duration,
+    Listing,
+    Option,
+    Unclear,
+    date_said,
+    said,
+)
 from flight_voice.trip import LegKind, Shown
 
 # The most options a listing holds; the most it keeps in departure order before the cheapest;
@@ -150,6 +160,20 @@ def said_as(listed: Sequence[Option]) -> str:
     no seat for every traveler."""
     brief = "_brief" if len(listed) >= BRIEF_FROM else ""
     return brief + ("_full" if any(not o.seats_ok for o in listed) else "")
+
+
+def unclear(leg: LegKind, could: tuple[Option, ...], *, named: bool) -> Unclear:
+    """`unclear_choice` for a pick of `leg`: the options it `named` (more than one), each said by
+    its time and fare; or, when it named none, every option listed (`could`), said as briefly
+    as their listing (`said_as`); a full one said as full either way."""
+    if not could:
+        return Unclear(leg=leg, options=could)
+    count, first, last = spread(could)
+    full = "_full" if any(not o.seats_ok for o in could) else ""
+    say = SAY["unclear_choice" + (full if named else said_as(could))]
+    return Unclear(
+        leg=leg, options=could, count=count, first_departs=first, last_departs=last, say=say
+    )
 
 
 def listed_again(
