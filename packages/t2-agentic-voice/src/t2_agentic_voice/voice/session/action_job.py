@@ -33,12 +33,13 @@ from typing import Any
 from t2_agentic_voice.core.events import ActionCompleted, ActionUnconfirmed, ReplyId, TurnId
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.settings.tts import LanguageTag
-from t2_agentic_voice.domain.action_lines import SpokenLine
+from t2_agentic_voice.domain.action_lines import ReadBackPlan, SpokenLine
 from t2_agentic_voice.domain.ports.action_jobs import ActionOutcome
 from t2_agentic_voice.domain.yes_rule import ConfirmedAction
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.io import CallSetup, Guarded
 from t2_agentic_voice.voice.session.read_back import Confirming
+from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.speaker import Speaker
 from t2_agentic_voice.voice.session.turn_book import TurnBook
 
@@ -86,6 +87,24 @@ class ActionJob:
     def wired(self) -> bool:
         """Whether the call has an `ActionJobs` to hand a confirmed action to."""
         return self._setup.action_jobs is not None
+
+    async def send(
+        self, turn: TurnLog, plan: ReadBackPlan, confirmed: ConfirmedAction, at: float
+    ) -> None:
+        """A yes (yes_turns.py): confirming ends; `plan`'s `sending` line said as the reply
+        answering `turn`, then `confirmed` started (`start`); with no `ActionJobs`, the `error`
+        notice, and nothing sent."""
+        self._confirming.confirmed()
+        if not self.wired:
+            call_id = self._setup.call_id
+            _log.warning("action_not_sent", call_id=call_id, action=plan.action, reason="no_jobs")
+            await self._speaker.notice("error", at)
+            return
+        speaker, tag = self._speaker, plan.language
+        turn.reply_id = await speaker.say_line(
+            plan.sending, language=tag, at=at, turn_id=turn.turn_id
+        )
+        self.start(confirmed, turn_id=turn.turn_id, language=tag, wording=plan.wording)
 
     def start(
         self,

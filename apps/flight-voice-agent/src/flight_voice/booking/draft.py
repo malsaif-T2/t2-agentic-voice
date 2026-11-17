@@ -113,17 +113,21 @@ def _outbound(leg: Leg) -> dict[str, str]:
     }
 
 
-def _back(leg: Leg | None) -> dict[str, str]:
-    """The return as the read-back says it after the outbound, or nothing on a one-way trip."""
+def _back(leg: Leg | None, out: Leg) -> dict[str, str]:
+    """The return as the read-back says it after the outbound `out`, or nothing on a one-way
+    trip: its day, with its month only when it is not the outbound's, and its time; never its
+    city again, which the route said."""
     if leg is None:
         return dict.fromkeys(WORDINGS, "")
-    origin, _, saudi, msa, english = _departs(leg)
-    start = AIRPORTS[origin]
-    saudi_day, msa_day, english_day = (speak_date(leg.day, r) for r in ("saudi", "msa", "en"))
+    _, _, saudi, msa, english = _departs(leg)
+    month = (leg.day.year, leg.day.month) != (out.day.year, out.day.month)
+    saudi_day, msa_day, english_day = (
+        speak_date(leg.day, r, month=month) for r in ("saudi", "msa", "en")
+    )
     return {
-        "ar_sa": f"، والرجعة {saudi_day} تطلع {start.from_city('saudi')} {saudi}",
-        "ar": f"، والعودة يوم {msa_day} تقلع {start.from_city('msa')} {msa}",
-        "en": f", back on {english_day} at {english} {start.from_city('en')}",
+        "ar_sa": f"، والرجعة {saudi_day} تطلع {saudi}",
+        "ar": f"، والعودة يوم {msa_day} تقلع {msa}",
+        "en": f", back on {english_day} at {english}",
     }
 
 
@@ -139,7 +143,7 @@ def filled(trip: TripDraft, total: int) -> BookingDraft:
         "trip_kind": {s: words.trip_kind(trip.one_way, r) for s, r in WORDINGS.items()},
         "route": {s: words.route(trip.origin, trip.destination, r) for s, r in WORDINGS.items()},
         "outbound": _outbound(out),
-        "return": _back(back),
+        "return": _back(back, out),
         "party": {s: speak_travelers(trip.travelers, r) for s, r in WORDINGS.items()},
         "total": {s: speak_amount(total, r) for s, r in WORDINGS.items()},
     }

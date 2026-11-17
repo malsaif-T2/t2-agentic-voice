@@ -256,7 +256,9 @@ A card is an extra for a client with a screen, and the caller may have none, so 
 is always said: never tell them to look at one. A `Card` has a `title`, its `steps` in order (at
 most 50), its option `rows` in order (at most 8, each a `CardRow`: a `title` of up to 80
 characters, a `detail` of up to 120, a `value` of up to 40, and a `mark` of `best`, `chosen` or
-`unavailable`; none by default) and the `source` they come from. A card is data: a page shows
+`unavailable`; none by default), the `source` they come from, and the `slot` it names on the
+page, when it names one (lowercase letters and `_`, at most 20 of them, such as `outbound`; a
+page with segments puts the card in the one it names, D-110). A card is data: a page shows
 its texts as text and does nothing they say, and every text of a row is read by the guard with
 the card's. A tool of yours shows one by returning a `ToolResult`
 with a `card`; the knowledge tool shows none. The output guard reads a card's text before it
@@ -336,7 +338,10 @@ only words they began saying once the summary had played whole: a yes said over 
 before any read-back, counts for nothing. Over the closing question a bare yes is asked again and
 a yes with a send word ("yes, send it", «نعم أرسلها») confirms, and once the question has ended a
 yes alone does ([safety.md](safety.md) has the rule in full, its word lists, and the chat model an
-agent may ask about words the lists do not hold, `ask_on_unlisted_answers`, off by default).
+agent may ask about words the lists do not hold, `ask_on_unlisted_answers`, off by default). An
+app that turns on `interruptions.yes_over_read_back` (off by default; D-108) holds a yes said over
+the summary and books it once the summary has played in full, with no other words after it, and
+takes a bare yes over the closing question as a yes (safety.md, "When any yes books").
 
 Every other answer ends with nothing sent:
 

@@ -1,9 +1,10 @@
 """The flight agent's settings (flight_voice/settings.py): its own under `FLIGHT_VOICE_` and the
 library's under `T2V_`, a `.env` read only when given; each refusal naming the setting, never
 its value; the runtime's folder always nested under the library's; 50 bookings a caller a day,
-the guard's two rules of run F's round 2 on and four model requests a turn, each unless set; the
-demo traveler the console's dev caller under `env` dev alone; and a persona's name
-that would break the lines' rule refused, naming its setting."""
+the guard's two rules of run F's round 2 and its plain speech (D-111) on, four model requests a
+turn, and a yes over the read-back held (D-108), each unless set; the demo traveler the
+console's dev caller under `env` dev alone; and a persona's name that would break the lines'
+rule refused, naming its setting."""
 
 from __future__ import annotations
 
@@ -18,11 +19,12 @@ from flight_voice.settings import (
     PREFIX,
     REQUESTS_PER_TURN,
     TOKENS_PER_DAY,
+    YES_OVER_READ_BACK,
     for_the_app,
     load,
 )
 from flight_voice.traveler import demo_caller
-from t2_agentic_voice import ConfigurationError, GuardSettings, VoiceSettings
+from t2_agentic_voice import ConfigurationError, GuardSettings, InterruptionSettings, VoiceSettings
 
 from tests.flight_voice.server_support import CODE
 from tests.isolation import FLIGHT_PREFIX
@@ -122,12 +124,13 @@ def test_bookings_a_day_are_fifty_unless_the_environment_sets_them(
     assert load().voice.limits.actions_per_caller_per_day == 3
 
 
-def test_the_guards_two_rules_and_four_requests_a_turn_hold_unless_set(
+def test_the_guards_rules_and_four_requests_a_turn_hold_unless_set(
     environment: pytest.MonkeyPatch,
 ) -> None:
     voice = load().voice
-    assert GUARD_ON == ("question_stop_drops_calls", "drop_stage_notes")
+    assert GUARD_ON == ("question_stop_drops_calls", "drop_stage_notes", "plain_speech")
     assert (voice.guard.question_stop_drops_calls, voice.guard.drop_stage_notes) == (True, True)
+    assert voice.guard.plain_speech
     assert voice.llm.max_requests_per_turn == REQUESTS_PER_TURN == 4
     environment.setenv("T2V_GUARD__QUESTION_STOP_DROPS_CALLS", "false")
     environment.setenv("T2V_GUARD__QUESTIONS_PER_REPLY", "2")
@@ -140,6 +143,37 @@ def test_the_guards_two_rules_and_four_requests_a_turn_hold_unless_set(
     app = for_the_app(given)
     assert (app.guard.question_stop_drops_calls, app.guard.drop_stage_notes) == (True, False)
     assert app.llm.max_requests_per_turn == 4 and given.llm.max_requests_per_turn == 3
+    assert app.guard.plain_speech and not given.guard.plain_speech
+
+
+def test_plain_speech_is_off_when_the_environment_sets_it_so(
+    environment: pytest.MonkeyPatch,
+) -> None:
+    environment.setenv("T2V_GUARD__PLAIN_SPEECH", "false")
+    voice = load().voice
+    assert not voice.guard.plain_speech and voice.guard.drop_stage_notes
+
+
+def test_a_yes_over_the_read_back_is_held_unless_the_environment_sets_it(
+    environment: pytest.MonkeyPatch,
+) -> None:
+    """D-108: the owner's "Any yes books", on for the flight agent; the library's default off."""
+    assert YES_OVER_READ_BACK == "yes_over_read_back"
+    assert not VoiceSettings(env="test").interruptions.yes_over_read_back
+    voice = load().voice
+    assert voice.interruptions.yes_over_read_back
+    assert voice.interruptions.mode == "two_step"  # the held yes is two_step's
+    environment.setenv("T2V_INTERRUPTIONS__YES_OVER_READ_BACK", "false")
+    assert not load().voice.interruptions.yes_over_read_back
+    environment.delenv("T2V_INTERRUPTIONS__YES_OVER_READ_BACK")
+    environment.setenv("T2V_INTERRUPTIONS__DUCK_LEVEL", "0.5")  # another field set: still on
+    voice = load().voice
+    assert voice.interruptions.yes_over_read_back and voice.interruptions.duck_level == 0.5
+    # In code: a group's field set there is kept.
+    off = InterruptionSettings(yes_over_read_back=False)
+    assert not for_the_app(
+        VoiceSettings(env="test", interruptions=off)
+    ).interruptions.yes_over_read_back
 
 
 def test_the_demo_traveler_is_the_dev_caller_under_dev_alone(

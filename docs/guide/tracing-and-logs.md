@@ -109,7 +109,13 @@ A reply that stopped before a question past its limit (`guard.questions_per_repl
 `calls` (how many). The trace holds only what was said. A reply that stopped at the model's
 reasoning written into its answer (D-089; a stage note or a tag too, under `guard.drop_stage_notes`)
 logs `talker_reasoning_dropped` at INFO, with `call_id`, `turn_id` and `dropped_chars` (how many
-characters went unsaid), never a word of them.
+characters went unsaid), never a word of them. Under `guard.plain_speech` (D-111) a request whose
+clause was not speech logs `talker_not_speech_dropped` at INFO, with `call_id`, `turn_id`,
+`request` (its number in the turn) and `retry` (whether it is sent once more), never a word.
+Under `interruptions.yes_over_read_back` (D-108) a yes held over a read-back's summary logs
+`read_back_yes_held` (with `by`: `words` or `model`), and one dropped `read_back_yes_dropped`
+(with `why`: `words`, `answered` or `refused`), each with `call_id` and `turn_id`, never a word;
+a held yes that books is answered as any yes is (`read_back_answered`).
 
 The resource attributes, on each root span: `t2v.version`, `t2v.pipecat.version`,
 `t2v.settings.digest` (a hash of the settings with every secret left out), `t2v.agent.name`,

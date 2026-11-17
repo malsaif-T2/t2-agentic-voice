@@ -57,6 +57,12 @@ turn and the call as it was heard to the events the session plays, within the re
   A cancel of the reply's scope cancels the task that iterates the stream, so the model's
   request and every tool of the scope stop at once, and no `ReplyDone` comes. The model's stream
   is closed as the reply leaves it, whatever ends it (domain/ports/chat_model.py's `closing`).
+- **Plain speech** (D-111), under `guard.plain_speech`: dot runs made one mark before the leak
+  check, a clause that is not speech ending its request as a leak does, no tool of it run, and
+  the invisible and markdown marks taken out of each clause (agent/plain_speech.py). A request
+  that said nothing so is sent once more, the same messages, a new first line and nothing of
+  its text kept, while the turn has a request left; after that, or with none left, the reply
+  ends, and the session says the `error` notice when none of it was said.
 - **Time** is the call's clock's alone: a tool's `ms`, a request's
   `first_token_s` and the prompt's date (the runner times each tool's timeout on it too).
 - **Warmth.** Each request's `ModelReplied` says whether it went out on a kept-alive connection
@@ -65,7 +71,7 @@ turn and the call as it was heard to the events the session plays, within the re
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator, Sequence
+from collections.abc import AsyncGenerator
 
 from t2_agentic_voice.actions.action_runner import ActionRunner
 from t2_agentic_voice.actions.language_tool import switched_to
@@ -79,7 +85,6 @@ from t2_agentic_voice.agent.context import (
     declined_note,
     history,
     turn_message,
-    without_calls,
 )
 from t2_agentic_voice.agent.events import (
     LanguageMoved,
@@ -92,25 +97,20 @@ from t2_agentic_voice.agent.events import (
 )
 from t2_agentic_voice.agent.language import call_register, reply_language, wording
 from t2_agentic_voice.agent.leaked_reasoning import LeakedReasoning
-from t2_agentic_voice.agent.prompt import (
-    compose_prompt,
-    reply_line,
-    tool_definitions,
-    with_first_line,
-)
+from t2_agentic_voice.agent.prompt import compose_prompt, tool_definitions
 from t2_agentic_voice.agent.question_limit import REASON
 from t2_agentic_voice.agent.stray_script import StrayScript
 from t2_agentic_voice.agent.tool_calls import Memory, ToolCalls, exchange
 from t2_agentic_voice.agent.turn_answer import Answer, answer_events
+from t2_agentic_voice.agent.turn_request import request_of
 from t2_agentic_voice.core.clock import Clock
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.conversation import TalkerTurn
 from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.logging import get_logger
-from t2_agentic_voice.core.settings.llm import REASONING_MODELS
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.declaration import VoiceAgent
-from t2_agentic_voice.domain.ports.chat_model import ChatMessage, ChatModel, ChatRequest, ToolSchema
+from t2_agentic_voice.domain.ports.chat_model import ChatMessage, ChatModel
 
 _log = get_logger(__name__)
 
@@ -195,14 +195,22 @@ class Turn:
                 self.memory.keep(self.turn.turn_id, [note])
         requests = tools_run = 0
         warm: bool | None = None  # whether the turn's first request went out on a warm connection
-        most = self.settings.llm.max_requests_per_turn
-        for index in range(most):
-            last = index == most - 1
+        llm, retried = self.settings.llm, False
+        for index in range(llm.max_requests_per_turn):
+            last = index == llm.max_requests_per_turn - 1
             tools = () if last else tool_definitions(self.runner, self.actions)
-            request = self._request(messages, tools, after_tools=tools_run > 0)
+            request = request_of(
+                llm,
+                messages,
+                tools,
+                after_tools=tools_run > 0,
+                language=self.language,
+                register=self.register,
+            )
             requests += 1
             yield ModelRequested(model=request.model)
             answer = Answer()
+            self.gate.begin()
             asked = answer_events(self, request, answer)
             try:
                 async for event in asked:
@@ -219,6 +227,14 @@ class Turn:
                 stray_scripts=scripts,
             )
             warm = answer.warm if requests == 1 else warm
+            if self.gate.not_speech:  # D-111: nothing more of it; said nothing, sent once more
+                retry = not (retried or self.gate.said_now or last)
+                ids = {"call_id": self.ctx.call_id, "turn_id": self.turn.turn_id}
+                _log.info("talker_not_speech_dropped", **ids, request=requests, retry=retry)
+                if retry:
+                    retried = True
+                    continue
+                break
             if self.gate.stopped or self.leak.found or not answer.calls:
                 break
             if not tools:
@@ -275,22 +291,3 @@ class Turn:
         self.leak = self.leak.anew(arabic=tag != "en")  # nothing held: each request closed it
         self.ctx = self.tools.ctx = self.ctx.model_copy(update={"language": tag})
         self.tools.wording = wording(tag, self.register)
-
-    def _request(
-        self, messages: Sequence[ChatMessage], tools: tuple[ToolSchema, ...], *, after_tools: bool
-    ) -> ChatRequest:
-        llm = self.settings.llm
-        if llm.vary_first_line:  # so no two requests share a cached prefix (the setting's text)
-            messages = [ChatMessage.system(with_first_line(messages[0].content)), *messages[1:]]
-        if not tools:
-            messages = without_calls(messages)
-        if after_tools:  # the request's own line, never kept in the turn's messages
-            line = reply_line(self.language, self.register, last=not tools)
-            messages = [*messages, ChatMessage.system(line)]
-        return ChatRequest(
-            messages=tuple(messages),
-            tools=tools,
-            model=llm.model,
-            reasoning_effort=llm.reasoning_effort if llm.model in REASONING_MODELS else None,
-            max_output_tokens=llm.max_output_tokens,
-        )

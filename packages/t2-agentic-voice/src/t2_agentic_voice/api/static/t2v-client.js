@@ -542,7 +542,8 @@ function iceServer(server) {
 
 // A `card` as the page gets it, its fields as voice/protocol.py's `ShowCard` holds them (a
 // title of at least one character, its steps a list of text, its rows a list, none from a
-// session that sends no rows, its source text or null), or null for a message that is not one.
+// session that sends no rows, its source text or null, and its slot one of CARD_SLOT's shape or
+// null, null from a session that sends none), or null for a message that is not one.
 function cardOf(message) {
   const { title, steps, source } = message;
   if (typeof title !== "string" || title === "") return null;
@@ -550,8 +551,14 @@ function cardOf(message) {
   if (source !== null && typeof source !== "string") return null;
   const rows = message.rows === undefined ? [] : message.rows;
   if (!Array.isArray(rows)) return null;
-  return { v: PROTOCOL, type: "card", title, steps: [...steps], rows: rowsOf(rows), source };
+  const slot = message.slot === undefined ? null : message.slot;
+  if (slot !== null && !(typeof slot === "string" && CARD_SLOT.test(slot))) return null;
+  return { v: PROTOCOL, type: "card", title, steps: [...steps], rows: rowsOf(rows), source, slot };
 }
+
+// The slot a card may name on the page (domain/cards.py's `CardSlot`, D-110): lowercase letters
+// and "_", 1 to 20 of them.
+const CARD_SLOT = /^[a-z_]{1,20}$/;
 
 // What a card's row may be marked as (domain/cards.py's `CARD_MARKS`), and the most rows a
 // card holds (`MAX_ROWS`).

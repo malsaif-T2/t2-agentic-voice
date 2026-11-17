@@ -57,8 +57,9 @@ def test_the_outbound_pick_lists_the_return_flights_and_the_draft_holds_both() -
     draft = call.draft
     assert draft.chosen_outbound == Leg(flight=401, day=date(2026, 12, 17))
     assert [s.flight for s in draft.shown_return] == [402, 404]
-    assert chosen.card is not None and chosen.card.title == "London to Riyadh, Sun 20 Dec"
-    assert card_passes(chosen)
+    assert chosen.card is not None and card_passes(chosen)
+    assert chosen.card.title == "Return: London to Riyadh · Sun 20 Dec · economy"
+    assert chosen.card.slot == "return" and chosen.card.rows[-1].mark == "chosen"
 
 
 @pytest.mark.parametrize("tag", TAGS)
@@ -77,15 +78,17 @@ def test_the_last_pick_gives_the_trip_whole_and_sends_the_talker_to_book_it(tag:
     out, back, party, whole = done.card.rows
     assert (out.mark, back.mark, party.mark, whole.mark) == ("chosen", "chosen", None, None)
     total = f"{expected:,}"
+    assert done.card.slot == "review"
     if tag == "en":
-        assert done.card.title == "Your trip"
-        assert out.title == "Riyadh to London, Thu 17 Dec"
-        assert out.detail is not None and out.detail.startswith("09:10 to 13:15, 7 h 5 min,")
-        assert back.title == "London to Riyadh, Sun 20 Dec"
+        assert done.card.title == "Your trip: Riyadh to London · round trip · economy"
+        assert out.title == "09:10 to 13:15"
+        assert out.detail is not None and out.detail.startswith("Outbound: Thu 17 Dec, 7 h 5 min,")
+        assert back.detail is not None and back.detail.startswith("Return: Sun 20 Dec, ")
         assert party == CardRow(title="1 traveler in economy")
         assert whole == CardRow(title="Total", value=f"{total} SAR")
     else:
-        assert done.card.title == "رحلتك" and party.title == "مسافر واحد في الدرجة السياحية"
+        assert done.card.title.startswith("رحلتك: الرياض إلى لندن · ")
+        assert party.title == "مسافر واحد في الدرجة السياحية"
         assert whole.title == "المجموع" and whole.value is not None and whole.value.endswith("ريال")
 
 
@@ -190,6 +193,40 @@ def test_the_third_one_is_the_third_said_when_the_cheapest_leaves_last() -> None
     late = {(d.origin, d.departs.strftime("%H:%M")): d.number for d in _flights(out, back)}
     assert call.draft.chosen_outbound == Leg(flight=late[("RUH", "21:00")], day=out)
     assert call.draft.chosen_return == Leg(flight=late[("JED", "23:00")], day=back)
+
+
+def test_the_dearest_return_is_the_first_listed_of_the_dearest_with_seats() -> None:
+    """The owner's live call: «أغلى وحدة» on a return list whose two dearest share a fare had no
+    kind to go in; the dearest picks the first listed of them, never a flight left unsaid."""
+    out, back = cheapest_departs_last("RUH", "JED"), cheapest_departs_last("JED", "RUH")
+    assert out is not None and back is not None
+    call = Call("ar-SA")
+    call.search(
+        destination="جدة",
+        depart={"kind": "on", "day": out.day, "month": out.month},
+        return_date={"kind": "on", "day": back.day, "month": back.month},
+    )
+    returns = data(call.choose("outbound", FIRST))["returns"]["options"]
+    top = max(o["fare_sar"] for o in returns if o["seats_ok"])
+    first = next(o for o in returns if o["seats_ok"] and o["fare_sar"] == top)
+    done = data(call.choose("return", {"pick": "dearest"}))
+    assert done["say"] == SAY["complete"]
+    assert done["trip"]["return_flight"]["departs"] == first["departs"]
+
+
+def test_a_fare_said_picks_its_flight_or_gives_back_the_flights_it_could_mean() -> None:
+    """«اللي بـ 400»: a fare the caller said is passed as itself, never as a time worked out;
+    a fare no option has gives every option listed back."""
+    call = Call()
+    listed = call.search(destination="Jeddah", depart=DEC_17, one_way=True)
+    missed = data(call.choose("outbound", {"pick": "fare", "fare_sar": 1}))
+    assert missed["status"] == "unclear_choice"
+    assert [o["n"] for o in missed["options"]] == [o["n"] for o in listed["options"]]
+    fares = [o["fare_sar"] for o in listed["options"]]
+    one = next(o for o in listed["options"] if fares.count(o["fare_sar"]) == 1 and o["seats_ok"])
+    found = data(call.choose("outbound", {"pick": "fare", "fare_sar": one["fare_sar"]}))
+    assert found["say"] == SAY["complete"]
+    assert found["trip"]["outbound"]["departs"] == one["departs"]
 
 
 def test_a_return_listing_that_does_not_answer_is_a_failure_and_changes_nothing() -> None:

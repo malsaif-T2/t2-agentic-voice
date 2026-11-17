@@ -4,14 +4,15 @@ failed check is named (`Failed`: the check and the turn, from 1), never with a t
 
 **Each turn's checks**, each only when its turn expects it: `calls`, the tools its reply called
 in order; `args`, each value one of its calls held, read as the airline reads it (a city as its
-code, a date form resolved against the scenario's today, a return from the departure that call
-or the last one before it held, a pick by its kind); `outcome`, what the call did after it (a
-read-back said whole, holding the scenario's `read_back` and the total priced from the airline,
-checked as `read_back`; an ask-again; the booking confirmed and ended `done`, `failed` or
-`unknown`; or, for `declined` and `none`, no read-back, no ask-again and nothing confirmed);
-`said_any` and `said_none`, on what the caller heard of its reply, the runtime's lines among it,
-in the scorers' form (`normalize_arabic`, then `normalize_digits`); `own_summary`, a turn that
-reads the trip back says no number of its own before it (no summary of the agent's own).
+code, a date form resolved against the scenario's today, a departure's span of days by its
+span, a return from the departure that call or the last one before it held, a pick by its
+kind); `outcome`, what the call did after it (a read-back said whole, holding the scenario's
+`read_back` and the total priced from the airline, checked as `read_back`; an ask-again; the
+booking confirmed and ended `done`, `failed` or `unknown`; or, for `declined` and `none`, no
+read-back, no ask-again and nothing confirmed); `said_any` and `said_none`, on what the caller
+heard of its reply, the runtime's lines among it, in the scorers' form (`normalize_arabic`,
+then `normalize_digits`); `own_summary`, a turn that reads the trip back says no number of its
+own before it (no summary of the agent's own).
 
 On the talker's own words (no fixed phrase, none of the runtime's lines, which code renders):
 `language`, every clause in the turn's language and its script (an Arabic reply as many Arabic
@@ -67,7 +68,7 @@ DEPARTURES: Final = frozenset(
     for code in AIRPORTS
     for f in (*flights(HOME, code), *flights(code, HOME))
 )
-_PICKS: Final = ("pick", "n", "part", "departs")
+_PICKS: Final = ("pick", "n", "part", "departs", "fare_sar")
 
 
 @dataclass(frozen=True)
@@ -115,6 +116,8 @@ def held(call: TextToolCall, today: date, last_depart: date | None) -> dict[str,
     for name in ("depart", "from_date"):
         if name in args:
             found[name] = _day(args[name], today, None)
+    if isinstance(span := args.get("depart"), dict) and span.get("kind") == "days":
+        found["span"] = span.get("span")
     depart = found.get("depart")
     since = depart if isinstance(depart, date) else last_depart
     if "return_date" in args and since is not None:

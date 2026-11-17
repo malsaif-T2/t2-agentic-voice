@@ -1,10 +1,11 @@
 # The flight agent's scripted calls (flight_voice/evals/scenarios.py): a bare yes over the
-# closing question is asked again; a yes with the send word books.
+# closing question, once the summary has played whole, books (the owner's ruling of
+# 2026-11-17: any yes books).
 id = "f22_bare_yes_closing_saudi"
 split = "dev"
 language = "ar-SA"
 kind = "confirmation"
-notes = "A bare yes over the closing question is asked again; then a yes with the send word books the Mumbai trip."
+notes = "A bare yes over the closing question, the summary played whole, books the Mumbai trip (the owner's ruling of 2026-11-17, any yes books; it was asked again before)."
 
 [[turns]]
 says = "أبي أروح مومباي يوم عشرة ديسمبر، رايح بس"
@@ -21,10 +22,5 @@ read_back = { outbound = "T2 503@2026-12-10", one_way = true, travelers = 1, cab
 
 [[turns]]
 says = "إي"
-when = "closing_question"
-outcome = "asked_again"
-
-[[turns]]
-says = "إي احجزها"
 when = "closing_question"
 outcome = "done"

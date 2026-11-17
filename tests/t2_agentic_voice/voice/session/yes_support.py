@@ -115,9 +115,16 @@ class FakeYesRule:
     calls: list[Decided] = field(default_factory=list)
 
     def __call__(
-        self, heard: HeardWords | None, receipt: ReadBackReceipt, *, words: ConsentWords, env: str
+        self,
+        heard: HeardWords | None,
+        receipt: ReadBackReceipt,
+        *,
+        words: ConsentWords,
+        env: str,
+        said: object = None,  # the read-back's lines under D-108's setting, which it ignores
     ) -> YesOutcome:
         assert heard is not None, "the session hands the rule words heard"
+        assert said is None, "these tests run with interruptions.yes_over_read_back off"
         self.calls.append(Decided(heard=heard, receipt=receipt, words=words, env=env))
         if self.forced is not None:
             return self.forced(heard, receipt)

@@ -12,6 +12,12 @@ closed set, `CARD_MARKS`, which a page maps to a style, never to markup) list wh
 offered (flights, plans, slots), at most `MAX_ROWS`, so a card stays small on the wire. Every
 text of a row is read by the output guard with the card's title and steps (`texts`), so no
 number the call has no evidence for reaches the screen.
+
+A card may name its `slot` on the page (D-110): a short closed-shape name, lowercase letters and
+`_` only, at most `MAX_SLOT` characters (`outbound`, say), so a page with segments of its own can
+put the card in its place. It is no text to show and carries no number, so the output guard does
+not read it; a page that knows no slot of that name, or a card with none, shows it where it shows
+every card.
 """
 
 from __future__ import annotations
@@ -25,6 +31,9 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 CardMark = Literal["best", "chosen", "unavailable"]
 CARD_MARKS: Final = get_args(CardMark)
 MAX_ROWS: Final = 8
+# The longest slot a card may name (above); its shape is checked by the pattern.
+MAX_SLOT: Final = 20
+CardSlot = Annotated[str, Field(pattern=rf"^[a-z_]{{1,{MAX_SLOT}}}$")]
 
 
 def _says_something(value: str) -> str:
@@ -55,8 +64,9 @@ class CardRow(BaseModel):
 
 class Card(BaseModel):
     """A card: its `title`, its `steps` in order (none when its source lists none), its option
-    `rows` in order (at most `MAX_ROWS`; none by default), and the `source` they come from, when
-    there is one (a passage's document)."""
+    `rows` in order (at most `MAX_ROWS`; none by default), the `source` they come from, when
+    there is one (a passage's document), and the `slot` it names on the page, when it names
+    one."""
 
     model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
 
@@ -64,6 +74,7 @@ class Card(BaseModel):
     steps: tuple[_Text, ...] = Field(default=(), max_length=50)
     rows: tuple[CardRow, ...] = Field(default=(), max_length=MAX_ROWS)
     source: _Text | None = None
+    slot: CardSlot | None = None
 
     def texts(self) -> tuple[str, ...]:
         """The card's texts, as the output guard reads them: its title, its steps, each row's

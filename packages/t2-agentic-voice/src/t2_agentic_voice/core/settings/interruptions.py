@@ -11,6 +11,10 @@ call plan 003 built, kept as it was (GP-18). The duck level is the prototype's (
 W3; the other bounds are the prototype's (its D30) and the starting rule's, but `short_s`: 1.6 s
 in both, it is 1.2 s since the rule's one revision (plan 005's amendment (10), after its runs O1
 and O2).
+
+`yes_over_read_back` (D-108, off by default) is what a yes said over an action's read-back does:
+here because the read-back is a reply, and a yes over it is speech over a reply that the session
+takes, under `two_step` only.
 """
 
 from __future__ import annotations
@@ -86,5 +90,15 @@ class InterruptionSettings(Group):
         description=(
             "How far back the agent's own words count: speech over a reply whose words are "
             "those of the clauses played this long before is its own voice, heard back."
+        ),
+    )
+    yes_over_read_back: bool = Field(
+        default=False,
+        description=(
+            "Whether a yes said over an action's read-back books once its summary has played "
+            "whole, with no other words said after it (the closing question then cut), and a "
+            "bare yes over the closing question books too, as khalas beside a yes or a send "
+            "word does: the owner's 'Any yes books' (D-108). Off: a yes over the summary counts "
+            "for nothing, and over the closing question a yes needs a send word."
         ),
     )

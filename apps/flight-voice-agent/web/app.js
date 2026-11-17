@@ -7,14 +7,15 @@
 // Options (kept in this page's memory alone, never in storage), may tick the box to keep the
 // call's audio (off by default; no consent screen, D-076) and starts the call. The orb and the
 // state line follow the call's `state` (listening, thinking, speaking, waiting for a yes); the
-// cards mirror what the agent said, the newest first (cards.js); the captions sit in "Show
-// conversation"; "Your trips" lists the bookings (bookings.js). The lines the caller could say
+// cards mirror what the agent said, each in its segment of the trip, outbound, return and
+// review (cards.js), the review's status line waiting for the yes, then booked; the captions sit
+// in "Show conversation"; "Your trips" lists the bookings (bookings.js). The lines the caller could say
 // are text, never buttons: the client has no typed text into a call. Every text, the captions,
 // cards and notices included, is set with textContent.
 
 import { VoiceClient } from "./voice/client/1/t2v-client.js";
 import { Cards } from "./cards.js";
-import { Trips, startOver } from "./bookings.js";
+import { Made, Trips, startOver } from "./bookings.js";
 import { fill, wordsOf } from "./texts.js";
 
 // The version the join token carries: the server's privacy.consent_version, as Ole5's widget
@@ -27,6 +28,7 @@ const english = () => page.language === "en";
 const words = () => wordsOf(page.language);
 const cards = new Cards($("cards"), $("cards-section"), () => words().marks);
 const trips = new Trips($("trips-list"), $("trips-filter"), $("trips-note"));
+const made = new Made(trips);
 
 class TokenError extends Error {
   constructor(code, retryAfter = null) {
@@ -115,6 +117,14 @@ function state(text, now = "") {
   $("orb").dataset.state = now;
 }
 
+// The review segment's status: waiting for the yes while the read-back plays, then booked with
+// its reference once the booking this call made is found (bookings.js's `Made`).
+async function reviewed(now) {
+  const ref = await made.seen(now);
+  const waiting = now === "confirming" ? words().waiting : "";
+  cards.setStatus(ref ? fill(words().bookedRef, { ref }) : waiting);
+}
+
 function message(text) {
   $("message").textContent = text;
 }
@@ -184,7 +194,7 @@ function ended(e) {
   running(false);
   state(words().ended);
   if (e.reason === "transport") message(words().lost);
-  trips.load().then(showTrips);
+  reviewed("").then(showTrips);
 }
 
 async function start() {
@@ -201,6 +211,7 @@ async function start() {
   cards.clear();
   running(true);
   state(words().starting);
+  await made.start();
   try {
     const call = await VoiceClient.start({
       base: "voice",
@@ -208,7 +219,10 @@ async function start() {
       getToken: token,
       pushToTalk: $("push-to-talk").checked,
       on: {
-        state: (s) => state(words().states[s.state] ?? "", s.state),
+        state: (s) => {
+          state(words().states[s.state] ?? "", s.state);
+          reviewed(s.state);
+        },
         caption,
         card: (c) => cards.add(c),
         notice: (n) => message(n.text),

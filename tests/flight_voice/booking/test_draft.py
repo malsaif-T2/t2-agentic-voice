@@ -8,9 +8,11 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+from datetime import date
 from typing import Any
 
 import pytest
+from flight_voice.airline.bookings import Leg
 from flight_voice.airline.schedule import departures
 from flight_voice.booking.action import book_trip
 from flight_voice.booking.draft import BOOK_TRIP, BookingDraft, NotFilledError
@@ -95,24 +97,23 @@ def test_a_field_the_draft_does_not_hold_is_refused_and_named() -> None:
     [
         (
             ("ar-SA", None),
-            "بحجز لك أنت على الدرجة السياحية، رايح جاي: من الرياض للندن، الخميس سبعطعش ديسمبر "
-            "تطلع تسع وعشر دقايق الصبح، والرجعة الأحد عشرين ديسمبر تطلع من لندن أربع العصر. "
+            "لك أنت على الدرجة السياحية، رايح جاي: من الرياض للندن، الخميس سبعطعش ديسمبر "
+            "تطلع تسع وعشر دقايق الصبح، والرجعة الأحد عشرين تطلع أربع العصر. "
             "المجموع ستة آلاف وسبع مية وعشرة ريالات.",
             "تبيني أحجزها؟",
         ),
         (
             ("ar-SA", "ar"),
-            "سأحجز لك وحدك في الدرجة السياحية، ذهاب وعودة: من الرياض إلى لندن، يوم الخميس السابع "
-            "عشر من ديسمبر تقلع التاسعة وعشر دقائق صباحًا، والعودة يوم الأحد العشرين من ديسمبر "
-            "تقلع من لندن الرابعة عصرًا. المجموع ستة آلاف وسبعمئة وعشرة ريالات.",
+            "لك وحدك في الدرجة السياحية، ذهاب وعودة: من الرياض إلى لندن، يوم الخميس السابع "
+            "عشر من ديسمبر تقلع التاسعة وعشر دقائق صباحًا، والعودة يوم الأحد العشرين "
+            "تقلع الرابعة عصرًا. المجموع ستة آلاف وسبعمئة وعشرة ريالات.",
             "هل أحجزها لك؟",
         ),
         (
             ("en", None),
-            "I'll book you in economy, round trip: Riyadh to London, Thursday the seventeenth of "
-            "December at nine ten in the morning, back on Sunday the twentieth of December at "
-            "four in the afternoon from London. The total is six thousand seven hundred and ten "
-            "riyals.",
+            "For you in economy, round trip: Riyadh to London, Thursday the seventeenth of "
+            "December at nine ten in the morning, back on Sunday the twentieth at four in the "
+            "afternoon. Total six thousand seven hundred and ten riyals.",
             "Shall I book it?",
         ),
     ],
@@ -122,7 +123,8 @@ def test_the_read_back_says_the_round_trip_whole(
 ) -> None:
     """A Saudi reply's, an MSA caller's (an `ar-SA` reply read in `ar`) and an English one's:
     the trip's kind, the route, each leg's day and time, the travelers, the cabin and the total
-    priced now, every number in words."""
+    priced now, every number in words; no lead verb, the return's city and month (the
+    outbound's) not said again, "Total" for "The total is"."""
     tag, wording = read
     plan = _plan(tag=tag, wording=wording)
     assert (plan.summary.text, plan.question.text) == (summary, question)
@@ -144,6 +146,34 @@ def test_a_one_way_read_back_names_its_kind_and_no_return(tag: str, kind: str) -
     party = {"ar-SA": "لثلاثة أشخاص", "ar": "لثلاثة أشخاص", "en": "three travelers"}[tag]
     cabin = {"ar-SA": "درجة رجال الأعمال", "ar": "درجة رجال الأعمال", "en": "business class"}
     assert party in text and cabin[tag] in text
+
+
+@pytest.mark.parametrize(
+    ("read", "back"),
+    [
+        (("ar-SA", None), "والرجعة السبت اثنين يناير تطلع"),
+        (("ar-SA", "ar"), "والعودة يوم السبت الثاني من يناير تقلع"),
+        (("en", None), "back on Saturday the second of January at"),
+    ],
+)
+def test_a_return_in_another_month_says_its_month_and_never_its_city(
+    read: tuple[LanguageTag, LanguageTag | None], back: str
+) -> None:
+    """The month is dropped only when it is the outbound's: a return in the next month (and
+    the next year) says it; the return's city, which the route already said, is never said."""
+    out, home = date(2026, 12, 30), date(2027, 1, 2)
+    trip = TripDraft(
+        destination="LHR",
+        depart=out,
+        return_date=home,
+        chosen_outbound=Leg(flight=departures("RUH", "LHR", out)[0].flight.number, day=out),
+        chosen_return=Leg(flight=departures("LHR", "RUH", home)[0].flight.number, day=home),
+    )
+    tag, wording = read
+    text = _plan(tag=tag, wording=wording, trip=trip).summary.text
+    assert back in text
+    for city in ("من لندن", "from London", "لندن تطلع", "لندن تقلع"):
+        assert city not in text
 
 
 def test_a_draft_no_trip_filled_gives_no_legs_to_write() -> None:

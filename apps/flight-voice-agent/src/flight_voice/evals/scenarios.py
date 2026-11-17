@@ -17,7 +17,8 @@ a point of the reply (`at`, the same points), `after_s` into it, expecting nothi
 What a turn's reply is expected to do, each unchecked when left out:
 
 - `calls`, the tools it called, in order (`[]` for none); `args`, values those calls held, read
-  as the airline reads them (a city as its code, a date form as its day, a pick by its kind);
+  as the airline reads them (a city as its code, a date form as its day, a departure's span of
+  days as its `span`, a pick by its kind);
   `forms`, the date form the caller's words name for each date of `args`, which the airline's
   own date code resolves against `today` to that date (a return from the departure), so no date
   is worked out by hand;
@@ -52,7 +53,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 
 from flight_voice.airline.airports import Code
 from flight_voice.airline.bookings import Mode
-from flight_voice.airline.dates import DateSpec
+from flight_voice.airline.dates import DateSpec, Span
 from flight_voice.airline.schedule import Cabin
 from flight_voice.airline.system import AIRLINE_CODE, ProfileMode, SearchMode
 from flight_voice.said import Tag
@@ -80,7 +81,7 @@ Split = Literal["dev", "held-out"]
 When = Literal["agent_speaking", "tool_running", "read_back", "closing_question"]
 Outcome = Literal["read_back", "asked_again", "done", "failed", "unknown", "declined", "none"]
 ArabicRegister = Literal["saudi", "msa"]
-Pick = Literal["number", "cheapest", "earliest", "latest", "part_of_day", "time"]
+Pick = Literal["number", "cheapest", "dearest", "earliest", "latest", "part_of_day", "time", "fare"]
 _FLIGHT = re.compile(r"^(?P<code>[A-Z0-9]{2}) (?P<number>[0-9]{3})@(?P<day>[0-9-]{10})$")
 
 
@@ -128,6 +129,7 @@ class Args(_Model):
     destination: Code | None = None
     origin: Code | None = None
     depart: date | None = None
+    span: Span | None = None
     return_date: date | None = None
     from_date: date | None = None
     one_way: bool | None = None
@@ -139,6 +141,7 @@ class Args(_Model):
     n: int | None = Field(default=None, ge=1, le=4)
     part: PartOfDay | None = None
     departs: str | None = Field(default=None, pattern=r"^([01][0-9]|2[0-3]):[0-5][0-9]$")
+    fare_sar: int | None = Field(default=None, ge=1)
 
 
 class Forms(_Model):

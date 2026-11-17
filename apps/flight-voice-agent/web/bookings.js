@@ -2,7 +2,8 @@
 // answered on this machine alone), newest first as the route gives them: each one's route, its
 // kind and dates, travelers and cabin, total and reference, shown as text. The filter by
 // reference runs on the page, with no request. The list loads when the panel opens, again
-// every `EVERY_MS` while it is open, and when a call ends; "Start over" asks first, then
+// every `EVERY_MS` while it is open, when a call starts and ends, and after a read-back while
+// the booking it may have made is not found (`Made`); "Start over" asks first, then
 // `POST api/demo/reset` puts the bookings back to the seed.
 
 import { fill } from "./texts.js";
@@ -99,6 +100,41 @@ export class Trips {
     );
     const none = this.failed ? words.tripsFailed : kept.length ? "" : words.noTrips;
     this.note.textContent = none;
+  }
+}
+
+// The references of the bookings loaded, as text.
+export function referencesOf(trips) {
+  return new Set(trips.bookings.map((b) => String(b.reference ?? "")).filter(Boolean));
+}
+
+// The booking a call made (app.js), found from the page's own "Your trips" route: the
+// references loaded at the call's start (`start`); once a read-back was asked (the state
+// `confirming`), the list loaded again at each state after it until a booking not among them is
+// there, its reference then kept (`seen`). When the list did not load at the start, no booking
+// is ever taken for this call's, so a past one is never shown as made.
+export class Made {
+  constructor(trips) {
+    this.trips = trips;
+    this.known = null;
+    this.asked = false;
+    this.reference = "";
+  }
+
+  async start() {
+    await this.trips.load();
+    const known = this.trips.failed ? null : referencesOf(this.trips);
+    Object.assign(this, { known, asked: false, reference: "" });
+  }
+
+  // The reference of the booking this call made, "" while there is none, the state `now`.
+  async seen(now) {
+    if (now === "confirming") this.asked = true;
+    if (this.known && !this.reference && this.asked && now !== "confirming") {
+      await this.trips.load();
+      this.reference = [...referencesOf(this.trips)].find((ref) => !this.known.has(ref)) ?? "";
+    }
+    return this.reference;
   }
 }
 

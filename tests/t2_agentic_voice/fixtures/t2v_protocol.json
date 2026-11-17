@@ -35,7 +35,13 @@
         "clause": "integer | null",
         "cut": "boolean"
       },
-      "card": {"title": "string", "steps": "[string]", "rows": "[CardRow]", "source": "string | null"},
+      "card": {
+        "title": "string",
+        "steps": "[string]",
+        "rows": "[CardRow]",
+        "source": "string | null",
+        "slot": "string | null"
+      },
       "duck": {"level": "number"},
       "unduck": {},
       "notice": {"kind": "busy | error | cut_off | ended", "text": "string"},

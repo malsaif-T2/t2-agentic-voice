@@ -12,8 +12,8 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk, TextToSpeech
+from t2_agentic_voice.voice.session.audible import AUDIBLE_FLOOR
 from t2_agentic_voice.voice.session.io import SYSTEM_CLOCK, Clock
-from t2_agentic_voice.voice.session.turn_book import AUDIBLE_FLOOR
 
 # The loudest a 16-bit sample may be and still count as the silence before speech: voice's floor
 # for the agent's audio (turn_book.py's); a take's first sound is its first sample louder.

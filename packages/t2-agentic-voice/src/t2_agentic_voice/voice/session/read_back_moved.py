@@ -10,18 +10,19 @@ so only a yes heard after the new summary played whole, with its own receipt, co
 yes rule's evidence is unchanged: the turn's own heard words, which no move rewrites. When the
 action cannot be read in the new language, it is declined as a correction, and the talker
 answers the turn. Under any other `stt.live_language` the call never moves, so nothing here
-happens (GP-18).
+happens (GP-18). A read-back said again at the caller's request is said by `read_again` too.
 """
 
 from __future__ import annotations
 
 from t2_agentic_voice.agent.read_back_language import read_back_in
+from t2_agentic_voice.core.events import ReplyId, TurnId
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.settings.words import primary_code
 from t2_agentic_voice.domain.action_lines import ReadBackPlan
 from t2_agentic_voice.voice.session.io import CallSetup
 from t2_agentic_voice.voice.session.playback import Playback
-from t2_agentic_voice.voice.session.read_back import Confirming, ReadBack, read_again
+from t2_agentic_voice.voice.session.read_back import Confirming, ReadBack
 from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.speaker import Speaker
 
@@ -59,3 +60,16 @@ async def read_moved(
         return False
     turn.reply_id = await read_again(speaker, confirming, again, turn_id=turn.turn_id, at=at)
     return True
+
+
+async def read_again(
+    speaker: Speaker, confirming: Confirming, plan: ReadBackPlan, *, turn_id: TurnId, at: float
+) -> ReplyId:
+    """Say `plan`'s read-back again, at the caller's request or in the call's new language, as a
+    reply of its own answering `turn_id`, written whole at once: the current read-back, the
+    earlier one void; its reply's number."""
+    confirming.repeated()
+    reply = await speaker.open_reply(at, turn_id=turn_id)
+    await confirming.read(reply, plan, at)
+    await reply.finish(at)
+    return reply.reply_id

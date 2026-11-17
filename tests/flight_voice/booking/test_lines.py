@@ -1,10 +1,11 @@
 """What the booking says (flight_voice/booking/lines.py), held to the lines' rules on its texts and
 on the final lines a call hears, the read-back filled from a round trip and a one-way one: every
 wording the agent reads (Saudi Arabic, MSA and English) covered; each read-back's summary naming
-its own wording's parts, the trip's kind among them; no line but the closing question holding a
-stop, wait, repeat, listening, yes or send word, and the closing question its send word; no
-line holding a phrase the guard reads as a claim; `done` never saying the reference, and no line
-said before there is a result saying a number; every MSA line MSA."""
+its own wording's parts, the trip's kind among them; no line but the closing question and the
+ask-again holding a stop, wait, repeat, listening, yes or send word, and each of those two its
+send word, the ask-again the booking's own, never the library's; the confirm verbs among the
+send words; no line holding a phrase the guard reads as a claim; `done` never saying the
+reference, and no line said before there is a result saying a number; every MSA line MSA."""
 
 from __future__ import annotations
 
@@ -18,6 +19,7 @@ from t2_agentic_voice import VoiceSettings
 from t2_agentic_voice.actions.spoken_lines import read_back_plan
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.settings.words import primary_code
+from t2_agentic_voice.domain.action_lines import default_action_lines
 from t2_agentic_voice.domain.claims import (
     ClaimVerdict,
     any_action_claims,
@@ -81,6 +83,7 @@ def _heard(tag: LanguageTag) -> dict[str, str]:
         plan = read_back_plan(made, draft, tool_call_id="t", tag=reply, wording=tag)
         heard[f"summary-{n}"] = plan.summary.text
         heard[f"question-{n}"] = plan.question.text
+        heard[f"asked_again-{n}"] = plan.asked_again.text
         heard[f"declined-{n}"] = plan.declined.text
         heard[f"sending-{n}"] = plan.sending.text
     for name, say in (("failed", lines.FAILED), ("unknown", lines.UNKNOWN)):
@@ -117,12 +120,30 @@ def test_only_the_closing_question_holds_a_word_the_caller_commands_with(tag: La
     texts = {"summary": lines.READ_BACK.for_language(tag)[0]}
     texts |= {f"line-{n}": say.for_language(tag) for n, say in enumerate(_OTHERS)}
     for name, text in {**texts, **_heard(tag)}.items():
-        if name.startswith("question"):
+        if name.startswith(("question", "asked_again")):
             sends = [_form(word) for word in lines.SEND_WORDS[code]]
             assert any(send in _form(text) for send in sends), (tag, name)
             assert [w for w in _commands(text, code) if w not in lines.SEND_WORDS[code]] == []
         else:
             assert _commands(text, code) == [], (tag, name, _commands(text, code))
+
+
+@pytest.mark.parametrize("tag", TAGS)
+def test_the_ask_again_is_the_bookings_own_and_asks_to_book(tag: LanguageTag) -> None:
+    """The library's ask-again («أسجل الطلب؟», "Shall I go ahead?") fits any action; a booking
+    asks again with its own closing question."""
+    library = default_action_lines(tag).asked_again
+    for name, text in _heard(tag).items():
+        if name.startswith("asked_again"):
+            assert text != library and text.endswith(lines.READ_BACK.for_language(tag)[1])
+
+
+def test_the_confirm_verbs_are_the_bookings_own_send_words() -> None:
+    """A caller who says «أكد الحجز» or "confirm it" asks for the booking as «احجزها» does."""
+    arabic = {normalize_arabic(word) for word in lines.SEND_WORDS["ar"]}
+    for verb in ("أكد", "أكدها", "أكد الحجز", "احجز", "احجزها"):
+        assert normalize_arabic(verb) in arabic, verb
+    assert {"book it", "confirm", "confirm it"} <= set(lines.SEND_WORDS["en"])
 
 
 @pytest.mark.parametrize("tag", TAGS)

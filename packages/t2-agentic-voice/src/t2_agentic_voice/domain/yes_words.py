@@ -29,7 +29,7 @@ read-back's own, the lists that place a yes staying the read-back's: a rail only
 corrects, so this never confirms what the read-back's lists refuse.
 
 `covered` says whether a text is only words of given lists, as a read-back reads what is said
-over its summary (voice/session/read_back.py's `ignored`).
+over its summary (voice/session/read_back_heard.py's `plays_on`).
 """
 
 from __future__ import annotations
@@ -212,7 +212,7 @@ def covered(text: str, phrases: Collection[str]) -> bool:
     """Whether every word of `text` belongs to one of `phrases`, both in the rule's form
     (domain/words.py's `rule_form`), each phrase whole words, the longest first; False for a
     text with no word. How a read-back reads what is said over its summary (voice/session/
-    read_back.py's `ignored`)."""
+    read_back_heard.py's `plays_on`)."""
     heard = rule_form(text).split()
     forms = {form for form in (rule_form(phrase) for phrase in phrases) if form}
     if not heard or not forms:

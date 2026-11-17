@@ -34,6 +34,7 @@ from pydantic import JsonValue
 
 from t2_agentic_voice.core.identity import allows_recording
 from t2_agentic_voice.core.logging import get_logger
+from t2_agentic_voice.domain.interruptions import Verdict
 from t2_agentic_voice.voice.protocol import Playback, Stop
 from t2_agentic_voice.voice.session.commands import Speak
 from t2_agentic_voice.voice.session.io import CallSetup
@@ -45,6 +46,7 @@ from t2_agentic_voice.voice.session.session_events import (
     ClauseQueued,
     FromClient,
     SessionEvent,
+    Transcribed,
     TurnClosed,
     TurnOpened,
 )
@@ -180,6 +182,13 @@ class CallRecorder:
         """The session asked for a clause, whose text the caption shows."""
         clause = {"reply_id": speak.reply_id, "clause": speak.clause, "turn_id": speak.turn_id}
         self.line(at, "clause_asked", **clause, cached=speak.audio is not None, text=caption)
+
+    def judged(self, event: Transcribed, verdict: Verdict) -> None:
+        """An overlap's transcript, and the interruption rule's verdict on it."""
+        text = "" if event.transcript is None else event.transcript.text
+        heard = {"turn_id": event.turn_id, "part": event.part, "text": text}
+        said = {"action": verdict.action, "kind": verdict.kind, "reason": verdict.reason}
+        self.line(event.at, "overlap_judged", **heard, **said)
 
     def heard(self, at: float, turn_id: int, text: str, *, dropped: bool) -> None:
         """What speech-to-text heard in a turn, and whether the drop rule left it unanswered."""

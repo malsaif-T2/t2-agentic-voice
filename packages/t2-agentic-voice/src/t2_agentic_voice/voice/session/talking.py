@@ -147,7 +147,7 @@ class Talking:
         """Answer `turn`, its words `heard`, with the talker, unless they answer an action's
         read-back (the yes rule's: yes_turns.py) or its early start answers it already (the same
         words); the replies in progress to earlier turns stopped first."""
-        if self.yes.takes(heard):
+        if self.yes.takes(heard, turn):
             await self.yes.answer(turn, heard, at)
             return
         talk = self._talks.get(turn.turn_id)
@@ -190,7 +190,7 @@ class Talking:
         to an earlier turn is in progress."""
         if heard is None or self._over() or turn.overlap or turn.dropped or turn.closed:
             return
-        if self.yes.takes(heard) or turn.turn_id not in self._holding:
+        if self.yes.takes(heard, turn) or turn.turn_id not in self._holding:
             return
         if turn.turn_id in self._talks or self._earlier(turn.turn_id) is not None:
             return

@@ -1,9 +1,11 @@
 """`search_flights`: the caller's trip searched and its outbound flights listed.
 
-The talker passes the city as the caller said it and each date as a date form (`DateSpec`); the
-code finds the airport, resolves the dates against today in Riyadh and checks, in order: the
-cities are served (`not_served`); the route is flown, every route starting or ending in Riyadh
-(`not_served`); the departure resolves inside the booking window (`date_problem`); a round trip
+The talker passes the city as the caller said it and each date as a date form (`DateSpec`), the
+departure perhaps a span of days (`Days`); the code finds the airport, resolves the dates against
+today in Riyadh and checks, in order: the cities are served (`not_served`); the route is flown,
+every route starting or ending in Riyadh (`not_served`); a span of days is answered then, before
+any return day is asked for, with what flies over it (overview.py, status `days`), writing
+nothing; the departure resolves inside the booking window (`date_problem`); a round trip
 has a return date (`needs_return_date`, nothing searched) that resolves, not before the
 departure (`date_problem`); the cabin is sold on the route (`cabin_not_offered`); each leg's day
 has a flight (`no_flights_that_day`, with the two nearest days that have one); a flight that day
@@ -19,6 +21,7 @@ flights".
 from __future__ import annotations
 
 from datetime import date, timedelta
+from functools import partial
 from typing import Annotated, Final
 
 from pydantic import Field
@@ -28,6 +31,8 @@ from flight_voice.airline.airports import Airport, airport, find_airport, served
 from flight_voice.airline.dates import (
     DateProblem,
     DateSpec,
+    Days,
+    DepartSpec,
     Resolved,
     resolve_departure,
     resolve_return,
@@ -46,6 +51,7 @@ from flight_voice.airline.system import Airline, AirlineUnavailableError
 from flight_voice.said import Tag
 from flight_voice.tools import cards
 from flight_voice.tools.listing import listable, listing, options
+from flight_voice.tools.overview import span_search
 from flight_voice.tools.results import (
     SAY,
     SEARCH_FAILED,
@@ -72,7 +78,10 @@ DESCRIPTION: Final = (
 )
 _CITY: Final = "The city as the caller said it, in their words."
 _ORIGIN: Final = "The city they leave from, only when it is not Riyadh."
-_DEPART: Final = "The day they leave, as the caller said it; never a day they did not say."
+_DEPART: Final = (
+    "The day they leave, as the caller said it; never a day they did not say. A span of days "
+    "only when they asked what flies over days and named no single day."
+)
 _RETURN: Final = "The day they come back, as a date form; leave it out for a one-way trip."
 _ONE_WAY: Final = "True only when the caller wants a one-way trip."
 _TRAVELERS: Final = "How many people travel, when the caller said; else leave it out."
@@ -121,7 +130,7 @@ def search_flights(airline: Airline, trips: TripBook) -> Tool:
     async def search(
         ctx: CallContext,
         destination: Annotated[str, Field(min_length=1, max_length=40, description=_CITY)],
-        depart: Annotated[DateSpec, Field(description=_DEPART)],
+        depart: Annotated[DepartSpec, Field(description=_DEPART)],
         origin: Annotated[str | None, Field(max_length=40, description=_ORIGIN)] = None,
         return_date: Annotated[DateSpec | None, Field(description=_RETURN)] = None,
         one_way: Annotated[bool, Field(description=_ONE_WAY)] = False,
@@ -137,6 +146,10 @@ def search_flights(airline: Airline, trips: TripBook) -> Tool:
             return not_served("not_served_city", tag)
         if not route_served(start.code, end.code):
             return not_served("not_served_route", tag)
+        if isinstance(depart, Days):
+            kept_cabin: Cabin = cabin if cabin is not None else draft.cabin
+            near = partial(nearest_days, start, end, today=today)
+            return await span_search(airline, (start, end), depart, kept_cabin, tag, near)
         out = resolve_departure(depart, today)
         if isinstance(out, DateProblem):
             return _problem(out, "outbound", tag)

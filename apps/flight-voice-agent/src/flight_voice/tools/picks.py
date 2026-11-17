@@ -2,16 +2,18 @@
 reads it against the options last listed for that leg, in the order said (`pick`).
 
 The talker passes the pick in the kind the caller said it, never a flight it worked out: by its
-number in the list ("option three", «رقم ثلاثة»), the cheapest, the earliest, the latest, its
-part of the day ("the afternoon one", «اللي الظهر») or a departure time the caller said. Each
-kind's class docstring is its description in the tools' schema. A pick names one option, or it
-is unclear and the options it could mean are said back; "the cheapest" is the one the listing
-marked, the cheapest with a seat for every traveler.
+number in the list ("option three", «رقم ثلاثة»), the cheapest, the dearest, the earliest, the
+latest, its part of the day ("the afternoon one", «اللي الظهر»), a departure time the caller
+said or a fare the caller said. Each kind's class docstring is its description in the tools'
+schema. A pick names one option, or it is unclear and the options it could mean are said back;
+"the cheapest" is the one the listing marked, the cheapest with a seat for every traveler, and
+"the dearest" the dearest with one, each the first listed of two at one fare; a fare said names
+every option at that fare in the trip's cabin.
 """
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated, Final, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -19,6 +21,14 @@ from flight_voice.airline.fares import fare, seats_left
 from flight_voice.airline.schedule import Cabin, Departure, departure, find_flight
 from flight_voice.said.words import PartOfDay, part_of_day
 from flight_voice.trip import Shown
+
+# The pick's description in choose_flight's and compare_cabins' schemas alike.
+CHOICE: Final = (
+    "The caller's pick, as they said it; never a flight you worked out, nor the time or number "
+    "of the flight it means, even one a tool already named: a part of the day goes as "
+    "part_of_day, a comparison of when it leaves as earliest or latest, a comparison of fares "
+    "as cheapest or dearest, a fare they said as fare, the only flight listed as its number."
+)
 
 
 class _Pick(BaseModel):
@@ -38,6 +48,13 @@ class Cheapest(_Pick):
     """The cheapest option with seats: "the lowest fare", «أرخص وحدة»."""
 
     pick: Literal["cheapest"] = "cheapest"
+
+
+class Dearest(_Pick):
+    """The dearest option with seats, whenever the caller picks by the highest fare, a
+    comparison too: "the priciest one", «اللي سعرها أعلى»; never its number."""
+
+    pick: Literal["dearest"] = "dearest"
 
 
 class Earliest(_Pick):
@@ -72,8 +89,17 @@ class ByTime(_Pick):
     departs: str = Field(pattern=r"^([01]?[0-9]|2[0-3]):[0-5][0-9]$")
 
 
+class ByFare(_Pick):
+    """The option at a fare the caller said themselves, in riyals, as a whole number: "the one
+    for 1250", «اللي بـ 980». Never for a flight they named another way, nor its number."""
+
+    pick: Literal["fare"] = "fare"
+    fare_sar: int = Field(ge=1)
+
+
 Choice = Annotated[
-    ByNumber | Cheapest | Earliest | Latest | ByPart | ByTime, Field(discriminator="pick")
+    ByNumber | Cheapest | Dearest | Earliest | Latest | ByPart | ByTime | ByFare,
+    Field(discriminator="pick"),
 ]
 
 
@@ -99,10 +125,15 @@ def pick(choice: Choice, shown: tuple[Shown, ...], cabin: Cabin, travelers: int)
         hours, minutes = choice.departs.split(":")
         at = f"{int(hours):02d}:{minutes}"
         return [s for s in shown if departure_of(s).departs_at.strftime("%H:%M") == at]
+    if isinstance(choice, ByFare):
+        return [s for s in shown if fare(departure_of(s), cabin) == choice.fare_sar]
     selling = [s for s in shown if _seats(s, cabin) >= travelers] or list(shown)
-    priced = [(fare(departure_of(s), cabin), s.n, s) for s in selling]
-    kept = [(f, n, s) for f, n, s in priced if f is not None]
-    return [min(kept, key=lambda item: (item[0] or 0, item[1]))[2]] if kept else []
+    priced = [(f, s.n, s) for s in selling if (f := fare(departure_of(s), cabin)) is not None]
+    if not priced:
+        return []
+    if isinstance(choice, Dearest):  # the dearest, the first listed of two as dear
+        return [max(priced, key=lambda item: (item[0], -item[1]))[2]]
+    return [min(priced, key=lambda item: (item[0], item[1]))[2]]
 
 
 def _seats(shown: Shown, cabin: Cabin) -> int:

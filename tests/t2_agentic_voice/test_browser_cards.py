@@ -102,6 +102,7 @@ def test_the_client_drops_a_card_or_a_state_that_is_not_one(tmp_path: Path) -> N
         {k: v for k, v in card.items() if k != "source"},
         card | {"v": 2},
         card | {"rows": "a"},
+        card | {"slot": "Outbound"},  # not the slot's closed shape (test_browser_card_rows.py)
         {"v": 1, "type": "state", "state": "dozing"},
         {"v": 1, "type": "state", "state": 1},
         {"v": 1, "type": "state"},
@@ -109,8 +110,9 @@ def test_the_client_drops_a_card_or_a_state_that_is_not_one(tmp_path: Path) -> N
     ]
     kept = [card | {"steps": [], "source": "a.pdf"}, {"v": 1, "type": "state", "state": "thinking"}]
     shown = _client(tmp_path, [receive(message) for message in [*broken, *kept]])
-    # A card from a session that sends no rows has none (test_browser_card_rows.py).
-    assert shown["events"] == [["card", kept[0] | {"rows": []}], ["state", kept[1]]]
+    # A card from a session that sends no rows has none, and no slot (test_browser_card_rows.py).
+    expected = kept[0] | {"rows": [], "slot": None}
+    assert shown["events"] == [["card", expected], ["state", kept[1]]]
 
 
 def test_the_dev_page_shows_the_newest_card_as_text_and_a_new_call_clears_it(

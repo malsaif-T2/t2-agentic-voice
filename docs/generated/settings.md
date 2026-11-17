@@ -207,6 +207,7 @@ Interruptions: how the caller's speech over the agent's reply is taken, and the 
 | `T2V_INTERRUPTIONS__SHORT_WORDS` | integer | `2` | words | The most words a short output holds: at most this many, under short_s of speech, and none a stop, repeat or no word, the agent goes on (a listening sound misheard). |
 | `T2V_INTERRUPTIONS__SHORT_S` | number | `1.2` | seconds | The speech a short output stays under, for the agent to go on; 1.2 by the rule's one revision (plan 005). |
 | `T2V_INTERRUPTIONS__OWN_WORDS_S` | number | `5` | seconds | How far back the agent's own words count: speech over a reply whose words are those of the clauses played this long before is its own voice, heard back. |
+| `T2V_INTERRUPTIONS__YES_OVER_READ_BACK` | true or false | `false` | — | Whether a yes said over an action's read-back books once its summary has played whole, with no other words said after it (the closing question then cut), and a bare yes over the closing question books too, as khalas beside a yes or a send word does: the owner's 'Any yes books' (D-108). Off: a yes over the summary counts for nothing, and over the closing question a yes needs a send word. |
 
 ## `words`
 
@@ -237,6 +238,7 @@ The output guard: what counts as an ID, and what a clause that speaks one with n
 | `T2V_GUARD__QUESTIONS_PER_REPLY` | integer, or unset | `1` | — | The most questions one spoken reply of the talker's may ask the caller: the reply stops before the next one, which is not said, nor anything after it. A question is a clause that ends with a question mark. None, given in code: no limit. |
 | `T2V_GUARD__QUESTION_STOP_DROPS_CALLS` | true or false | `false` | — | Whether a reply the question limit stopped also drops the tool calls of the request it stopped in: on, none of them runs, so the question the caller heard ends the turn; off, they run and are kept, as before. |
 | `T2V_GUARD__DROP_STAGE_NOTES` | true or false | `false` | — | Whether a stage note or a tag the model writes into its answer counts as its reasoning, so nothing of that request is said from it on and none of its tools runs: in a reply in Arabic script, a parenthesis or bracket glued to a sentence's end with a capital Latin letter after it; in any language, one that opens a stage word ("(Waiting", "[No output"); and a "<" that opens a tag ("<action", "<data", or a tool's or an action's name). Arabic in parentheses never counts. Off: none counts. |
+| `T2V_GUARD__PLAIN_SPEECH` | true or false | `false` | — | Whether only plain speech is said (D-111): a run of dots after a sentence's mark is taken out, and one after a word made one ellipsis; a clause whose characters, spaces aside, are less than half letters or digits, or that holds a bracket, a brace or a tag's opening, is not said, nor anything after it of its request, and none of that request's tools runs; a request that said nothing so is sent once more while the turn has a request left; and zero-width spaces, word joiners, byte order marks, asterisks and backticks are taken out of every clause. Off: said as written. |
 
 ## `session`
 

@@ -41,8 +41,10 @@ from flight_voice.trip import Missing, TripBook
 BOOKINGS_PER_CALL: Final = 1
 DESCRIPTION: Final = (
     "Book the trip the caller planned, once every flight of it is chosen. Call it with no "
-    "arguments: the trip is read from the flights chosen. The caller hears the trip read back "
-    "and is asked to confirm it; say nothing yourself after calling this."
+    "arguments: the trip is read from the flights chosen. Call it in the same reply as soon as "
+    "every flight is chosen, even right after a read-back the caller declined or changed, and "
+    "never ask the caller yourself whether to book or confirm: the caller hears the trip read "
+    "back and is asked to confirm it, the only question; say nothing yourself after calling this."
 )
 NO_TRAVELER: Final = (
     "This call has no traveler to book for, so no booking can be made in it. Tell the caller "

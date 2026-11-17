@@ -9,7 +9,8 @@ from t2_agentic_voice import Tool
 from flight_voice.airline.system import Airline
 from flight_voice.tools.cabins import compare_cabins
 from flight_voice.tools.calendar import fare_calendar
-from flight_voice.tools.choose import change_trip, choose_flight
+from flight_voice.tools.change import change_trip
+from flight_voice.tools.choose import choose_flight
 from flight_voice.tools.profile import traveler_profile
 from flight_voice.tools.search import search_flights
 from flight_voice.tools.trip_view import get_trip

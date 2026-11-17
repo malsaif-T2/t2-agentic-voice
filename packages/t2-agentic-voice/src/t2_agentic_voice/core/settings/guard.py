@@ -3,9 +3,11 @@ tokens of a clause are ID-shaped, and what a blocked clause drops; the phrases a
 claim rule's default list (rule A; plan 007); whether a script none of the agent's languages
 writes is taken out of what the talker writes before the guard reads it (agent/stray_script.py);
 how many questions one reply may ask the caller (agent/question_limit.py, D-085), and whether a
-stop there drops its request's tool calls; and whether stage notes and tags count as the
-model's reasoning (agent/leaked_reasoning.py, D-089). Every clause the talker writes is checked
-before text-to-speech, and so is a card's text; the runtime's own templates are not.
+stop there drops its request's tool calls; whether stage notes and tags count as the
+model's reasoning (agent/leaked_reasoning.py, D-089); and whether only plain speech is said, a
+request whose text is not speech tried once more (agent/plain_speech.py, D-111). Every clause
+the talker writes is checked before text-to-speech, and so is a card's text; the runtime's own
+templates are not.
 """
 
 from __future__ import annotations
@@ -99,6 +101,19 @@ class GuardSettings(Group):
             'word ("(Waiting", "[No output"); and a "<" that opens a tag ("<action", "<data", '
             "or a tool's or an action's name). Arabic in parentheses never counts. Off: none "
             "counts."
+        ),
+    )
+    plain_speech: bool = Field(
+        default=False,
+        description=(
+            "Whether only plain speech is said (D-111): a run of dots after a sentence's mark "
+            "is taken out, and one after a word made one ellipsis; a clause whose characters, "
+            "spaces aside, are less than half letters or digits, or that holds a bracket, a "
+            "brace or a tag's opening, is not said, nor anything after it of its request, and "
+            "none of that request's tools runs; a request that said nothing so is sent once "
+            "more while the turn has a request left; and zero-width spaces, word joiners, byte "
+            "order marks, asterisks and backticks are taken out of every clause. Off: "
+            "said as written."
         ),
     )
 

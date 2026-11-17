@@ -1,5 +1,5 @@
-"""`choose_flight`, the caller's pick of a listed flight, and `change_trip`, a change to the
-travelers, the cabin or the trip's kind.
+"""`choose_flight`, the caller's pick of a listed flight (`change_trip`, a change to the trip, is
+change.py's).
 
 `choose_flight` reads the pick against the options last listed for the leg, in the order said
 (`picks.py`): a leg with nothing listed is `nothing_listed`; a pick that names no option, or
@@ -10,11 +10,7 @@ not chosen, the return day's flights, listed as a search lists them; once every 
 the trip whole with its total, and the `say` that sends the talker straight to `book_trip`, so
 the read-back is the one summary and the one confirmation.
 
-`change_trip` changes the travelers, the cabin or one way and prices the chosen legs again: a
-leg whose flight has too few seats for it now loses its choice, and its options are listed again
-with their new fares; a complete trip goes straight to `book_trip`, as `choose_flight`'s does.
-
-Each tool writes the call's draft once, as its last step; a search that does not answer is a
+The tool writes the call's draft once, as its last step; a search that does not answer is a
 `ToolError` that says it failed, and the draft is left as it was.
 """
 
@@ -27,16 +23,14 @@ from t2_agentic_voice import CallContext, Card, Tool, ToolError, ToolResult, too
 
 from flight_voice.airline.bookings import Leg
 from flight_voice.airline.fares import seats_left
-from flight_voice.airline.schedule import CABINS, Cabin, flights
 from flight_voice.airline.system import Airline, AirlineUnavailableError
 from flight_voice.said import Tag
 from flight_voice.tools import cards
 from flight_voice.tools.listing import listable, listed_again, listing, options
-from flight_voice.tools.picks import Choice, departure_of, pick
+from flight_voice.tools.picks import CHOICE, Choice, departure_of, pick
 from flight_voice.tools.results import (
     SAY,
     SEARCH_FAILED,
-    CabinNotOffered,
     Listing,
     NoSeats,
     NothingListed,
@@ -47,33 +41,15 @@ from flight_voice.tools.results import (
     result,
 )
 from flight_voice.tools.trip_view import TripView, view
-from flight_voice.trip import LegKind, Shown, TripBook, TripDraft, changed
+from flight_voice.trip import LegKind, Shown, TripBook, TripDraft
 
 CHOOSE_FLIGHT: Final = "choose_flight"
-CHANGE_TRIP: Final = "change_trip"
 CHOOSE_DESCRIPTION: Final = (
     "Pick the flight the caller chose for one leg, from the flights you listed. Pass their "
-    "choice as they said it: its number in the list, the cheapest, the earliest, the latest, "
-    "the morning, afternoon or evening one, or its departure time."
-)
-CHANGE_DESCRIPTION: Final = (
-    "Change the trip the caller is planning: the number of travelers, the cabin, one way or "
-    "round trip. For another day or city, call search_flights again."
-)
-NOTHING_TO_CHANGE: Final = (
-    "Nothing was changed: pass travelers, cabin or one_way, the one the caller changed."
+    "choice as they said it: its number in the list, the cheapest, the dearest, the earliest, "
+    "the latest, the morning, afternoon or evening one, its departure time, or its fare."
 )
 _LEG: Final = "The leg the caller chose for: outbound, or return."
-_CHOICE: Final = (
-    "The caller's pick, as they said it; never a flight you worked out, nor the time or number "
-    "of the flight it means, even one a tool already named: a part of the day goes as "
-    "part_of_day, a comparison of when it leaves as earliest or latest, the only flight listed "
-    "as its number."
-)
-_TRAVELERS: Final = "How many people travel now, when the caller changed it."
-_CABIN: Final = "The cabin the caller wants now, when they changed it."
-_ONE_WAY: Final = "True for one way, false for a round trip, when the caller changed it."
-Changeable = Literal["travelers", "cabin", "one_way"]
 
 
 class Chosen(_Result):
@@ -86,19 +62,6 @@ class Chosen(_Result):
     say: str
 
 
-class Changed(_Result):
-    """A trip changed: what changed, the trip priced again, the legs that lost their choice,
-    and the options of the leg the caller is asked about next, with their new fares."""
-
-    status: Literal["ok"] = "ok"
-    changed: tuple[Changeable, ...]
-    trip: TripView
-    lost: tuple[LegKind, ...] = ()
-    leg: LegKind | None = None
-    options: tuple[Option, ...] = ()
-    say: str
-
-
 def choose_flight(airline: Airline, trips: TripBook) -> Tool:
     """The pick of a listed flight, over the call's draft in `trips` (the module's docstring)."""
 
@@ -106,7 +69,7 @@ def choose_flight(airline: Airline, trips: TripBook) -> Tool:
     async def choose(
         ctx: CallContext,
         leg: Annotated[LegKind, Field(description=_LEG)],
-        choice: Annotated[Choice, Field(description=_CHOICE)],
+        choice: Annotated[Choice, Field(description=CHOICE)],
     ) -> ToolResult:
         tag: Tag = ctx.language
         draft = trips.get(ctx.call_id)
@@ -115,7 +78,7 @@ def choose_flight(airline: Airline, trips: TripBook) -> Tool:
             return result(NothingListed(leg=leg))
         named = pick(choice, shown, draft.cabin, draft.travelers)
         if len(named) != 1:
-            could = _again(named or list(shown), draft, airline, tag)
+            could = again(named or list(shown), draft, airline, tag)
             return result(Unclear(leg=leg, options=could))
         (one,) = named
         if seats_left(departure_of(one).flight, one.day, draft.cabin) < draft.travelers:
@@ -162,11 +125,12 @@ async def _next(
         Shown(n=o.n, flight=d.flight.number, day=day) for o, d in zip(listed, found, strict=True)
     )
     chosen = Chosen(leg=leg, trip=seen, returns=returns, say=say)
-    card = cards.listing_card(returns, start, end, day, tag) if listed else None
+    card = cards.listing_card(returns, start, end, day, tag, kept=seen.outbound) if listed else None
     return draft.listed("return", shown), chosen, card
 
 
-def _again(shown: list[Shown], draft: TripDraft, airline: Airline, tag: Tag) -> tuple[Option, ...]:
+def again(shown: list[Shown], draft: TripDraft, airline: Airline, tag: Tag) -> tuple[Option, ...]:
+    """Options already listed, priced again for the draft's cabin and travelers."""
     return listed_again(
         shown, cabin=draft.cabin, travelers=draft.travelers, tag=tag, name=airline.flight_name
     )
@@ -182,7 +146,7 @@ def _full(leg: LegKind, one: Shown, draft: TripDraft, airline: Airline, tag: Tag
         if c != draft.cabin and seats_left(flight, one.day, c) >= draft.travelers
     )
     others = [s for s in draft.shown(leg) if s.n != one.n]
-    selling = tuple(o for o in _again(others, draft, airline, tag) if o.seats_ok)
+    selling = tuple(o for o in again(others, draft, airline, tag) if o.seats_ok)
     return result(
         NoSeats(
             leg=leg,
@@ -194,60 +158,3 @@ def _full(leg: LegKind, one: Shown, draft: TripDraft, airline: Airline, tag: Tag
             say=SAY["no_seats_flight"],
         )
     )
-
-
-def change_trip(airline: Airline, trips: TripBook) -> Tool:
-    """A change to the call's draft in `trips` (the module's docstring)."""
-
-    @tool(name=CHANGE_TRIP, description=CHANGE_DESCRIPTION)
-    async def change(
-        ctx: CallContext,
-        travelers: Annotated[int | None, Field(ge=1, le=9, description=_TRAVELERS)] = None,
-        cabin: Annotated[Cabin | None, Field(description=_CABIN)] = None,
-        one_way: Annotated[bool | None, Field(description=_ONE_WAY)] = None,
-    ) -> ToolResult:
-        tag: Tag = ctx.language
-        asked: dict[Changeable, object] = {
-            "travelers": travelers,
-            "cabin": cabin,
-            "one_way": one_way,
-        }
-        what = tuple(k for k, v in asked.items() if v is not None)
-        if not what:
-            raise ToolError(NOTHING_TO_CHANGE)
-        draft = trips.get(ctx.call_id)
-        if cabin is not None and draft.destination is not None:
-            sold = flights(draft.origin, draft.destination)[0].cabins
-            if cabin not in sold:
-                offered = tuple(c for c in CABINS if c in sold)
-                return result(CabinNotOffered(cabin=cabin, offered=offered))
-        change = changed(draft, travelers=travelers, cabin=cabin, one_way=one_way)
-        made = change.draft
-        seen = view(made, tag, airline.today(), airline.flight_name)
-        leg, say = _asked_next(made, change.lost)
-        listed = () if leg is None else _again(list(made.shown(leg)), made, airline, tag)
-        if say == "changed_relist" and not listed:
-            leg, say = None, "changed"
-        answer = Changed(
-            changed=what, trip=seen, lost=change.lost, leg=leg, options=listed, say=SAY[say]
-        )
-        trips.put(ctx.call_id, made)
-        return result(answer, cards.trip_card(seen, made, tag))
-
-    return change
-
-
-def _asked_next(draft: TripDraft, lost: tuple[LegKind, ...]) -> tuple[LegKind | None, str]:
-    """The leg whose options a change lists again, if any, and the `say` for the change: a leg
-    that lost its choice first, then a complete trip, then a missing return date, then the leg
-    the caller was choosing for."""
-    if lost:
-        return lost[0], "changed_lost"
-    if not draft.missing():
-        return None, "complete"
-    if not draft.one_way and draft.depart is not None and draft.return_date is None:
-        return None, "changed_needs_return"
-    for leg in ("outbound", "return"):
-        if draft.shown(leg) and draft.chosen(leg) is None:
-            return leg, "changed_relist"
-    return None, "changed"

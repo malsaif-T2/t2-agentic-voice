@@ -92,14 +92,14 @@ def test_a_saudi_reply_is_given_saudi_words_and_the_msa_beside_them() -> None:
 
 
 @pytest.mark.parametrize("tag", TAGS)
-def test_four_flights_are_listed_and_the_say_asks_for_three_and_how_many_more(tag: Tag) -> None:
+def test_four_flights_are_listed_and_the_say_asks_for_them_briefly(tag: Tag) -> None:
     found = _search(tag, destination="Jeddah", depart=TOMORROW, one_way=True, travelers=2)
-    assert [o["n"] for o in found["options"]] == [1, 2, 3, 4] and found["more"] == 1
-    assert found["say"] == SAY["listed_more"] and found["travelers"] == 2
+    assert [o["n"] for o in found["options"]] == [1, 2, 3, 4] and found["count"] == 4
+    assert found["say"] == SAY["listed_brief"] and found["travelers"] == 2
     marked = [o for o in found["options"] if o.get("mark") == "cheapest"]
     assert len(marked) == 1
     assert marked[0]["fare_sar"] == min(o["fare_sar"] for o in found["options"])
-    assert len(json.dumps(found, ensure_ascii=False)) < 1700
+    assert len(json.dumps(found, ensure_ascii=False)) < 1900  # nonstop, the brief say
 
 
 def test_a_full_flight_is_listed_as_full_and_never_marked_cheapest() -> None:
@@ -254,8 +254,8 @@ def test_a_cheapest_flight_that_leaves_last_is_said_among_the_three() -> None:
     options = found["options"]
     assert [o["departs"] for o in options] == ["06:00", "10:30", "21:00", "15:00"]
     assert [o["n"] for o in options] == [1, 2, 3, 4] and options[2]["mark"] == "cheapest"
-    assert found["more"] == 1 and found["say"] == SAY["listed_more"]
-    assert "options 1 to 3 in order" in found["say"]
+    assert found["count"] == 4 and found["say"] == SAY["listed_brief"]
+    assert (found["first_departs"], found["last_departs"]) == ("06:00", "21:00")
     by_time = {
         d.departs_at.strftime("%H:%M"): d.flight.number for d in departures("RUH", "JED", day)
     }
@@ -295,8 +295,8 @@ def test_the_talker_sees_its_arguments_and_no_bound_one() -> None:
     assert "never with a day they did not say" in schema.description
     assert "After a listing, never again for a pick or a cabin change" in schema.description
     properties = json.loads(json.dumps(dict(schema.parameters)))["properties"]
-    assert properties["depart"]["description"] == (
-        "The day they leave, as the caller said it; never a day they did not say."
+    assert properties["depart"]["description"].startswith(
+        "The day they leave, as the caller said it; never a day they did not say. A span of days"
     )
     assert set(properties) == {
         "destination",

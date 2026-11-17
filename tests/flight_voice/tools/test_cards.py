@@ -19,7 +19,7 @@ from flight_voice.said import Tag
 from flight_voice.tools.cabins import compare_cabins
 from flight_voice.tools.calendar import fare_calendar
 from flight_voice.tools.cards import indic
-from flight_voice.tools.choose import change_trip
+from flight_voice.tools.change import change_trip
 from flight_voice.tools.search import search_flights
 from flight_voice.tools.trip_view import get_trip
 from flight_voice.trip import TripBook
@@ -57,7 +57,8 @@ def _card(result: ToolResult) -> Card:
 
 def test_an_english_card_lists_each_flight_as_a_row_with_words_between_its_numbers() -> None:
     card = _listed("en", destination="London", depart=DEC_17, return_date=DEC_20).card
-    assert card.title == "Riyadh to London, Thu 17 Dec" and card.steps == ()
+    assert card.title == "Outbound: Riyadh to London · Thu 17 Dec · economy"
+    assert card.steps == () and card.slot == "outbound"
     assert card.rows == (
         CardRow(
             title="09:10 to 13:15",
@@ -75,7 +76,7 @@ def test_an_english_card_lists_each_flight_as_a_row_with_words_between_its_numbe
 
 def test_an_arabic_card_writes_its_times_and_fares_in_arabic_indic_digits() -> None:
     card = _listed("ar-SA", destination="لندن", depart=DEC_17, return_date=DEC_20).card
-    assert card.title == "الرياض إلى لندن، الخميس ١٧ ديسمبر"
+    assert card.title == "الذهاب: الرياض إلى لندن · الخميس ١٧ ديسمبر · الدرجة السياحية"
     assert card.rows[0] == CardRow(
         title="٠٩:١٠ إلى ١٣:١٥",
         detail="٧ س ٥ د، مباشرة، رحلة T2 401 على 787-9",
@@ -106,7 +107,7 @@ def test_four_flights_are_four_rows_each_an_option_the_talker_says(tag: Tag) -> 
         departs = option["departs"] if tag == "en" else indic(option["departs"])
         assert row.title.startswith(departs) and row.detail is not None
         assert row.value is not None and indic(f"{option['fare_sar']:,}") in indic(row.value)
-    assert data(result)["more"] == 1 and "one more" in data(result)["say"]
+    assert data(result)["count"] == 4 and "(count)" in data(result)["say"]
 
 
 def test_a_full_flight_is_marked_unavailable_never_best() -> None:
@@ -163,6 +164,41 @@ def test_every_card_of_every_tool_holds_rows_and_passes_the_id_rule(tag: Tag) ->
     assert len(month.rows) == len(days.rows) == 7
     assert [row.mark for row in days.rows].count("best") == 3
     assert two.rows[2].title != whole.rows[2].title
+    # Each card in its segment of the page: the return flights the return's, the trip the
+    # review's; the cabins and the cheapest days name none.
+    assert (back.slot, planned.slot, whole.slot, two.slot) == (
+        "return",
+        "review",
+        "review",
+        "review",
+    )
+    assert cabins.slot is None and month.slot is None and days.slot is None
+
+
+@pytest.mark.parametrize("tag", TAGS)
+def test_the_return_flights_keep_the_outbound_pick_beside_them_marked_chosen(tag: Tag) -> None:
+    """The page's three segments (the owner's ruling of 2026-11-17): after the outbound pick,
+    the return card keeps that pick as a row marked chosen, its title the flight's times, so
+    the page marks it in the outbound segment."""
+    call = london(tag)
+    listed = _card(_listed(tag, destination="London", depart=DEC_17, return_date=DEC_20))
+    back = _card(call.choose("outbound", FIRST))
+    *returns, kept = back.rows
+    assert kept.mark == "chosen" and kept.title == listed.rows[0].title
+    assert all(row.mark != "chosen" for row in returns) and len(returns) == 2
+    assert back.title.startswith("Return: London to Riyadh" if tag == "en" else "العودة: ")
+
+
+def test_a_change_that_lists_a_leg_again_shows_it_in_that_legs_segment() -> None:
+    """A cabin changed before the outbound pick lists the outbound again, in its segment, at
+    the new fares; a pick lost by a change is kept by no card."""
+    call = london()
+    relisted = run(change_trip(call.airline, call.trips), "en", cabin="business")
+    card = _card(relisted)
+    assert card.slot == "outbound" and card.title.endswith("· business class")
+    fares = [o["fare_sar"] for o in data(relisted)["options"]]
+    assert [row.value for row in card.rows] == [f"{f:,} SAR" for f in fares]
+    assert all(row.mark != "chosen" for row in card.rows) and card_passes(relisted)
 
 
 def test_numbers_joined_only_by_marks_would_fail_the_rule() -> None:

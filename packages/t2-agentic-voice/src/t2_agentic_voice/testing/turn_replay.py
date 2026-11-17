@@ -20,6 +20,7 @@ from pydantic import BaseModel, ConfigDict
 
 from t2_agentic_voice.core.events import Event, TurnMetrics, TurnTimes
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
+from t2_agentic_voice.voice.session.audible import audible
 from t2_agentic_voice.voice.session.commands import Speak
 from t2_agentic_voice.voice.session.session_events import (
     AgentAudio,
@@ -27,7 +28,6 @@ from t2_agentic_voice.voice.session.session_events import (
     ClausePlayed,
     ClauseQueued,
 )
-from t2_agentic_voice.voice.session.turn_book import audible
 
 if TYPE_CHECKING:  # named in annotations only: this module imports no Pipecat
     from t2_agentic_voice.voice.file_transport import FedCall

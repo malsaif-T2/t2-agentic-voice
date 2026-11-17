@@ -29,6 +29,11 @@ A newer turn that answers the read-back cancels a request still in flight (`canc
 yes_turns.py calls first), and so do the client's stop (`cancel`) and the call's end: each
 decides nothing.
 
+**Over the summary** (D-108, under `interruptions.yes_over_read_back`): held_yes.py asks about
+words the lists leave unplaced over the read-back's summary, with no receipt yet (`start` with
+none); the model's word, while the same read-back is current, goes to it as it is (`hold`), and
+the yes rule reads it, within its rails, once the summary has played whole.
+
 **The turn** is judged meanwhile (turn_book.py's `judging`): it takes no fate and does not
 settle, so its times run to the first audio of the reply its verdict says, the wait included,
 and its trace stays open for that reply. Once the verdict is carried out, or the request
@@ -41,7 +46,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from functools import partial
-from typing import Final, Literal
+from typing import Final, Literal, Protocol
 
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.yes_inputs import HeardWords, ReadBackReceipt
@@ -53,14 +58,8 @@ from t2_agentic_voice.domain.consent_check import (
     consent_check_request,
 )
 from t2_agentic_voice.domain.ports.chat_model import ChatRequest
-from t2_agentic_voice.domain.yes_rule import (
-    AskAgain,
-    Correction,
-    ModelWord,
-    SaidLines,
-    YesOutcome,
-    judged,
-)
+from t2_agentic_voice.domain.yes_kinds import ModelWord, SaidLines
+from t2_agentic_voice.domain.yes_rule import AskAgain, Correction, YesOutcome, judged
 from t2_agentic_voice.domain.yes_words import ConsentWords, rails_for
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.io import CallSetup, Guarded
@@ -74,13 +73,25 @@ from t2_agentic_voice.voice.session.turn_book import TurnBook
 _log = get_logger(__name__)
 # What became of a request: the model's word, or that it failed or timed out.
 Outcome = ConsentAnswer | Literal["failed", "timeout"]
-# The current read-back's receipt for speech begun at a time, built now (interrupter.py's).
-Receipt = Callable[[float | None], ReadBackReceipt | None]
+
+
+class Receipt(Protocol):
+    """The current read-back's receipt for speech begun at a time, built now (interrupter.py's);
+    with `quiet`, None too while any overlap of the call is undecided (held_yes.py)."""
+
+    def __call__(
+        self, speech_at: float | None, /, *, quiet: bool = False
+    ) -> ReadBackReceipt | None: ...
+
+
 # What carries out the yes rule's verdict on a turn, by a model's word (yes_turns.py's): the
 # turn, its words, the receipt built when they reached the rule, the verdict, the plan, the time.
 Settle = Callable[
     [TurnLog, HeardWords, ReadBackReceipt, YesOutcome, ReadBackPlan, float], Awaitable[None]
 ]
+# What takes a model's word on words over the summary, with no receipt yet (held_yes.py's): the
+# turn, its words, the word, the read-back they were said over, the time.
+Hold = Callable[[TurnLog, HeardWords, ModelWord, ReadBack, float], Awaitable[None]]
 _STEP: Final = "yes_model"
 
 
@@ -109,14 +120,22 @@ def said_lines(plan: ReadBackPlan, *, over_read_back: bool, over_asked_again: bo
     )
 
 
+def said_of(confirming: Confirming, plan: ReadBackPlan, began: float | None) -> SaidLines:
+    """`said_lines` of `plan`, with whether speech begun at `began` began while the read-back,
+    and a line that asked it again, were still heard (`confirming`'s)."""
+    over, asked = confirming.over_read_back(began), confirming.over_follow_up(began)
+    return said_lines(plan, over_read_back=over, over_asked_again=asked)
+
+
 @dataclass(frozen=True, kw_only=True)
 class _Ask:
     """One request in flight: the turn it answers, its words, the receipt built when they
-    reached the rule, the read-back they answer, and the scope its work runs in."""
+    reached the rule (none for words over the summary), the read-back they answer, and the
+    scope its work runs in."""
 
     turn: TurnLog
     heard: HeardWords
-    receipt: ReadBackReceipt
+    receipt: ReadBackReceipt | None
     read_back: ReadBack
     scope: CancelScope
 
@@ -124,9 +143,9 @@ class _Ask:
 class YesAsks:
     """One call's requests for a chat model's word on an answer (the module's docstring): each
     started (`start`) in a scope of its own, its turn judged in `turns` meanwhile, its verdict
-    landed as a step `guarded` runs and carried out by `settle`, the client then told by `sync`;
-    `over` says whether the call has ended or is ending, `receipt` builds the current
-    read-back's receipt."""
+    landed as a step `guarded` runs and carried out by `settle` (by `hold`, for words over the
+    summary), the client then told by `sync`; `over` says whether the call has ended or is
+    ending, `receipt` builds the current read-back's receipt."""
 
     def __init__(
         self,
@@ -140,9 +159,15 @@ class YesAsks:
         sync: Callable[[], Awaitable[None]],
         over: Callable[[], bool],
         settle: Settle,
+        hold: Hold,
     ) -> None:
         self._setup, self._usage, self._clock, self._turns = setup, books.usage, setup.clock, turns
-        self._confirming, self._receipt, self._settle = confirming, receipt, settle
+        self._confirming, self._receipt, self._settle, self._hold = (
+            confirming,
+            receipt,
+            settle,
+            hold,
+        )
         self._guarded, self._sync, self._over = guarded, sync, over
         self._asks = setup.agent.ask_on_unlisted_answers and setup.overlap_model is not None
         self._ask: _Ask | None = None
@@ -152,11 +177,21 @@ class YesAsks:
         the words unplaced."""
         return self._asks and isinstance(outcome, Correction | AskAgain) and outcome.askable
 
+    @property
+    def busy(self) -> bool:
+        """Whether a request is in flight."""
+        return self._ask is not None
+
     def start(
-        self, turn: TurnLog, heard: HeardWords, receipt: ReadBackReceipt, read_back: ReadBack
+        self,
+        turn: TurnLog,
+        heard: HeardWords,
+        receipt: ReadBackReceipt | None,
+        read_back: ReadBack,
     ) -> None:
         """Ask the model about `turn`'s words `heard`, answering `read_back`, `receipt` the one
-        built as they reached the rule; the turn judged until its word lands or is dropped."""
+        built as they reached the rule (None for words over its summary: `hold` takes the word);
+        the turn judged until its word lands or is dropped."""
         plan = read_back.plan
         request = consent_check_request(plan.summary.text, plan.question.text, heard.text)
         scope = CancelScope(name=f"yes-check-{turn.turn_id}", clock=self._clock)
@@ -193,7 +228,7 @@ class YesAsks:
         )
         await self._guarded(_STEP, partial(self._landed, ask, outcome))
 
-    def _rails(self, heard: HeardWords, words: ConsentWords, plan: ReadBackPlan) -> ConsentWords:
+    def rails(self, heard: HeardWords, words: ConsentWords, plan: ReadBackPlan) -> ConsentWords:
         """The lists `judged`'s rails read for `heard` (the module's docstring)."""
         code = language_of(self._setup, plan.language).primary
         spoken = [each.primary for each in self._setup.agent.languages]
@@ -219,13 +254,13 @@ class YesAsks:
             _log.info("yes_model_dropped", call_id=call_id, turn_id=turn_id, why="stale")
             return
         plan, began, confirming = ask.read_back.plan, ask.heard.speech_at, self._confirming
+        if ask.receipt is None:  # words over the summary: the word as it is (held_yes.py)
+            _log.info("yes_model_answered", call_id=call_id, turn_id=turn_id, answer=outcome)
+            await self._hold(ask.turn, ask.heard, _word(outcome), ask.read_back, self._clock.now())
+            await self._sync()
+            return
         try:
-            said = said_lines(
-                plan,
-                over_read_back=confirming.over_read_back(began),
-                over_asked_again=confirming.over_follow_up(began),
-            )
-            words = confirming.words(plan)
+            said, words = said_of(confirming, plan, began), confirming.words(plan)
             verdict = judged(
                 _word(outcome),
                 ask.heard,
@@ -234,7 +269,8 @@ class YesAsks:
                 words=words,
                 env=self._setup.settings.env,
                 said=said,
-                rails=self._rails(ask.heard, words, plan),
+                rails=self.rails(ask.heard, words, plan),
+                bare=confirming.holds_yes,
             )
         except Exception as error:  # a bug: never a yes
             failure = type(error).__qualname__

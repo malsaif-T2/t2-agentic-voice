@@ -149,6 +149,30 @@ When your question uses another verb ("Shall I book it?"), add that verb to the 
 `send_words`, or a caller's "yes, book it" is a correction. Nothing checks the words of these
 lines: not that a closing question holds a send word, nor that it holds no yes word.
 
+### When any yes books: `interruptions.yes_over_read_back`
+
+An app may turn on `interruptions.yes_over_read_back` (off by default; D-108, the owner's ruling
+of 2026-11-17, "Any yes books"); the flight agent does. Then:
+
+- **A yes over the summary is held, not dropped.** A yes, a send word or the action's own send
+  words, with only fillers beside them, said over the summary after its first audio ("yes",
+  «إيه», «نعم», "book it"), lets the summary play on and is held. For an agent that asks, words
+  the lists leave unplaced go to the chat model first: its yes is held the same way, and its no
+  or change stops the read-back and declines it. Once the summary has played in full, with no
+  other words begun since, the held yes books: the closing question is cut, or never said, and
+  the `sending` line answers the caller's yes.
+- **Other words drop it.** A second yes, a filler or a listening sound keeps it held; any other
+  words after it (a single no, a question, a word on no list) drop it, and the caller answers
+  after the question as before. Words that stop the summary decline it, as before.
+- **A bare yes over the closing question books**, and so does «خلاص» beside a yes or a send
+  word («خلاص أرسلها»), over the summary or the question. «خلاص» alone still stops it.
+
+Its safety holds as before: only the caller's own heard words, read against a receipt of the
+summary played in full; never words begun before the read-back's first audio, never the agent's
+own lines heard back, and never a yes held on a read-back that a new one replaced. Keep the
+closing question free of yes words, as above: the rule asks again a bare yes that is the
+question's own words heard back, and a question with no yes word leaves nothing to mistake.
+
 ### What follows each answer
 
 - **A yes**: the action's `sending` line is said ("Sending it now, just a few seconds.", unless

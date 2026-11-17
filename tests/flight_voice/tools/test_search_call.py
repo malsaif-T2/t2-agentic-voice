@@ -55,7 +55,8 @@ def test_the_search_shows_its_card_and_the_reply_says_its_fares_in_digits() -> N
     turn, violations = asyncio.run(_searched(reply, trips))
     turn.expect.tool_call(SEARCH_FLIGHTS, destination="London")
     (card,) = turn.cards
-    assert card.title == "Riyadh to London, Thu 17 Dec" and len(card.rows) == 2
+    assert card.title == "Outbound: Riyadh to London · Thu 17 Dec · economy"
+    assert len(card.rows) == 2 and card.slot == "outbound"
     assert [row.mark for row in card.rows] == ["best", None] and card.steps == ()
     turn.expect.said(contains="3560 riyals")
     assert turn.blocked == () and violations == ()

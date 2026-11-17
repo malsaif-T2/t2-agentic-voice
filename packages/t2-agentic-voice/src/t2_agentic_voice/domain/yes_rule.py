@@ -48,9 +48,9 @@ a question, or a request for something else, is a `no` (the owner's answer of 20
 the turn goes to the talker, which answers it. An agent that does not ask takes `decide`'s
 answer as is.
 
-**A plain no** (`plain_no`): a no word with only send words and fillers beside it, the words
-`decide` declines once the summary played. The session reads what cuts the summary with it, so
-a cancel said over the summary is declined as a no, not a correction (D-081).
+**A plain no** (`plain_no`, domain/yes_kinds.py): a no word with only send words and fillers
+beside it, the words `decide` declines once the summary played. The session reads what cuts the
+summary with it, so a cancel said over the summary is declined as a no, not a correction (D-081).
 
 **The echo rail** (the owner's third ruling, 2026-11-10; on the model's `no` and `change` too,
 2026-11-11, and on no word with a no word): a model's word, or no word, on the agent's own
@@ -63,18 +63,25 @@ the caller's own stop), the agent's voice leaked past the browser's echo cancell
 the closing question (by the receipt), or as the session tells it (`SaidLines.over_read_back`),
 that is the read-back's summary and question; as the session tells it of a line that asked it
 again (`SaidLines.over_asked_again`), the ask-again line; each True when the session cannot
-tell.
-Speech begun when none of them was heard cannot be the agent's echo, so a caller who answers
-arsilha once the question and its tail ended can send. Only the rail's window has the tail: a
-yes over the closing question is still one whose speech began before the question ended
-(`question_ended_at`, the receipt's).
+tell. Speech begun when none of them was heard cannot be the agent's echo, so a caller who
+answers arsilha once the question and its tail ended can send. Only the rail's window has the
+tail: a yes over the closing question is still one whose speech began before the question
+ended (`question_ended_at`, the receipt's).
+
+**Any yes books** (D-108, the owner's ruling of 2026-11-17), only for a call under
+`interruptions.yes_over_read_back`, which hands `decide` the read-back's lines (`said`) and
+`judged` its `bare`: over the closing question a bare yes, a yes among fillers, is a yes, and
+the model's plain `yes` too, but to a send word alone; and khalas beside a send word, with only
+fillers else, is a yes (`holds_okay`), each unless the words are the agent's own lines heard
+back. `held` issues a yes held over the summary (domain/yes_kinds.py's `held_yes`), its speech
+begun after the summary's first audio and before its last clause played, once the receipt
+stands for that summary played whole.
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, ClassVar, Final, Literal, final
+from typing import Any, ClassVar, Final, final
 
 from pydantic import Field
 
@@ -90,16 +97,20 @@ from t2_agentic_voice.core.yes_inputs import (
     is_heard_words,
     is_read_back_receipt,
 )
-from t2_agentic_voice.domain.consent_check import ConsentAnswer
 from t2_agentic_voice.domain.interruption_words import QUESTION_MARKS
-from t2_agentic_voice.domain.interruptions import own_words
-from t2_agentic_voice.domain.text.words import holds_words, phrase_tokens
 from t2_agentic_voice.domain.words import rule_form
+from t2_agentic_voice.domain.yes_kinds import ModelWord as ModelWord
+from t2_agentic_voice.domain.yes_kinds import SaidLines as SaidLines
+from t2_agentic_voice.domain.yes_kinds import (
+    echoes,
+    held_yes,
+    holds_okay,
+    kinds,
+    marked,
+    playing,
+)
+from t2_agentic_voice.domain.yes_kinds import plain_no as plain_no
 from t2_agentic_voice.domain.yes_words import ConsentWords
-
-# What one word of the heard words is to the rule: on a list, or on none (`content`).
-_Kind = Literal["no", "yes", "send", "filler", "content"]
-_AND = "\u0648"  # waw, and
 
 # The seal a validation of a `ConfirmedAction` must be given; only this module names it.
 CONFIRMED_SEAL: Final[object] = object()
@@ -168,24 +179,6 @@ class AskAgain:
 
 
 type YesOutcome = Yes | Declined | Correction | AskAgain
-# A chat model's word on the words (domain/consent_check.py's), or None for no word: the request
-# failed or timed out.
-type ModelWord = ConsentAnswer | None
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
-class SaidLines:
-    """What the agent said of one read-back, each line written and spoken, as `judged`'s echo
-    rail reads them (the module's docstring): `read_back`, its summary and closing question;
-    `asked_again`, the line that asks it again; and whether the caller's speech began while
-    each was still heard, its reply playing or within its tail after it ended
-    (`over_read_back`, `over_asked_again`), which the session tells, each True when it cannot
-    tell, so the rail keeps that line."""
-
-    read_back: tuple[str, ...]
-    asked_again: tuple[str, ...]
-    over_read_back: bool = True
-    over_asked_again: bool = True
 
 
 def _issued(heard: HeardWords, receipt: ReadBackReceipt, *, speech_at: float) -> ConfirmedAction:
@@ -202,43 +195,12 @@ def _issued(heard: HeardWords, receipt: ReadBackReceipt, *, speech_at: float) ->
     return ConfirmedAction.model_validate(values, context=CONFIRMED_SEAL)
 
 
-def _listed(words: ConsentWords) -> dict[str, _Kind]:
-    """Each listed word or phrase with its kind; one on two lists takes the first of no, yes,
-    send and filler, so a word a team adds as a yes is never only a filler."""
-    listed: dict[str, _Kind] = {}
-    lists: tuple[tuple[_Kind, tuple[str, ...]], ...] = (
-        ("filler", words.fillers),
-        ("send", words.send),
-        ("yes", words.yes),
-        ("no", words.no),
-    )
-    for kind, phrases in lists:
-        listed.update(dict.fromkeys(phrases, kind))
-    return listed
-
-
-def _kinds(text: str, words: ConsentWords) -> set[_Kind]:
-    """The kinds of the words of `text`, in the rule's form, each listed phrase one word, the
-    longest that starts at a word first; a word on no list after waw (and) is a send word when
-    the rest of it is one."""
-    listed = _listed(words)
-    found: set[_Kind] = set()
-    for word in phrase_tokens(text.split(), listed.keys()):
-        kind = listed.get(word)
-        if kind is None and word.startswith(_AND) and listed.get(word[1:]) == "send":
-            kind = "send"
-        found.add(kind or "content")
-    return found
-
-
-def plain_no(text: str, words: ConsentWords) -> bool:
-    """Whether `text`, brought to the rule's form, is a plain no to the lists `words`: a no
-    word, and beside it only send words and fillers ("no, cancel it, don't send it"), with no
-    yes word and no word on none of the lists; the words `decide` declines once the summary
-    played. The session reads what cuts a read-back's summary with it (voice/session/
-    read_back.py's `handed`), so a cancel said over it is a no, not a correction."""
-    kinds = _kinds(rule_form(text), words)
-    return "no" in kinds and not kinds & {"yes", "content"}
+def _counts(heard: HeardWords | None, receipt: ReadBackReceipt, env: Environment) -> bool:
+    """Whether `heard` and `receipt` pass their own checks, and the words are speech-to-text's
+    (or typed, in a test)."""
+    if heard is None or not is_heard_words(heard) or not is_read_back_receipt(receipt):
+        return False
+    return heard.source == "speech_to_text" or env == "test"
 
 
 def decide(
@@ -247,33 +209,65 @@ def decide(
     *,
     words: ConsentWords,
     env: Environment,
+    said: SaidLines | None = None,
 ) -> YesOutcome:
     """What the turn's own `heard` words (None when nothing was heard) say to the read-back
-    `receipt` stands for (the module's docstring). `heard` and `receipt` must pass their own
-    checks (`is_heard_words`, `is_read_back_receipt`): anything else counts for nothing. Returns
-    the `ConfirmedAction` only inside a `Yes`."""
-    if heard is None or not is_heard_words(heard) or not is_read_back_receipt(receipt):
-        return AskAgain()
-    if heard.source != "speech_to_text" and env != "test":
+    `receipt` stands for (the module's docstring); `said`, the read-back's lines, only under
+    `interruptions.yes_over_read_back` (D-108). `heard` and `receipt` must pass their own checks
+    (`is_heard_words`, `is_read_back_receipt`): anything else counts for nothing. Returns the
+    `ConfirmedAction` only inside a `Yes`."""
+    if heard is None or not _counts(heard, receipt, env):
         return AskAgain()
     began = heard.speech_at
     if began is None or began < receipt.summary_played_at:
         return AskAgain()
-    kinds = _kinds(rule_form(heard.text), words)
-    if not kinds:
+    text = rule_form(heard.text)
+    found = kinds(text, words)
+    if not found:
         return AskAgain()
-    if "content" in kinds:
+    if "content" in found:
         return Correction(words=heard.text, askable=True)
-    if "no" in kinds:
-        return AskAgain() if "yes" in kinds else Declined(words=heard.text)
-    asked = any(mark in heard.text for mark in QUESTION_MARKS)
-    if "yes" not in kinds or asked:
-        # send words, alone or among fillers, may be a go-ahead the lists cannot place
-        return AskAgain(askable=not asked and "send" in kinds)
+    if "no" in found:
+        return AskAgain() if "yes" in found else Declined(words=heard.text)
+    if any(mark in heard.text for mark in QUESTION_MARKS):
+        return AskAgain()
     ended = receipt.question_ended_at
-    if (ended is None or began < ended) and "send" not in kinds:
-        # so may a yes among fillers over the closing question ("yes, please do")
-        return AskAgain(askable="filler" in kinds)
+    over = ended is None or began < ended
+    if "yes" in found and (not over or "send" in found):
+        return Yes(confirmed=_issued(heard, receipt, speech_at=began))
+    # any yes books (D-108): a bare yes over the question, khalas beside a send word; never the
+    # agent's own lines heard back
+    okay = said is not None and ("yes" in found or ("send" in found and holds_okay(text)))
+    if okay and said is not None and not echoes(text, playing(said, over=over)):
+        return Yes(confirmed=_issued(heard, receipt, speech_at=began))
+    if "yes" not in found:
+        # send words, alone or among fillers, may be a go-ahead the lists cannot place
+        return AskAgain(askable="send" in found)
+    # so may a yes among fillers over the closing question ("yes, please do")
+    return AskAgain(askable="filler" in found)
+
+
+def held(
+    word: ModelWord,
+    heard: HeardWords,
+    receipt: ReadBackReceipt,
+    *,
+    words: ConsentWords,
+    env: Environment,
+    said: SaidLines,
+    rails: ConsentWords | None = None,
+) -> Yes | AskAgain:
+    """A yes held over the read-back's summary (D-108; the module's docstring): `heard`, the
+    held turn's own words, said after the summary's first audio and before its last clause
+    played, yes words by the lists or the model's `word`, within the rails (`held_yes`), issued
+    now `receipt` stands for that summary played whole; asked again (never sent) otherwise."""
+    if not _counts(heard, receipt, env):
+        return AskAgain()
+    began, start = heard.speech_at, receipt.summary_began_at
+    if began is None or start is None or not start < began < receipt.summary_played_at:
+        return AskAgain()
+    if not held_yes(word, heard.text, words, said=said, rails=rails):
+        return AskAgain()
     return Yes(confirmed=_issued(heard, receipt, speech_at=began))
 
 
@@ -292,34 +286,6 @@ def _stands(receipt: ReadBackReceipt, current: ReadBackReceipt | None) -> bool:
     return held == now
 
 
-def _marked(text: str, markers: tuple[str, ...]) -> bool:
-    """Whether `text`, in the rule's form, holds a change marker as whole words, or one after
-    waw (and) written onto it."""
-    if any(holds_words(text, marker) for marker in markers):
-        return True
-    return any(word.startswith(_AND) and word[1:] in markers for word in text.split())
-
-
-def _echoes(text: str, playing: Sequence[str]) -> bool:
-    """Whether `text`, in the rule's form, is the agent's own words, its lines `playing` as the
-    speech began read together as the interruption rule reads the clauses that played
-    (domain/interruptions.py's `own_words`): every word a word of them, or one edit from one of
-    three letters or more. Its read-back heard back, across two lines or a letter off, never
-    the caller's answer."""
-    heard = text.split()
-    return bool(heard) and own_words(heard, [rule_form(line) for line in playing])
-
-
-def _playing(said: SaidLines, *, over: bool) -> tuple[str, ...]:
-    """The lines of `said` still heard by the caller as the speech began: the read-back's over
-    the closing question (`over`) or as the session tells it, its tail included; the ask-again
-    line's as the session tells it; none else, so words begun while none was heard are never
-    the agent's echo."""
-    reading = over or said.over_read_back
-    asking = said.over_asked_again
-    return (*(said.read_back if reading else ()), *(said.asked_again if asking else ()))
-
-
 def judged(
     word: ModelWord,
     heard: HeardWords | None,
@@ -330,30 +296,31 @@ def judged(
     env: Environment,
     said: SaidLines,
     rails: ConsentWords | None = None,
+    bare: bool = False,
 ) -> YesOutcome:
     """What a chat model's `word` on the turn's own `heard` words makes of the read-back
     `receipt` stands for (the module's docstring): `receipt` built when the words reached the
     rule, `current` as the word lands (None when no read-back is current), `said` the read-back's
     lines as the agent said them and whether each was still heard as the speech began, `rails`
     the lists whose no words and change markers the rails read (`words` unless given; every
-    language's for words heard in another: domain/yes_words.py's `rails_for`). A
-    receipt that no longer stands is asked again; every other answer of `decide`'s that is not
-    `askable` stands as it is, so a model's word never confirms what the lists refused; a
-    missing word (None: the request failed or timed out) is declined on words that hold a no
-    word, as a `no` is, and asked again on any other; and its `no` or `change`, or a missing
-    word, on the agent's own words heard back is asked again, never a cancel. The only other
-    builder of a `ConfirmedAction`, inside a `Yes`."""
+    language's for words heard in another: domain/yes_words.py's `rails_for`), and `bare` under
+    `interruptions.yes_over_read_back` (D-108). A receipt that no longer stands is asked again;
+    every other answer of `decide`'s that is not `askable` stands as it is, so a model's word
+    never confirms what the lists refused; a missing word (None: the request failed or timed
+    out) is declined on words that hold a no word, as a `no` is, and asked again on any other;
+    and its `no` or `change`, or a missing word, on the agent's own words heard back is asked
+    again, never a cancel. The only other builder of a `ConfirmedAction`, inside a `Yes`."""
     if not _stands(receipt, current):
         return AskAgain()
-    listed = decide(heard, receipt, words=words, env=env)
+    listed = decide(heard, receipt, words=words, env=env, said=said if bare else None)
     if not _askable(listed) or heard is None or heard.speech_at is None:
         return listed
     text = rule_form(heard.text)
     began, ended = heard.speech_at, receipt.question_ended_at
     over = ended is None or began < ended
-    echo = _echoes(text, _playing(said, over=over))
-    kinds = _kinds(text, words)
-    refused = "no" in _kinds(text, rails or words)
+    echo = echoes(text, playing(said, over=over))
+    found = kinds(text, words)
+    refused = "no" in kinds(text, rails or words)
     if word is None:  # no word: a no word declines, unless it is the agent's echo
         return Declined(words=heard.text) if refused and not echo else AskAgain()
     if word not in ("send", "yes", "no", "change"):
@@ -364,12 +331,14 @@ def judged(
         return Declined(words=heard.text) if word == "no" else Correction(words=heard.text)
     if refused or any(mark in heard.text for mark in QUESTION_MARKS):
         return AskAgain()
-    if _marked(text, (rails or words).change):
+    if marked(text, (rails or words).change):
         return Correction(words=heard.text)
     if echo:
         return AskAgain()
     # over the question a yes needs a go-ahead: the model's `send`, or a send word beside other
-    # words; a send word alone it judged agreement only is asked again, as the lists ask it
-    if over and word != "send" and ("send" not in kinds or kinds == {"send"}):
+    # words; a send word alone it judged agreement only is asked again, as the lists ask it,
+    # and under `bare` (D-108) only that
+    plain = "send" not in found and not bare
+    if over and word != "send" and (plain or found == {"send"}):
         return AskAgain()
     return Yes(confirmed=_issued(heard, receipt, speech_at=began))

@@ -15,8 +15,8 @@ from t2_agentic_voice.agent.talker import ProgressDue, ReplyDone, SpokenClause
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.conversation import TalkerTurn
 from t2_agentic_voice.core.events import TurnMetrics
+from t2_agentic_voice.voice.session.audible import audible
 from t2_agentic_voice.voice.session.session_events import AgentAudio
-from t2_agentic_voice.voice.session.turn_book import audible
 
 from tests.t2_agentic_voice.fakes import tone
 from tests.t2_agentic_voice.session_fakes import FakeSessionIO

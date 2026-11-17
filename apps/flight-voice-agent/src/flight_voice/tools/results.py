@@ -2,15 +2,11 @@
 (a word from a closed set), its facts as machine values (times "09:10", fares 2450, durations
 {"hours": 7, "minutes": 5}, dates by their ISO form, day, month and weekday), the words with no
 number in them in the reply's language (`*_said`, and `*_said_msa` beside a Saudi reply's), and
-`say`, one of the app's fixed strings (`SAY`) telling the talker what to say next, never built
-from the caller's words or any free text.
+`say`, one of the app's fixed strings (`SAY`, says.py) telling the talker what to say next, never
+built from the caller's words or any free text.
 
 A listing (`listing.py`) holds at most four options, numbered in the order said, the cheapest
-with seats marked, and the fare's basis ("per person, one way") said once; a fourth is said by
-its part of the day. A first outbound listing is said from its day and its weekday, in place of
-the caller's request said back (`listed`); a return listing, after the choice said back, is not
-(`return_listed`). A listing after one of another day in the call is said from its day, without
-the basis again (`relisted`). A read of the airline that fails is never a result: it is
+with seats marked, each flying nonstop. A read of the airline that fails is never a result: it is
 a `ToolError` whose message names the failure and forbids reading it as nothing found
 (`SEARCH_FAILED`, `PROFILE_FAILED`).
 """
@@ -28,6 +24,7 @@ from flight_voice.airline.airports import Register
 from flight_voice.airline.dates import Problem
 from flight_voice.airline.schedule import Cabin
 from flight_voice.said import Tag, msa_too, register, words
+from flight_voice.tools.says import SAY as SAY  # the fixed strings, given here with the models
 from flight_voice.trip import LegKind
 
 SEARCH_FAILED: Final = (
@@ -38,80 +35,6 @@ PROFILE_FAILED: Final = (
     "The travel profile did not load. Tell the caller you could not open their travel history "
     "just now. Do not say they have no trips or no bookings."
 )
-_THREE: Final = (
-    "these flights, at most three, each by its departure time and fare, the cheapest marked."
-)
-_FOUR: Final = (
-    "options 1 to 3 in order, each by its departure time and fare, the cheapest marked, then that "
-    "there is one more and its part of the day (part_of_day_said), never its time or its fare."
-)
-_ONCE: Final = " Say once that fares are one way, per person."
-_NOT_AGAIN: Final = " Do not say again that fares are one way, per person."
-_ASK: Final = " Then ask which one they want. Do not say flight numbers."
-_DAY: Final = "Say the day with its weekday first, in place of saying their request back, then "
-_NEW_DAY: Final = "Say the new day with its weekday first, then "
-_FULL: Final = " A flight with seats_ok false is full in this cabin: if you name it, say so."
-SAY: Final[dict[str, str]] = {
-    "listed": _DAY + _THREE + _ONCE + _ASK,
-    "listed_more": _DAY + _FOUR + _ONCE + _ASK,
-    "listed_full": _DAY + _THREE + _ONCE + _ASK + _FULL,
-    "listed_more_full": _DAY + _FOUR + _ONCE + _ASK + _FULL,
-    "return_listed": "Say " + _THREE + _ONCE + _ASK,
-    "return_listed_more": "Say " + _FOUR + _ONCE + _ASK,
-    "return_listed_full": "Say " + _THREE + _ONCE + _ASK + _FULL,
-    "return_listed_more_full": "Say " + _FOUR + _ONCE + _ASK + _FULL,
-    "relisted": _NEW_DAY + _THREE + _NOT_AGAIN + _ASK,
-    "relisted_more": _NEW_DAY + _FOUR + _NOT_AGAIN + _ASK,
-    "relisted_full": _NEW_DAY + _THREE + _NOT_AGAIN + _ASK + _FULL,
-    "relisted_more_full": _NEW_DAY + _FOUR + _NOT_AGAIN + _ASK + _FULL,
-    "not_served_city": "Say we do not fly there, name the cities we fly to, and ask where they "
-    "would like to go.",
-    "not_served_route": "Say we fly only to and from Riyadh, with no connections, so each part "
-    "would be its own trip through Riyadh. Ask how they would like to go on.",
-    "past": "Say that day has passed and ask for another day.",
-    "beyond_window": "Say bookings open only up to last_day, with its weekday, and ask for a "
-    "day on or before it.",
-    "no_such_day": "Say that day does not exist in that month and ask for the day again.",
-    "return_before_departure": "Say that return is before the departure and ask when they "
-    "would like to come back.",
-    "return_only": "Ask which day they would like to leave.",
-    "needs_return_date": "Ask when they would like to come back. Do not list flights yet.",
-    "cabin_not_offered": "Say that cabin is not offered on this route, offer the cabins in "
-    "offered, and ask which they would like. Do not list flights yet.",
-    "no_flights_that_day": "Say there is no flight that day and offer these days.",
-    "no_seats": "Say the flights that day are full in this cabin for this many travelers, and "
-    "offer the cabins in cabins_with_seats or another day.",
-    "no_seats_flight": "Say that flight is full in this cabin for this many travelers, and "
-    "offer the cabins in cabins_with_seats or the other flights in other_flights.",
-    "nothing_listed": "Search first.",
-    "unclear_choice": "Say the flights the caller could mean, each by its departure time and "
-    "fare, and ask which one they want.",
-    "chosen_then_return": "Say the choice back in a few words, then the return flights, at most "
-    "three, and how many more if there are more, and ask which one. Say once that fares are one "
-    "way, per person.",
-    "chosen_then_outbound": "Say the choice back in a few words, then ask which outbound flight "
-    "they want.",
-    "chosen_needs_return": "Say the choice back in a few words, then ask when they would like to "
-    "come back.",
-    "chosen_return_full": "Say the choice back in a few words, then that no return flight that "
-    "day has a seat in this cabin for this many travelers, and offer another return day or cabin.",
-    "complete": "Call book_trip now and say nothing yourself; the caller hears the trip read back "
-    "and is asked to confirm it.",
-    "changed": "Say what changed in a few words, then ask for what is still missing.",
-    "changed_relist": "Say what changed in a few words, then these flights again with their "
-    "new fares, at most three, and ask which one they want.",
-    "changed_lost": "Say what changed, then that the flight chosen for that leg has no seats "
-    "for it now, then that leg's flights, at most three, and ask which one they want.",
-    "changed_needs_return": "Say what changed, then ask when they would like to come back.",
-    "trip": "Answer from this trip. If something is missing, ask for the first thing missing.",
-    "trip_empty": "Nothing is planned yet. Ask where they would like to go.",
-    "calendar": "Say the three cheapest days with their fares, then ask which day suits them.",
-    "cabins": "Say each cabin's fare on this flight, one way, per person, and ask which cabin "
-    "they want. Then wait for their answer; call change_trip only for a cabin the caller asked "
-    "for.",
-    "profile": "Answer from these counts. Say a past trip as one they flew, never as one you "
-    "booked. Never read a booking reference unless the caller asks for it.",
-}
 
 
 class _Result(BaseModel):
@@ -138,8 +61,9 @@ class DateSaid(_Result):
 
 class Option(_Result):
     """A flight listed to the caller: its place in the list, its name and aircraft, its local
-    times at each end, its length, its part of the day said, its fare per person in the cabin,
-    whether it has a seat for every traveler, and the mark on the cheapest."""
+    times at each end, its length, that it flies nonstop (every flight of the airline does), its
+    part of the day said, its fare per person in the cabin, whether it has a seat for every
+    traveler, and the mark on the cheapest."""
 
     n: int
     flight: str
@@ -148,6 +72,7 @@ class Option(_Result):
     arrives: str
     next_day: Literal[True] | None = None
     duration: Duration
+    nonstop: bool = True
     part_of_day_said: str
     part_of_day_said_msa: str | None = None
     fare_sar: int
@@ -156,7 +81,8 @@ class Option(_Result):
 
 
 class Listing(_Result):
-    """A leg's flights on its day (status `ok`), and the trip's return date on an outbound one."""
+    """A leg's flights on its day (status `ok`), how many they are and the first and last
+    departure times among them, and the trip's return date on an outbound one."""
 
     status: Literal["ok"] = "ok"
     leg: LegKind
@@ -165,7 +91,9 @@ class Listing(_Result):
     date: DateSaid
     return_date: DateSaid | None = None
     options: tuple[Option, ...]
-    more: int | None = None
+    count: int
+    first_departs: str
+    last_departs: str
     travelers: int
     cabin: Cabin
     cabin_said: str

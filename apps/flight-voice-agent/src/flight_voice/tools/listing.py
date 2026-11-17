@@ -1,14 +1,15 @@
 """A leg's flights as the talker is given them: the flights a listing holds (`listable`: those
 that sell the cabin, at most four, in the order said), each as an option with its fare, the
-cheapest of those with seats marked (`options`), and the listing with the fare's basis said once
-and the fixed `say` for it (`listing`), which asks for options 1 to 3 aloud and the one more by
-its part of the day, never its time or its fare. A listing after one of another day (`again`)
-asks for its day first and the basis not said again.
+cheapest of those with seats marked (`options`), and the listing with how many flights it holds
+and its first and last departure times (`spread`), the fare's basis, and the fixed `say` for it
+(`listing`): one or two said each by its time and fare, three or four briefly, by their count,
+their first and last times and the cheapest, the others only when the caller asks (the owner's
+ruling). A listing after one of another day (`again`) asks for its day first.
 
-The order said is the numbers' order, so "the third one" is the third the caller heard: the
-three said, in departure order, then the one left out. They are the first three to leave, unless
-the cheapest with a seat for every traveler leaves last: then it is said, and the one left out
-is, of the first three, a full one first, then the dearest, then the last to leave."""
+The order said is the numbers' order, the card's rows', so "the third one" is the third on the
+card: in departure order, unless the cheapest with a seat for every traveler leaves last of four:
+then it is third, and the one moved to fourth is, of the first three, a full one first, then the
+dearest, then the last to leave."""
 
 from __future__ import annotations
 
@@ -25,9 +26,11 @@ from flight_voice.tools.picks import departure_of
 from flight_voice.tools.results import SAY, DateSaid, Duration, Listing, Option, date_said, said
 from flight_voice.trip import LegKind, Shown
 
-# The most options a listing holds, and the most the talker says aloud in a turn.
+# The most options a listing holds; the most it keeps in departure order before the cheapest;
+# and the count from which a listing is said briefly.
 MAX_OPTIONS: Final = 4
 SAID_ALOUD: Final = 3
+BRIEF_FROM: Final = 3
 
 
 def listable(found: Sequence[Departure], cabin: Cabin, travelers: int) -> tuple[Departure, ...]:
@@ -105,15 +108,16 @@ def listing(
     return_date: DateSaid | None = None,
     again: bool = False,
 ) -> Listing:
-    """A leg's options on `day` as the talker is given them, with the fixed `say` for them (a
-    `relisted` one when `again`, the caller having heard another day's; else an outbound one
-    said from its day, a return one with its own say); an outbound listing gives the trip's
-    return date too, said back with the departure's."""
+    """A leg's options on `day` (one or more) as the talker is given them, with their count and
+    first and last departure times and the fixed `say` for them (a `relisted` one when `again`,
+    the caller having heard another day's; else an outbound one said from its day, a return one
+    with its own say); an outbound listing gives the trip's return date too, said back with the
+    departure's."""
     route_en, route_msa = said(lambda r: words.route(*route, r), tag)
     cabin_en, cabin_msa = said(lambda r: words.cabin(cabin, r), tag)
     basis, basis_msa = said(words.FARE_BASIS.__getitem__, tag)
-    more = len(listed) - SAID_ALOUD if len(listed) > SAID_ALOUD else None
     first = "return_listed" if leg == "return" else "listed"
+    count, first_departs, last_departs = spread(listed)
     return Listing(
         leg=leg,
         route_said=route_en,
@@ -121,19 +125,31 @@ def listing(
         date=date_said(day, tag, assumed=assumed),
         return_date=return_date,
         options=listed,
-        more=more,
+        count=count,
+        first_departs=first_departs,
+        last_departs=last_departs,
         travelers=travelers,
         cabin=cabin,
         cabin_said=cabin_en,
         cabin_said_msa=cabin_msa,
         fare_basis_said=basis,
         fare_basis_said_msa=basis_msa,
-        say=SAY[("relisted" if again else first) + ("_more" if more else "") + _full(listed)],
+        say=SAY[("relisted" if again else first) + said_as(listed)],
     )
 
 
-def _full(listed: tuple[Option, ...]) -> str:
-    return "_full" if any(not o.seats_ok for o in listed) else ""
+def spread(listed: Sequence[Option]) -> tuple[int, str, str]:
+    """How many options `listed` holds (one or more), and the first and last of their departure
+    times."""
+    times = sorted(o.departs for o in listed)
+    return len(listed), times[0], times[-1]
+
+
+def said_as(listed: Sequence[Option]) -> str:
+    """The suffix of a listing's say: `_brief` for three or four flights, `_full` when one has
+    no seat for every traveler."""
+    brief = "_brief" if len(listed) >= BRIEF_FROM else ""
+    return brief + ("_full" if any(not o.seats_ok for o in listed) else "")
 
 
 def listed_again(

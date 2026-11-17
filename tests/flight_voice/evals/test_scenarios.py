@@ -37,7 +37,7 @@ from t2_agentic_voice.actions.language_tool import NAME as SWITCH_LANGUAGE
 from tests.flight_voice import scenario_dates
 
 SCENARIOS = load()
-DEV_IDS = [f"f{n:02d}" for n in range(1, 29)]
+DEV_IDS = [f"f{n:02d}" for n in range(1, 33)]
 HELD_OUT_IDS = [f"h{n:02d}" for n in range(1, 16)]
 
 
@@ -53,7 +53,7 @@ def _scenario(**fields: Any) -> dict[str, Any]:
     return base | fields
 
 
-def test_every_file_reads_and_the_dev_set_is_f01_to_f28() -> None:
+def test_every_file_reads_and_the_dev_set_is_f01_to_f32() -> None:
     assert [s.id.split("_")[0] for s in SCENARIOS if s.split == "dev"] == DEV_IDS
     assert sorted(p.stem for p in CALLS.glob("*.toml")) == [s.id for s in SCENARIOS]
     assert all(s.today == TODAY == scenario_dates.TODAY for s in SCENARIOS)

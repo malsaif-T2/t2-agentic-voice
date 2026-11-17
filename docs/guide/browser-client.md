@@ -121,7 +121,11 @@ The client hands the page each card as one `card` event, and drops a message tha
 plans a reply listed, at most 8) come each as `{title, detail, value, mark}`: a title of up to 80
 characters, a detail of up to 120 and a value of up to 40, each text or `null`, and a `mark` of
 `best`, `chosen` or `unavailable`, or `null`. The client drops a row that is not one and keeps
-the rest; a card from a session that sends no rows has an empty list. Map a mark to a style
+the rest; a card from a session that sends no rows has an empty list. A card may name its
+`slot` on the page (D-110): lowercase letters and `_`, at most 20 of them (`outbound`, say), or
+`null`, `null` too from a session that sends none, and the client drops a card whose slot is of
+another shape. A page with segments of its own puts the card in the one its slot names (the
+flight page has three); a page that knows no such slot shows it where it shows every card. Map a mark to a style
 (Ole5's widget and the dev page set it as the line's `data-mark`), never to markup, and show a
 row's texts as text, as every other text of the card. Show it beside the captions, a new card in place of the
 last, and every text as text (`textContent`): a passage's steps are the knowledge base's words,

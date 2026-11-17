@@ -70,7 +70,8 @@ from t2_agentic_voice.voice.session.overlap import Overlaps, OverlapState, answe
 from t2_agentic_voice.voice.session.overlap_ask import OverlapAsks
 from t2_agentic_voice.voice.session.overlap_follow import Answer, Follows
 from t2_agentic_voice.voice.session.playback import Reply
-from t2_agentic_voice.voice.session.read_back import Confirming, read_again
+from t2_agentic_voice.voice.session.read_back import Confirming
+from t2_agentic_voice.voice.session.read_back_moved import read_again
 from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.session_events import Transcribed, Transcribing, TurnOpened
 from t2_agentic_voice.voice.session.speaker import Speaker
@@ -261,11 +262,12 @@ class Interrupter:
         request said whole, or nothing was heard (a command); new words or a correction whose
         own transcript failed hear the `error` notice, as with no talker, and so do those its
         whole overlap held after its window's stop or repeat request (`OverlapState.instead`).
-        A turn the reply went on over is answered only when it answers a read-back, its speech
-        begun once the summary played (the yes rule's: a bare yes over the closing question)."""
+        A turn the reply went on over is answered only when it is the yes rule's (read_back.py's
+        `takes`): its speech begun once the summary played (a bare yes over the closing
+        question), or a yes held over the summary (held_yes.py)."""
         decided = await self._judged_again(state, turn, event)
         if decided is not None and decided.action == "go_on":
-            if heard is not None and self._confirming.answering(heard.speech_at):
+            if heard is not None and self._confirming.takes(heard.speech_at, over=turn.over_reply):
                 await self._answer(self._follows.pending(turn), heard, event)
             else:
                 self._turns.settle(turn)
@@ -352,9 +354,12 @@ class Interrupter:
             )
             turn.reply_id = reply_id
 
-    def receipt(self, speech_at: float | None) -> ReadBackReceipt | None:
+    def receipt(self, speech_at: float | None, *, quiet: bool = False) -> ReadBackReceipt | None:
         """The current read-back's receipt, built now, for a turn whose speech began at
-        `speech_at` (read_back.py's `Confirming.receipt`): when the yes rule is called."""
+        `speech_at` (read_back.py's `Confirming.receipt`): when the yes rule is called; with
+        `quiet`, None while any overlap of the call is undecided (a held yes's: held_yes.py)."""
+        if quiet and self._overlaps.open_turns:
+            return None
         return self._confirming.receipt(speech_at=speech_at, undecided=self._overlaps.undecided)
 
     def _played(self, state: OverlapState) -> tuple[str, ...]:
@@ -363,14 +368,4 @@ class Interrupter:
         return self._speaker.playback.heard_since(state.speech_at - self._own_s)
 
     def _judged(self, event: Transcribed, verdict: Verdict) -> None:
-        text = "" if event.transcript is None else event.transcript.text
-        self._recorder.line(
-            event.at,
-            "overlap_judged",
-            turn_id=event.turn_id,
-            part=event.part,
-            text=text,
-            action=verdict.action,
-            kind=verdict.kind,
-            reason=verdict.reason,
-        )
+        self._recorder.judged(event, verdict)

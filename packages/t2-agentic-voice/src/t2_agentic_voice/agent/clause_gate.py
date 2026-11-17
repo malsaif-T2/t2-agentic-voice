@@ -5,8 +5,11 @@ filter left with nothing to say is none; one that asks the caller a question pas
 every other goes through the output guard (agent/speech_guard.py) and is `SpokenClause` or
 `ClauseBlocked`. A blocked clause counts, leaves a developer note for the next turn's history
 (agent/context.py's `BLOCKED` or `CLAIM_BLOCKED`), and by `guard.on_block` stops the rest of the
-reply (`stopped`, for `drop_rest`) or goes alone. A card passes only when rule B passes each of
-its texts; one that does not is logged by its tool's name alone.
+reply (`stopped`, for `drop_rest`) or goes alone. Under `guard.plain_speech` (D-111) a clause
+that is not speech is never said, nor anything of its request after it (`not_speech`, which
+agent/turn.py reads), and every other is said with the invisible and markdown marks taken out
+(agent/plain_speech.py). A card passes only when rule B passes each of its texts; one that does
+not is logged by its tool's name alone.
 """
 
 from __future__ import annotations
@@ -17,6 +20,7 @@ from t2_agentic_voice.actions.action import Action
 from t2_agentic_voice.actions.record import ActionRecord
 from t2_agentic_voice.agent.context import BLOCKED, CLAIM_BLOCKED
 from t2_agentic_voice.agent.events import ClauseBlocked, SpokenClause, TalkerEvent
+from t2_agentic_voice.agent.plain_speech import is_speech, spoken
 from t2_agentic_voice.agent.question_limit import QuestionLimit
 from t2_agentic_voice.agent.speech_guard import SpeechGuard
 from t2_agentic_voice.agent.stray_script import StrayScript
@@ -65,14 +69,25 @@ class ClauseGate:
         self.questions = QuestionLimit(settings.questions_per_reply)
         self.stopped = False  # a blocked clause dropped the rest of the reply
         self.blocked = 0
+        self.not_speech = False  # a clause not speech ended the request (D-111)
+        self.said_now = 0  # the clauses the request said so far
+
+    def begin(self) -> None:
+        """A new request of the reply begins: nothing of it said, nor found not speech."""
+        self.not_speech, self.said_now = False, 0
 
     def said(self, clauses: Iterable[str]) -> list[TalkerEvent]:
         """`clauses`, each spoken once the guard passed it, or blocked, or dropped past the
         reply's question limit (the module's docstring)."""
         events: list[TalkerEvent] = []
         for text in clauses:
-            if self.stopped:
+            if self.stopped or self.not_speech:
                 break
+            if self.settings.plain_speech:  # D-111
+                self.not_speech = not is_speech(text)
+                if self.not_speech:
+                    break
+                text = spoken(text)
             if self.scripts.changed and not any(char.isalnum() for char in text):
                 continue  # the filter left it nothing to say: never a clause said as silence
             if self.questions.drops(text, said=self.guard.passed):
@@ -83,6 +98,7 @@ class ClauseGate:
                 events.append(
                     SpokenClause(text=text, language=self.language, caller_register=register)
                 )
+                self.said_now += 1
                 continue
             self.blocked += 1
             claim = checked.reason == "unsupported_claim"

@@ -1,7 +1,8 @@
 """The dates a caller says, resolved by the code: every form against Monday 2026-11-16, a
 Saturday and a month's end; the days that do not exist, have passed or fall past the window, a
 return before its departure, a form the schema refuses, and the forms' words that keep a return
-said after the departure from being counted from today."""
+said after the departure from being counted from today; and a departure's span of days, the
+Saudi week's or weekend's, kept inside the window."""
 
 from __future__ import annotations
 
@@ -11,15 +12,19 @@ import pytest
 from flight_voice.airline.dates import (
     DateProblem,
     DateSpec,
+    Days,
+    DepartSpec,
     InDays,
     Nights,
     OnDay,
     OnWeekday,
     Relative,
     Resolved,
+    Span,
     WeekdayAfter,
     resolve_departure,
     resolve_return,
+    resolve_span,
     riyadh_today,
     week_index,
 )
@@ -208,3 +213,38 @@ def test_today_is_riyadhs_date() -> None:
     """Riyadh is three hours ahead of UTC all year: 21:30 UTC is already the next day there."""
     assert riyadh_today(datetime(2026, 11, 15, 21, 30, tzinfo=UTC)) == MONDAY
     assert riyadh_today(datetime(2026, 11, 15, 20, 59, tzinfo=UTC)) == date(2026, 11, 15)
+
+
+@pytest.mark.parametrize(
+    ("span", "today", "first", "last"),
+    [
+        ("this_week", MONDAY, date(2026, 11, 16), date(2026, 11, 21)),
+        ("next_week", MONDAY, date(2026, 11, 22), date(2026, 11, 28)),
+        ("this_weekend", MONDAY, date(2026, 11, 20), date(2026, 11, 21)),
+        ("next_weekend", MONDAY, date(2026, 11, 27), date(2026, 11, 28)),
+        ("coming", MONDAY, date(2026, 11, 16), date(2026, 11, 22)),
+        ("this_week", SATURDAY, SATURDAY, SATURDAY),
+        ("this_weekend", SATURDAY, SATURDAY, SATURDAY),
+        ("next_week", SATURDAY, date(2026, 11, 22), date(2026, 11, 28)),
+        ("this_week", date(2026, 11, 22), date(2026, 11, 22), date(2026, 11, 28)),
+        ("coming", date(2027, 3, 25), date(2027, 3, 25), date(2027, 3, 27)),
+    ],
+)
+def test_a_span_of_days_is_the_saudi_week_or_weekend_kept_inside_the_window(
+    span: Span, today: date, first: date, last: date
+) -> None:
+    """The Saudi week runs Sunday to Saturday and its weekend is Friday and Saturday; a day
+    before today or past the window is left out."""
+    assert resolve_span(Days(span=span), today) == (first, last)
+
+
+def test_a_span_wholly_past_the_window_is_a_problem_and_only_a_departure_is_a_span() -> None:
+    assert resolve_span(Days(span="next_week"), date(2027, 3, 25)) == DateProblem(
+        "beyond_window", date(2027, 3, 27)
+    )
+    departs: TypeAdapter[DepartSpec] = TypeAdapter(DepartSpec)
+    assert departs.validate_python({"kind": "days", "span": "coming"}) == Days(span="coming")
+    with pytest.raises(ValidationError):
+        departs.validate_python({"kind": "days", "span": "someday"})
+    with pytest.raises(ValidationError):
+        SPECS.validate_python({"kind": "days", "span": "coming"})

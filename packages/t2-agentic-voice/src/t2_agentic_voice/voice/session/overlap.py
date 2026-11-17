@@ -31,12 +31,12 @@ hears the speech stop; and the turn's own to when its speech ended.
 
 Over an action's read-back, a transcript of yes words, send words, fillers and
 listening sounds whose speech began over its summary is a listening sound, whatever the rule
-would say, so the summary plays on (read_back.py's `ignored`); but one that holds a stop or wait
-word of the call's (`call_words`, as the rule reads them: domain/interruptions.py's
-`holds_stop`) is never ignored, a word on both lists included (khalas, enough, an Arabic stop
-word and a filler to the yes rule), so the rule judges it as any stop word, and it stops the
-read-back (D-081, amended 2026-11-11). An overlap begun over the summary that is undecided
-denies the read-back its receipt (`undecided`).
+would say, so the summary plays on (read_back_heard.py's `plays_on`, with the call's words,
+`call_words`); but one that holds a stop or wait word of the call's is never ignored, khalas
+included, so the rule judges it as any stop word, and it stops the read-back (D-081, amended
+2026-11-11), unless, under `interruptions.yes_over_read_back`, khalas stands beside a yes or a
+send word (D-108). An overlap begun over the summary that is undecided denies the read-back its
+receipt (`undecided`).
 """
 
 from __future__ import annotations
@@ -46,7 +46,7 @@ from dataclasses import dataclass, field
 
 from t2_agentic_voice.core.events import TurnId
 from t2_agentic_voice.core.logging import get_logger
-from t2_agentic_voice.domain.interruptions import Overlap, Verdict, goes_on, holds_stop, judge
+from t2_agentic_voice.domain.interruptions import Overlap, Verdict, goes_on, judge
 from t2_agentic_voice.domain.silence import CAPTIONS
 from t2_agentic_voice.domain.uncertain_overlaps import is_uncertain
 from t2_agentic_voice.domain.words import WORD_KINDS, Words
@@ -54,6 +54,7 @@ from t2_agentic_voice.voice.protocol import Duck, ReplyId
 from t2_agentic_voice.voice.session.commands import Command, HearOverlap, Send
 from t2_agentic_voice.voice.session.io import CallSetup
 from t2_agentic_voice.voice.session.read_back import Confirming
+from t2_agentic_voice.voice.session.read_back_heard import plays_on
 from t2_agentic_voice.voice.session.session_events import (
     Transcribed,
     Transcribing,
@@ -321,12 +322,8 @@ class Overlaps:
         transcript = event.transcript
         text = "" if transcript is None else transcript.text
         confirming, words = self._confirming, self.words
-        if (
-            confirming is not None
-            and not holds_stop(text, words=words)  # a stop or wait word is the rule's
-            and confirming.ignored(
-                state.reply_id, state.speech_at, text, listening=words.backchannel
-            )
+        if confirming is not None and plays_on(
+            confirming, state.reply_id, state.speech_at, text, words=words
         ):
             return _IGNORED
         if ended_at is None:

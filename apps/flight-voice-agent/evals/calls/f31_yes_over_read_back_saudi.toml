@@ -1,0 +1,26 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): a bare yes said over the
+# read-back's summary books once the summary has played to its end.
+id = "f31_yes_over_read_back_saudi"
+split = "dev"
+language = "ar-SA"
+kind = "confirmation"
+notes = "A one-way trip to Doha next Sunday; the first flight sends it to its read-back, and a bare yes said over the summary, with nothing after it, books it once the summary has played whole (the owner's ruling: any yes books)."
+
+[[turns]]
+says = "أبي رحلة للدوحة الأحد الجاي، رايح بدون رجعة"
+calls = ["search_flights"]
+args = { destination = "DOH", depart = "2026-11-22", one_way = true }
+forms = { depart = { kind = "weekday", weekday = "sun" } }
+
+[[turns]]
+says = "الأولى لو سمحت"
+calls = ["choose_flight", "book_trip"]
+args = { leg = "outbound", pick = "number", n = 1 }
+outcome = "read_back"
+read_back = { outbound = "T2 251@2026-11-22", one_way = true, travelers = 1, cabin = "economy" }
+
+[[turns]]
+says = "إيه"
+when = "read_back"
+after_s = 2.0
+outcome = "done"

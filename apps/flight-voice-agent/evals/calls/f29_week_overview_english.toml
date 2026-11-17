@@ -1,0 +1,19 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): an English caller asks
+# what flies over next week, naming no single day, then picks a day from it.
+id = "f29_week_overview_english"
+split = "dev"
+language = "en"
+kind = "dates"
+notes = "What flies to Paris next week is searched at once as the week's span (no day made up, no return day asked first): its days, its daily times and its two cheapest days, with a calendar of flights shown; the Thursday picked then, back the Sunday after, resolves in code."
+
+[[turns]]
+says = "Which days have flights to Paris during next week?"
+calls = ["search_flights"]
+args = { destination = "CDG", span = "next_week" }
+shows_card = true
+
+[[turns]]
+says = "Thursday works for me, and I'd come home that Sunday."
+calls = ["search_flights"]
+args = { destination = "CDG", depart = "2026-11-26", return_date = "2026-11-29" }
+forms = { depart = { kind = "weekday", weekday = "thu", which = "next_week" }, return_date = { kind = "weekday_after", weekday = "sun" } }

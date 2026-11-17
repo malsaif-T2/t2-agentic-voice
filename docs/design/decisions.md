@@ -3810,3 +3810,113 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   15-minute check before the first demo). `TextCall` finds a read-back said in its shaped form.
 - **Evidence:** the tests of the spoken forms (every timetable time, every day of a month and
   every number up to about 250,000 said with no digit) and of `TextCall`'s read-back forms.
+
+## D-108 · A yes over the read-back books when the summary ends, for an agent that sets it · 2026-11-17 · Accepted (the owner's ruling of 2026-11-17, "Any yes books"; a library setting, off by default, which the flight app turns on: GP-18)
+
+- **Context:** the owner's live test of 2026-11-17 (call 7tk, turns 6 to 16). A yes said over
+  the flight agent's read-back, which runs 13 to 21 s, counted for nothing (D-081), so the caller
+  had to say it again after the closing question; «خلاص، أكد الحجز» (OK, confirm the booking)
+  stopped it as a stop word; and a bare yes over the closing question is asked again (the
+  owner's ruling of 2026-11-10, "Yes, send it"). One booking took six read-backs.
+- **Decision:** the owner chose "Any yes books": a yes said over the flight agent's read-back
+  books once the summary has played to its end, a bare yes word («إيه», «نعم», «إي», "yes")
+  included, unless the caller says anything else before it ends; and a yes over the closing
+  question, after the summary played whole, books too, a bare one included. The lead's
+  recommendation, not taken, was to hold only an explicit go-ahead ("book it", a yes beside a
+  send word), since a bare «إيه» is often a listening sound. Built as
+  `interruptions.yes_over_read_back` (off by default): in the `interruptions` group, because the
+  read-back is a reply and a yes over it is speech over a reply that the session takes under
+  `two_step`; not `turns` (the speech detector and Smart Turn), nor a `VoiceAgent` flag, so the
+  flight app's settings turn it on as they turn on its guard settings. Under it:
+  - a turn that is an overlap of the read-back's reply, begun after the summary's first audio
+    and before its last clause played, the agent's voice going on over it, is the session's
+    held yes (voice/session/held_yes.py): words the yes rule's lists read as a yes (a yes or a
+    send word, the action's own among them, with only fillers beside them, and no no word,
+    change marker or question mark) are held; for an agent that asks
+    (`ask_on_unlisted_answers`), words the lists leave unplaced play on and go to the consent
+    model under D-082's rails, its `yes` or `send` held, its `no` or `change` declining the
+    read-back; never the agent's own lines heard back;
+  - the held yes books once the summary has played in full with no other words begun since
+    (no turn open or awaiting its words, no overlap undecided, no model's word awaited): the
+    receipt is built as for any answer, now with the summary's first audio
+    (`ReadBackReceipt.summary_began_at`), and `yes_rule.held` issues the confirmed action from
+    the held turn's own words; the closing question is cut, or never said, and the `sending`
+    line answers the held yes. A second yes, a filler or a listening sound keeps it held; any
+    other words drop it; a new read-back, a decline, a repeat, the client's stop and the call's
+    end leave it void;
+  - over the closing question a bare yes (a yes among fillers) is a yes, and the model's plain
+    `yes`, but to a send word alone; «خلاص» beside a yes or a send word, with only fillers
+    else, plays on over the summary or the question and is a yes; each is asked again when the
+    words are the agent's own lines heard back. «خلاص» alone still stops the read-back (D-081's
+    amendment of 2026-11-11 stands).
+- **Consequences:** for an agent that sets it, this amends invariant 1 (docs/SECURITY.md), D-081
+  (a yes over the summary counts for nothing) and the ruling of 2026-11-10 (a bare yes over the
+  closing question is asked again); with it off, every behaviour is as before, held by the
+  characterization tests. A bare «إيه» meant only as a listening sound books, the risk the lead
+  named. A single word such as «لا» over the summary goes on as before (fewer than `min_words`)
+  and only drops a held yes; the caller answers after the question. The session's safety test
+  found a yes said at the very instant of the summary's first audio, in the gap before it was an
+  overlap, held; a held yes now needs an overlap of the read-back's reply begun after that
+  audio, in the session and in the rule. Code moved out of the near-cap modules first
+  (domain/yes_kinds.py, voice/session/read_back_heard.py, audible.py; `read_again` to
+  read_back_moved.py; the send step to action_job.py).
+- **Evidence:** the owner's ruling of 2026-11-17 (call 7tk of the live test); the tests
+  `tests/t2_agentic_voice/domain/test_yes_rule_any_yes.py` and
+  `tests/t2_agentic_voice/voice/session/test_read_back_held_yes.py` (each moment with the
+  setting off and on, and the adversarial cases: before the summary played whole, a yes followed
+  by other words, words before the read-back began, the agent's echo, a read-back replaced).
+
+## D-110 · A card may name its slot on the page · 2026-11-17 · Accepted (the owner's ruling of 2026-11-17 on the flight page's three segments; a new optional field, which changes nothing for a page that ignores it)
+
+- **Context:** the owner ruled on 2026-11-17 that the flight page shows three segments, the
+  outbound flights (or a calendar of flights for a span of days), the return flights, and the
+  review for confirmation, each filled in place. A card had no way to say which segment it
+  fills, and the page could only guess from its title.
+- **Decision:** `Card.slot`, an optional closed-shape name, lowercase letters and `_`, 1 to 20
+  of them (`outbound`, `return`, `review`), none by default. `t2v/1`'s `card` carries it as
+  `slot` (null when none), and the reference client hands it to the page, null for a session
+  that sends none, and drops a card whose slot is of another shape, as it drops one whose
+  source is not text. It is no text to show and carries no number, so the output guard does not
+  read it. A page with segments puts the card in the one its slot names; any other page shows
+  it where it shows every card.
+- **Consequences:** no setting (GP-18: a new optional field that changes nothing for an app that
+  ignores it). The protocol fixture (`tests/t2_agentic_voice/fixtures/t2v_protocol.json`) lists
+  the field, and every card on the wire now holds `"slot": null` unless it names one. The
+  flight app's tools set it, and its page fills its segments by it.
+- **Evidence:** the protocol round trip, the client contract tests and the model's refusal of a
+  slot of another shape (`test_protocol.py`, `test_browser_card_rows.py`,
+  `test_browser_cards.py`, `tests/t2_agentic_voice/domain/test_cards.py`).
+
+## D-111 · Plain speech: a clause that is not speech is never said, and the request is tried once more · 2026-11-17 · Accepted (the lead's ruling under GP-18; a library setting, off by default, which the flight app turns on)
+
+- **Context:** the owner's English call of 2026-11-17 (91Sw) said nonsense twice. Turn 6 was
+  markdown bold around a zero-width space, two more, an ellipsis, a dash, "The", "This" and a
+  broken copy of the history's cut mark ("[cut ..."), and every filter passed it to
+  text-to-speech; turn 2 joined two questions with a run of 21 dots, which the splitter did not
+  cut, so the one-question limit (D-085) let both be said. gpt-oss writes such text now and
+  then; the next request on the same context was clean.
+- **Decision:** `guard.plain_speech` (off by default; agent/plain_speech.py), the diagnosis's
+  option B: (1) a run of two or more dots or ellipses right after a sentence's mark is taken
+  out, and one right after a word becomes one ellipsis, before the leak check and the splitter,
+  a run at a piece's end held until the next character comes; (2) a whole clause is not speech
+  when fewer than half of its characters, spaces aside, are letters, combining marks (the
+  Arabic harakat among them) or digits, or when it holds "[", "{" or "<": from it on nothing
+  more of that request is said and none of its tools runs, as a leak is dropped; (3) a request
+  that said nothing so is sent once more, the same messages with a new first line and nothing
+  of its text kept, while the turn has a request left (`llm.max_requests_per_turn`); a retry
+  that is not speech too, or none left, ends the reply, and the session says the `error`
+  notice when none of it was said; (4) the zero-width space, the word joiner, the byte order
+  mark and the markdown marks, the asterisk and the backtick, are taken out of every clause
+  before it is said.
+- **Consequences:** a turn whose first request is junk costs one more request, about 2 s, and
+  usage counts it as any request. A stage note glued to a real question is caught first by the
+  leak check under `guard.drop_stage_notes`; alone, rule 2 drops that whole clause, the
+  question with it. `agent/turn.py`'s request builder moved to `agent/turn_request.py` first, to
+  stay under 300 lines.
+- **Evidence:** the diagnosis of 2026-11-17. On the stored corpus (every heard text of runs
+  f-dev-4, f-dev-5 and f-dev-6, and the owner's two replies: 818 replies, 3,011 clauses), the
+  rules drop 13 clauses in 9 replies, all junk: f-dev-4's stage notes and its spoken tags and
+  JSON dump (7 replies), f-dev-5's spoken `<action tool="book_trip"/>` (1), and the owner's
+  turn 6 (4 clauses); none in f-dev-6. The dot rule changes what the question limit lets be
+  said in exactly 2 replies, f-dev-5's f15 (five questions joined by dot runs) and the owner's
+  turn 2. The tests in `tests/t2_agentic_voice/agent/test_plain_speech.py`.

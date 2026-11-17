@@ -1,10 +1,9 @@
 """Each check of a scripted flight call's play (flight_voice/evals/checks.py) on a crafted turn:
-the tools and the values they held as the airline reads them, the outcome and the read-back,
-the words said and not said in either script, the language and the register, the words and
-options counted, the long-call checks from the library's repeat measures (a near repeat caught,
-an asked repeat and a read-back said again exempt, a cut repeat measured), the card and the
-progress line; and the play's own: its end, its violations, the booking made and for whom, and the
-reference said only when asked."""
+the tools and the values they held as the airline reads them (a span of days and a fare among
+them), the outcome and the read-back, the words said and not said in either script, the language
+and the register, the words and options counted, the long-call checks (a near repeat caught, an
+asked repeat and a read-back said again exempt, a cut repeat measured), the card and the progress
+line; the play's own: its end, its violations, the booking made and for whom, the reference."""
 
 from __future__ import annotations
 
@@ -83,14 +82,18 @@ def test_the_tools_and_the_values_they_held_are_read_as_the_airline_reads_them()
     assert failed(made, read(clause("Here they are."))) == ["calls", "args"]
 
 
-def test_a_pick_is_read_from_its_choice() -> None:
-    made = scenario(
-        {"says": "the earliest", "args": {"leg": "outbound", "pick": "earliest"}},
-    )
+def test_a_pick_and_a_span_of_days_are_read_from_their_calls() -> None:
+    made = scenario({"says": "the earliest", "args": {"leg": "outbound", "pick": "earliest"}})
     choose = tool("choose_flight", leg="outbound", choice={"pick": "earliest"})
     assert failed(made, read(clause("Done."), tools=(choose,))) == []
     latest = tool("choose_flight", leg="outbound", choice={"pick": "latest"})
     assert failed(made, read(clause("Done."), tools=(latest,))) == ["args"]
+    fare = scenario({"says": "the 430", "args": {"pick": "fare", "fare_sar": 430}})
+    said = tool("choose_flight", leg="return", choice={"pick": "fare", "fare_sar": 430})
+    assert failed(fare, read(clause("Done."), tools=(said,))) == []
+    week = scenario({"says": "next week?", "args": {"span": "next_week"}})
+    span = tool("search_flights", depart={"kind": "days", "span": "next_week"})
+    assert failed(week, read(clause("Here."), tools=(span,))) == []
 
 
 @pytest.mark.parametrize(

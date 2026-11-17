@@ -25,7 +25,7 @@ from flight_voice.airline.system import Airline, AirlineUnavailableError
 from flight_voice.said import Tag, arabic, words
 from flight_voice.tools.cards import day_title, money
 from flight_voice.tools.listing import listed_again
-from flight_voice.tools.picks import Choice, departure_of, pick
+from flight_voice.tools.picks import CHOICE, Choice, departure_of, pick
 from flight_voice.tools.results import (
     SAY,
     SEARCH_FAILED,
@@ -42,16 +42,10 @@ from flight_voice.trip import LegKind, TripBook
 COMPARE_CABINS: Final = "compare_cabins"
 DESCRIPTION: Final = (
     "Compare economy, business and first class for one listed flight. Pass the caller's pick as "
-    "they said it: its number in the list, the cheapest, the earliest, the latest, the morning, "
-    "afternoon or evening one, or its departure time."
+    "they said it: its number in the list, the cheapest, the dearest, the earliest, the latest, "
+    "the morning, afternoon or evening one, its departure time, or its fare."
 )
 _LEG: Final = "The leg of the flight: outbound, or return."
-_CHOICE: Final = (
-    "The caller's pick, as they said it; never a flight you worked out, nor the time or number "
-    "of the flight it means, even one a tool already named: a part of the day goes as "
-    "part_of_day, a comparison of when it leaves as earliest or latest, the only flight listed "
-    "as its number."
-)
 
 
 class CabinFare(_Result):
@@ -96,7 +90,7 @@ def compare_cabins(airline: Airline, trips: TripBook) -> Tool:
     async def compare(
         ctx: CallContext,
         leg: Annotated[LegKind, Field(description=_LEG)],
-        choice: Annotated[Choice, Field(description=_CHOICE)],
+        choice: Annotated[Choice, Field(description=CHOICE)],
     ) -> ToolResult:
         tag: Tag = ctx.language
         draft = trips.get(ctx.call_id)

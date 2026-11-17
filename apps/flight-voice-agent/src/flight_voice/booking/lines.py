@@ -7,11 +7,14 @@ a booking (`CLAIMS`), which the output guard blocks unless this call's record ho
 - **The read-back states every value booked**, in words the app renders (booking/draft.py), and
   always the trip's kind, «رايح جاي» / «رايح بس», "round trip" / "one way", so a wrong one way is
   heard either way. It is the one summary of the trip: the caller hears it and its total once,
-  and says yes once.
-- **Its closing question holds the action's own send word** (`SEND_WORDS`), so «إي احجزها»,
-  "yes, book it" over it counts; no other line holds a stop, wait, repeat, listening, yes or
-  send word, so no line's echo is heard as one: no line says «أي» (any), which the yes rule's
-  form reads as «إي» (yes).
+  and says yes once. It says no word that holds no value: no lead verb ("I'll book"), the
+  return's city and month not said again, "Total" for "The total is".
+- **Its closing question and its ask-again line hold the action's own send word**
+  (`SEND_WORDS`: book it, and the confirm verbs «أكد», «أكدها», «أكد الحجز», «احجز», "confirm"),
+  so «إي احجزها», "yes, book it" over it counts, and the library's own ask-again line (which
+  fits any action) is never said for a booking; no other line holds a stop, wait, repeat,
+  listening, yes or send word, so no line's echo is heard as one: no line says «أي» (any),
+  which the yes rule's form reads as «إي» (yes).
 - **`done` never says the reference**: the caller hears it only when they ask, from a result
   that holds it. `unknown` says no number (invariant 6).
 - **A claim** is only a phrase that cannot sit in a negative, since the guard reads negation in
@@ -29,31 +32,46 @@ from typing import Final
 
 from t2_agentic_voice import Claims, ReadBack, Say
 
-# The send word the closing question holds, the same in both Arabic wordings, by primary code.
-SEND_WORDS: Final = {"ar": ["احجزها", "أحجزها"], "en": ["book it"]}
+# The send words the closing question and the ask-again hold, and the confirm verbs a caller
+# says for a booking, the same in both Arabic wordings, by primary code: aHjizha (book it),
+# akkid (confirm), akkidha (confirm it), akkid al-Hajz (confirm the booking), iHjiz (book).
+SEND_WORDS: Final = {
+    "ar": ["احجزها", "أحجزها", "أكد", "أكدها", "أكد الحجز", "احجز"],
+    "en": ["book it", "confirm", "confirm it"],
+}
 
 READ_BACK: Final = ReadBack(
     {
-        # baHjiz ... 'ala ...: I'll book ... in ..., the trip's kind: the route, the legs. The
-        # total ...; tabeeni aHjizha: do you want me to book it?
+        # ... 'ala ...: (for) ... in ..., the trip's kind: the route, the legs. The total ...;
+        # tabeeni aHjizha: do you want me to book it?
         "ar-SA": (
-            "بحجز {party_ar_sa} على {cabin}، {trip_kind_ar_sa}: {route_ar_sa}، "
+            "{party_ar_sa} على {cabin}، {trip_kind_ar_sa}: {route_ar_sa}، "
             "{outbound_ar_sa}{return_ar_sa}. المجموع {total_ar_sa}.",
             "تبيني أحجزها؟",
         ),
-        # sa-aHjizu ... fi ...: I will book ... in ...; hal aHjizuha laka: shall I book it?
+        # ... fi ...: (for) ... in ...; hal aHjizuha laka: shall I book it?
         "ar": (
-            "سأحجز {party_ar} في {cabin}، {trip_kind_ar}: {route_ar}، {outbound_ar}{return_ar}. "
+            "{party_ar} في {cabin}، {trip_kind_ar}: {route_ar}، {outbound_ar}{return_ar}. "
             "المجموع {total_ar}.",
             "هل أحجزها لك؟",
         ),
         "en": (
-            "I'll book {party_en} in {cabin}, {trip_kind_en}: {route_en}, "
-            "{outbound_en}{return_en}. The total is {total_en}.",
+            "For {party_en} in {cabin}, {trip_kind_en}: {route_en}, "
+            "{outbound_en}{return_en}. Total {total_en}.",
             "Shall I book it?",
         ),
     },
     send_words=SEND_WORDS,
+    asked_again=Say(
+        {
+            # al-ma'dhira, ma waDaH li raddak. tabeeni aHjizha: sorry, your answer wasn't clear
+            # to me. Do you want me to book it?
+            "ar-SA": "المعذرة، ما وضح لي ردك. تبيني أحجزها؟",
+            # 'udhran, lam yattaDiH li radduk. hal aHjizuha laka: the same, in MSA
+            "ar": "عذرًا، لم يتضح لي ردك. هل أحجزها لك؟",
+            "en": "Sorry, I didn't catch that. Shall I book it?",
+        }
+    ),
 )
 DONE: Final = Say(
     {

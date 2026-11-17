@@ -177,15 +177,20 @@ def _en_ordinal(day: int) -> str:
     return f"{library_number(ten * 10, language='en')}-{_EN_ORDINALS[unit]}"
 
 
-def speak_date(day: date, register: Register) -> str:
+def speak_date(day: date, register: Register, *, month: bool = True) -> str:
     """A day with its weekday: «الخميس سبعطعش ديسمبر», «الخميس السابع عشر من ديسمبر»,
-    "Thursday the seventeenth of December"."""
-    weekday, month = words.weekday(day, register), words.month(day.month, register)
+    "Thursday the seventeenth of December"; without its month when `month` is false, for a day
+    said after another of the same month: «الأحد عشرين», «الأحد العشرين», "Sunday the
+    twentieth"."""
+    weekday, named = words.weekday(day, register), words.month(day.month, register)
     if register == "saudi":
-        return f"{weekday} {speak_number(day.day, 'saudi')} {month}"
+        said = f"{weekday} {speak_number(day.day, 'saudi')}"
+        return f"{said} {named}" if month else said
     if register == "msa":
-        return f"{weekday} {_msa_ordinal(day.day)} من {month}"
-    return f"{weekday} the {_en_ordinal(day.day)} of {month}"
+        said = f"{weekday} {_msa_ordinal(day.day)}"
+        return f"{said} من {named}" if month else said
+    said = f"{weekday} the {_en_ordinal(day.day)}"
+    return f"{said} of {named}" if month else said
 
 
 def speak_amount(riyals: int, register: Register) -> str:
@@ -203,9 +208,9 @@ def speak_amount(riyals: int, register: Register) -> str:
 
 
 def speak_travelers(count: int, register: Register) -> str:
-    """Who a booking is for, as the read-back says it after "I'll book": «لك أنت», «لك ولشخص
-    ثاني», «لثلاثة أشخاص» in Saudi; «لك وحدك», «لشخصين», «لثلاثة أشخاص» in MSA; "you", "two
-    travelers" in English."""
+    """Who a booking is for, as the read-back says it first: «لك أنت», «لك ولشخص ثاني»,
+    «لثلاثة أشخاص» in Saudi; «لك وحدك», «لشخصين», «لثلاثة أشخاص» in MSA; "you", "two
+    travelers" in English, after its "For"."""
     if register == "en":
         return "you" if count == 1 else f"{library_number(count, language='en')} travelers"
     if count == 1:

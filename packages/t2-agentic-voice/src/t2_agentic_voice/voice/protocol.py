@@ -57,7 +57,7 @@ from t2_agentic_voice.core.events import CallId, ClientConnection, EndReason, Tu
 from t2_agentic_voice.core.events import ClauseIndex as ClauseIndex
 from t2_agentic_voice.core.events import ReplyId as ReplyId
 from t2_agentic_voice.core.settings.tts import LanguageTag
-from t2_agentic_voice.domain.cards import Card, CardRow
+from t2_agentic_voice.domain.cards import Card, CardRow, CardSlot
 from t2_agentic_voice.domain.declaration import NoticeKind
 from t2_agentic_voice.voice.protocol_read import read_json, refused
 
@@ -188,20 +188,24 @@ class Caption(_SessionMessage):
 
 class ShowCard(_SessionMessage):
     """Show the caller a card: a `title`, its `steps` and its option `rows`, in order, with the
-    `source` they come from when there is one (a knowledge passage's document). A reply says
-    the short answer aloud, and the card holds the whole, which the client shows beside the
-    captions (plan 006). Its text passed the output guard, as a clause's does; each row is
-    bounded as `Card`'s are, its `mark` from their closed set."""
+    `source` they come from when there is one (a knowledge passage's document), and the `slot`
+    it names on the page when it names one (D-110). A reply says the short answer aloud, and the
+    card holds the whole, which the client shows beside the captions (plan 006). Its text passed
+    the output guard, as a clause's does; each row is bounded as `Card`'s are, its `mark` from
+    their closed set, and its slot has `Card`'s closed shape."""
 
     type: Literal["card"] = "card"
     title: str = Field(min_length=1)
     steps: tuple[str, ...] = ()
     rows: tuple[CardRow, ...] = ()
     source: str | None = None
+    slot: CardSlot | None = None
 
     @classmethod
     def of(cls, card: Card) -> ShowCard:
-        return cls(title=card.title, steps=card.steps, rows=card.rows, source=card.source)
+        return cls(
+            title=card.title, steps=card.steps, rows=card.rows, source=card.source, slot=card.slot
+        )
 
 
 class Duck(_SessionMessage):

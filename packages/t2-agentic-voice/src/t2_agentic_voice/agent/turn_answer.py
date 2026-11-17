@@ -1,6 +1,7 @@
 """What one model request of a turn gives (agent/turn.py's `Turn`, whose docstring holds the
 rules): its clauses as the answer streams (`answer_events`), each piece through the stray-script
-filter, the leak check, the clause splitter and the output guard, an action's text after its
+filter, the dot runs under `guard.plain_speech` (agent/plain_speech.py), the leak check, the
+clause splitter and the output guard, an action's text after its
 call dropped (rule C), a cut at `max_output_tokens` and a model's failure logged; and the rest
 of the answer (`Answer`): its text, its tool calls, its usage, its first token's time, and
 whether the request went out on a kept-alive connection (`warm`, read from the model just before
@@ -15,6 +16,7 @@ from typing import TYPE_CHECKING
 
 from t2_agentic_voice.agent.context import Unnoted
 from t2_agentic_voice.agent.events import TalkerEvent
+from t2_agentic_voice.agent.plain_speech import DotRuns
 from t2_agentic_voice.core.errors import ProviderError
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.domain.ports.chat_model import (
@@ -55,7 +57,7 @@ async def answer_events(
     started = reply.clock.now()
     whole_sentences = reply.language == "en"  # D-077
     splitter = ClauseStream(max_chars=None, whole_sentences=whole_sentences)
-    unnoted = Unnoted()
+    unnoted, dots = Unnoted(), DotRuns(on=reply.settings.guard.plain_speech)  # D-111
     acted = False  # rule C: an action was called, and what the model writes after is dropped
     dropped = False  # whether it wrote any
     try:
@@ -64,11 +66,11 @@ async def answer_events(
                 if answer.first_token_s is None and isinstance(event, TextDelta | ToolCallRequest):
                     answer.first_token_s = max(0.0, reply.clock.now() - started)
                 if isinstance(event, TextDelta) and not acted:
-                    piece = reply.leak.text(reply.scripts.text(event.text))
+                    piece = reply.leak.text(dots.feed(reply.scripts.text(event.text)))
                     answer.text += piece
                     for said in reply.gate.said(splitter.feed(unnoted.feed(piece))):
                         yield said
-                    if reply.gate.stopped:
+                    if reply.gate.stopped or reply.gate.not_speech:
                         return
                     if reply.leak.found:  # the rest is reasoning: what was held is said
                         break
@@ -97,12 +99,13 @@ async def answer_events(
             retryable=error.retryable,
         )
         raise
+    tail = reply.leak.text(dots.close())
     if acted:  # rule C: what the splitter held goes too, unspoken
-        held = [*splitter.feed(unnoted.feed(reply.leak.close()) + unnoted.close())]
+        held = [*splitter.feed(unnoted.feed(tail + reply.leak.close()) + unnoted.close())]
         held += splitter.close()
         if dropped or any(text.strip() for text in held):
             _log.info("talker_text_after_action_dropped", turn_id=reply.turn.turn_id)
         return
-    rest = unnoted.feed(reply.leak.close()) + unnoted.close()
+    rest = unnoted.feed(tail + reply.leak.close()) + unnoted.close()
     for said in reply.gate.said((*splitter.feed(rest), *splitter.close())):
         yield said

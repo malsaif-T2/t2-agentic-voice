@@ -14,7 +14,7 @@ import pytest
 from flight_voice.airline.fares import round10
 from flight_voice.said import Tag
 from flight_voice.tools import cards
-from flight_voice.tools.choose import CHANGE_TRIP, NOTHING_TO_CHANGE, change_trip
+from flight_voice.tools.change import CHANGE_TRIP, NOTHING_TO_CHANGE, change_trip
 from flight_voice.tools.results import SAY
 from flight_voice.tools.trip_view import GET_TRIP, get_trip
 
@@ -73,10 +73,14 @@ def test_a_cabin_the_chosen_flight_has_no_seat_in_drops_that_leg_and_lists_it_ag
     assert (found["lost"], found["leg"], found["say"]) == (
         ["outbound"],
         "outbound",
-        SAY["changed_lost"],
+        SAY["changed_lost_full"],
     )
     by_flight = {o["flight"]: o for o in found["options"]}
     assert by_flight[f"T2 {number}"]["seats_ok"] is False
+    # The owner's live call: the flight that lost its seats is named, by its departure time, and
+    # said as full with no fare.
+    assert found["lost_departs"] == by_flight[f"T2 {number}"]["departs"]
+    assert "lost_departs" in found["say"] and "say it by its departure time as full" in found["say"]
     assert call.draft.chosen_outbound is None and call.draft.cabin == "business"
     assert found["trip"]["missing"] == ["outbound"]
 
@@ -88,6 +92,7 @@ def test_a_cabin_change_while_choosing_lists_the_flights_again_with_their_new_fa
     assert (found["leg"], found["say"]) == ("outbound", SAY["changed_relist"])
     fares = [o["fare_sar"] for o in found["options"]]
     assert fares == [round10(o["fare_sar"] * Fraction("3.2")) for o in economy["options"]]
+    assert "lost_departs" not in found and found["lost"] == []
     assert found["trip"]["cabin"] == "business" and call.draft.cabin == "business"
 
 

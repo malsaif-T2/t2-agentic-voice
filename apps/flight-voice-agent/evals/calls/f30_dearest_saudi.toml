@@ -1,0 +1,30 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): a Saudi caller picks
+# the dearest return flight, two of which share the top fare.
+id = "f30_dearest_saudi"
+split = "dev"
+language = "ar-SA"
+kind = "round_trip"
+notes = "Jeddah tomorrow, back on the Thursday; the afternoon flight out, then the dearest flight back, passed as the dearest: the 07:45 and the 17:15 share the top fare, and the first listed of them is read back; a yes with the send word books it."
+
+[[turns]]
+says = "ودي أسافر جدة بكرة وأرجع يوم الخميس"
+calls = ["search_flights"]
+args = { destination = "JED", depart = "2026-11-17", return_date = "2026-11-19" }
+forms = { depart = { kind = "relative", when = "tomorrow" }, return_date = { kind = "weekday", weekday = "thu" } }
+
+[[turns]]
+says = "اللي بعد الظهر"
+calls = ["choose_flight"]
+args = { leg = "outbound", pick = "part_of_day", part = "afternoon" }
+
+[[turns]]
+says = "عطني أغلى وحدة فيهم"
+calls = ["choose_flight", "book_trip"]
+args = { leg = "return", pick = "dearest" }
+outcome = "read_back"
+read_back = { outbound = "T2 105@2026-11-17", return = "T2 102@2026-11-19", one_way = false, travelers = 1, cabin = "economy" }
+
+[[turns]]
+says = "إي احجزها"
+when = "closing_question"
+outcome = "done"

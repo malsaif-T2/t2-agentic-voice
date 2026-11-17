@@ -10,6 +10,11 @@ the departure and `weekday_after` it. A return's day of the month with no month,
 weekday, count from the departure, not from today ("December 17th, back on the 20th"). A day
 that does not exist, a day before today or past the booking window, a return before its
 departure, and a return-only form for a departure are each a `DateProblem`, never a guess.
+
+A search's departure may also be a span of days (`Days`) the caller asked about with no single
+day named: this week (from today to Saturday), next week (Sunday to Saturday), this weekend or
+next weekend (Friday and Saturday, the Saudi weekend, of this week or the next), or the coming
+seven days from today; `resolve_span` gives its first and last days, kept inside the window.
 `assumed` marks a date whose month or year the code chose, so the caller hears it back with its
 weekday.
 """
@@ -92,10 +97,32 @@ class WeekdayAfter(_Spec):
     weekday: Weekday
 
 
+Span = Literal["this_week", "next_week", "this_weekend", "next_weekend", "coming"]
+
+
+class Days(_Spec):
+    """A span of days, only for the day they leave, when the caller asks what flies over days
+    and names no single day: `this_week` (from today to Saturday), `next_week` (Sunday to
+    Saturday), `this_weekend` or `next_weekend` (Friday and Saturday), or `coming` (the seven
+    days from today, for "any day" or "the soonest"): "anything during the week after this",
+    «وش عندكم نهاية الأسبوع»."""
+
+    kind: Literal["days"] = "days"
+    span: Span
+
+
 DateSpec = Annotated[
     Relative | OnWeekday | OnDay | InDays | Nights | WeekdayAfter, Field(discriminator="kind")
 ]
-DepartSpec = Annotated[Relative | OnWeekday | OnDay | InDays, Field(discriminator="kind")]
+# A search's departure: a date form, or a span of days.
+DepartSpec = Annotated[
+    Relative | OnWeekday | OnDay | InDays | Nights | WeekdayAfter | Days,
+    Field(discriminator="kind"),
+]
+# The days of a span: its first and last days from the Saudi week's Sunday, or from today.
+_FRIDAY: Final = WEEKDAYS.index("fri")
+_SATURDAY: Final = WEEKDAYS.index("sat")
+COMING_DAYS: Final = 7
 
 Problem = Literal["past", "beyond_window", "no_such_day", "return_before_departure", "return_only"]
 
@@ -140,6 +167,25 @@ def resolve_return(spec: DateSpec, departure: date, today: date) -> Resolved | D
     if isinstance(checked, Resolved) and checked.day < departure:
         return DateProblem("return_before_departure", window(today)[1])
     return checked
+
+
+def resolve_span(spec: Days, today: date) -> tuple[date, date] | DateProblem:
+    """The first and last days of the span `spec` names, today being `today`, kept inside the
+    booking window: a day before today is left out, and a span wholly past the window is a
+    date problem."""
+    sunday = today - timedelta(days=week_index(today))
+    if spec.span == "coming":
+        first, last = today, today + timedelta(days=COMING_DAYS - 1)
+    else:
+        week = sunday + timedelta(days=7) if spec.span.startswith("next") else sunday
+        weekend = spec.span.endswith("weekend")
+        first = week + timedelta(days=_FRIDAY) if weekend else week
+        last = week + timedelta(days=_SATURDAY)
+    start, end = window(today)
+    first, last = max(first, start), min(last, end)
+    if first > last:
+        return DateProblem("beyond_window", end)
+    return first, last
 
 
 def _checked(resolved: Resolved | None, today: date) -> Resolved | DateProblem:

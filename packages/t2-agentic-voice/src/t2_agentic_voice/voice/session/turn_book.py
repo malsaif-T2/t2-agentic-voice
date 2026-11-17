@@ -24,21 +24,20 @@ verdict's share for a classified turn only, and named in the call report (report
 
 A turn's time to first audio (plan 006) ends at its reply's first audible frame sent: a piece of
 the agent's audio the output tapped (`AgentAudio`) while a clause of the reply played, with a
-sample louder than `AUDIBLE_FLOOR`, so a silent first chunk is not audible (TD-090); a progress
-line's is kept apart. A call whose output taps no audio (a test's, `TextCall`'s) times the
-reply's first audio queued instead. The browser's `playback` report of the reply's first clause
-other than a progress line ends the time to its playback there.
+sample louder than audible.py's `AUDIBLE_FLOOR`, so a silent first chunk is not audible
+(TD-090); a progress line's is kept apart. A call whose output taps no audio (a test's,
+`TextCall`'s) times the reply's first audio queued instead. The browser's `playback` report of
+the reply's first clause other than a progress line ends the time to its playback there.
 """
 
 from __future__ import annotations
-
-import struct
 
 from t2_agentic_voice.core.conversation import TurnFate
 from t2_agentic_voice.core.events import TurnId
 from t2_agentic_voice.core.yes_inputs import HeardWords
 from t2_agentic_voice.domain.silence import CAPTIONS, from_silence
 from t2_agentic_voice.voice.protocol import ClauseIndex
+from t2_agentic_voice.voice.session.audible import audible
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.heard import heard_words
 from t2_agentic_voice.voice.session.io import CallSetup
@@ -53,17 +52,6 @@ from t2_agentic_voice.voice.session.session_events import (
     TurnHeld,
     TurnOpened,
 )
-
-# The loudest a 16-bit sample of the agent's audio may be and still be silence: about -40 dBFS
-# (328 of 32768), the agent's value, below the quietest speech and above a model's dither; also
-# testing/timed_speech.py's `NOISE_FLOOR`, for a take's first sound.
-AUDIBLE_FLOOR = 328
-
-
-def audible(pcm16: bytes) -> bool:
-    """Whether `pcm16` (mono, 16-bit little-endian) holds a sample louder than AUDIBLE_FLOOR."""
-    whole = pcm16[: len(pcm16) - len(pcm16) % 2]
-    return any(abs(value) > AUDIBLE_FLOOR for (value,) in struct.iter_unpack("<h", whole))
 
 
 class TurnBook:
@@ -289,6 +277,11 @@ class TurnBook:
     @property
     def all_closed(self) -> bool:
         return all(turn.closed for turn in self._turns.values())
+
+    @property
+    def all_heard(self) -> bool:
+        """Whether every turn has closed and its transcript has come (held_yes.py)."""
+        return all(turn.closed and turn.transcribed for turn in self._turns.values())
 
     @property
     def awaited(self) -> bool:

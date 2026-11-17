@@ -307,7 +307,7 @@ def test_each_session_message_goes_out_with_its_version_and_type() -> None:
     cut = Caption(speaker="agent", text="x", final=True, reply_id=5, clause=2, cut=True)
     assert wire(cut)["cut"] is True and sent[2]["cut"] is False
     card = {"v": 1, "type": "card", "title": "x", "steps": ["a", "b"], "rows": [], "source": None}
-    assert sent[3] == card
+    assert sent[3] == card | {"slot": None}
     assert (sent[4], sent[5]) == (
         {"v": 1, "type": "duck", "level": 0.25},
         {"v": 1, "type": "unduck"},
@@ -327,8 +327,11 @@ def test_a_card_goes_out_with_its_rows_as_the_tool_gave_them() -> None:
             {"title": "b", "detail": None, "value": None, "mark": None},
         ],
         "source": "timetable",
+        "slot": None,
     }
     assert ShowCard.of(Card(title="x")) == ShowCard(title="x")
+    # A card that names its slot on the page goes out with it (D-110).
+    assert wire(ShowCard.of(Card(title="x", slot="return_leg")))["slot"] == "return_leg"
 
 
 @pytest.mark.parametrize(
@@ -352,6 +355,8 @@ def test_a_card_goes_out_with_its_rows_as_the_tool_gave_them() -> None:
         (ShowCard, {"title": "x", "rows": [{"title": "a", "mark": "top"}]}),  # not a mark
         (ShowCard, {"title": "x", "rows": [{"title": "a" * 81}]}),
         (ShowCard, {"title": "x", "rows": "a"}),
+        (ShowCard, {"title": "x", "slot": "Outbound"}),  # not the slot's closed shape
+        (ShowCard, {"title": "x", "slot": ""}),
         (Duck, {"level": 1.5}),
         (Duck, {"level": -0.1}),
         (Duck, {"level": float("nan")}),

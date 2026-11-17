@@ -1,0 +1,20 @@
+# The flight agent's scripted calls (flight_voice/evals/scenarios.py): an MSA caller hears a
+# listing that holds a full flight, picks it anyway, and is offered the rest, nothing changed.
+id = "f32_full_flight_msa"
+split = "dev"
+language = "ar"
+kind = "unavailable"
+notes = "Doha next Monday in business: the morning flight, the lowest fare, has no business seat (the airline's seats, found in code). The listing says it as full, never as the cheapest; picked by its part of the day, it is no_seats, and the reply offers economy or the other flights without changing the cabin itself, in MSA."
+
+[[turns]]
+says = "أود السفر إلى الدوحة يوم الاثنين القادم على درجة رجال الأعمال، ذهاب فقط"
+calls = ["search_flights"]
+args = { destination = "DOH", depart = "2026-11-23", one_way = true, cabin = "business" }
+forms = { depart = { kind = "weekday", weekday = "mon" } }
+said_any = [["ممتلئة", "ممتلئ", "مكتملة", "محجوزة بالكامل", "لا توجد مقاعد", "لا مقاعد", "نفدت"]]
+
+[[turns]]
+says = "أفضّل رحلة الصباح"
+calls = ["choose_flight"]
+args = { leg = "outbound", pick = "part_of_day", part = "morning" }
+said_any = [["السياحية", "الاقتصادية", "رحلة أخرى", "الرحلة الأخرى", "الظهر", "المسائية", "مساء"]]

@@ -21,6 +21,16 @@ library's core already has a `Clock` protocol), the main-checkout refusal is `ru
 `every_history(history)`. A flight history line is counted when it has a `requests` object
 (model to count) and a `time` (ISO 8601).
 
+**The owner's live-test round, as built (2026-11-17, `VERSION` 2026-11-17.4):** the booking
+text (the model never asks its own booking question; a shorter read-back with every value kept;
+the confirm verbs as the booking's send words and its own ask-again line, 4.2); the picks by the
+dearest and by a fare said, a full flight said as full, nothing changed the caller did not ask
+for, the lost flight named in `change_trip`, every option nonstop (3.3); a span of days for the
+departure answered at once with a calendar of flights (2.4, 3.3), and the brief day listing of
+the owner's ruling, "Brief, voice only" (3.2); four dev calls f29 to f32 and f22's outcome now `done` under the
+owner's "any yes books" (7.2); and the page's three segments, outbound, return and review, each
+filled in place by the card whose `slot` names it (D-110; 3.4, 6.1).
+
 ## 0. Read first
 
 **Why this app exists.** The owner, 2026-11-16: make our voice agent do flight booking "for the
@@ -161,7 +171,7 @@ apps/flight-voice-agent/
     index.html                   the page's markup, no inline script or style            <=150
     app.css                      the page's look, light and dark, right to left          <=300
     app.js                       the call: VoiceClient, state, captions, orb             <=300
-    cards.js                     cards shown as text, newest first                       <=200
+    cards.js                     the three segments the cards fill, as text              <=200
     bookings.js                  "Your trips": fetch, list, reference filter             <=200
     texts.js                     every fixed text of the page, Arabic and English        <=200
     mark.svg                     our own airline mark (simple, ours)
@@ -347,9 +357,13 @@ proves the dates still have those properties, so a formula change fails loudly.
 | `in_days` | `days` 1-120 | a departure: "leave in four days", «أسافر بعد أربع أيام»; never a return said after the departure | 11-20 |
 | `nights` (return only) | `nights` 1-60 | "back a week later", «أرجع بعد أسبوع», "back four days later", «أرجع بعد أربع أيام», "for four nights" | departure + nights («بعد بكرة ... وأرجع بعد ثلاث أيام»: 11-21) |
 | `weekday_after` (return only) | `weekday` | «الأحد اللي بعده», "the Sunday after" | the first such day after departure |
+| `days` (`search_flights`' departure only) | `span`: `this_week`, `next_week`, `this_weekend`, `next_weekend`, `coming` | "what flies next week", «وش فيه رحلات نهاية الأسبوع», "the soonest you have" → coming | this_week 11-16 to 11-21; next_week 11-22 to 11-28; this_weekend 11-20 to 11-21; next_weekend 11-27 to 11-28; coming 11-16 to 11-22 |
 
-Rules: `coming` is never today (1 to 7 days ahead). The Saudi week starts on Sunday. Never a
-year from the talker: the code picks it. A month-day that does not exist (31 November) is a
+Rules: `coming` is never today (1 to 7 days ahead). The Saudi week starts on Sunday and its
+weekend is Friday and Saturday; a span (`days`, `resolve_span`) is kept inside the booking window
+(a day before today or past the window left out; a span wholly past it a `date_problem`), and a
+return or the fare calendar never takes one (added 2026-11-17: the owner's "next week" was made a
+Monday nobody said). Never a year from the talker: the code picks it. A month-day that does not exist (31 November) is a
 `date_problem`. A resolved date carries `assumed` true when the code chose the month or the
 year, so the result's `say` asks the talker to say the date back with its weekday.
 
@@ -453,8 +467,18 @@ Each result is a pydantic model returned as the tool's data. Short: under about 
   way", on every result that lists fares.
 - `say`: **one of the app's fixed strings**, in English, telling the talker what to say next.
   Never built from caller words or from any free text. A test lists every `say` string.
-- at most 4 options. The `say` asks for at most three aloud; when there are four, the talker
-  says three and how many more ("and one more in the evening").
+- at most 4 options, each flying nonstop (`nonstop: true`, so "does it stop anywhere?" is
+  answered). **The day listing is brief** (the owner's ruling of 2026-11-17, "Brief, voice only", amending
+  D-101's "every option is said aloud" for this agent): one or two flights each said by its
+  departure time and fare; three or four by how many there are, the first and last departure
+  times and the cheapest by its time and fare, the others only when the caller asks (their data
+  stays in the result and the card shows every one). A listing gives `count`, `first_departs`
+  and `last_departs`, computed in `listing.py`; options keep their numbers and the card's row
+  order, so a number pick still matches the card. The fare's basis is said once a call, on the
+  first listing; every other listing and `chosen_then_return` say "Do not say again". The says
+  are `tools/says.py`'s (`listed`, `listed_full`, `listed_brief`, `listed_brief_full`, and the
+  same for `return_listed` and `relisted`); a full flight's rule comes before the basis: "say it
+  by its departure time as full, with no fare, and never as the cheapest."
 - `evidence` (`ToolResult.evidence`): the texts of the result's card, so every number the card
   shows has evidence (3.4).
 
@@ -480,8 +504,9 @@ words, and say when to call them. Each one's schema is the only thing the talker
   `cabin_not_offered` or a day's `no_seats`, the draft holds nothing, so a new cabin is a new
   search.)
 - Arguments: `destination` (str, 1-40 chars, the caller's words); `origin` (str, optional,
-  default the traveler's home); `depart` (DateSpec, "The day they leave, as the caller said it;
-  never a day they did not say."); `return_date` (DateSpec, optional);
+  default the traveler's home); `depart` (DateSpec or a span of days, "The day they leave, as
+  the caller said it; never a day they did not say. A span of days only when they asked what
+  flies over days and named no single day."); `return_date` (DateSpec, optional);
   `one_way` (bool, default false); `travelers` (int 1-9, optional, keeps the draft's);
   `cabin` (`economy`, `business`, `first`, optional, keeps the draft's).
 - Checks, in order: cities known (`not_served`); the route flies (`not_served`, with "we fly to
@@ -506,24 +531,42 @@ words, and say when to call them. Each one's schema is the only thing the talker
   per person." in place of "Say once ..." (f04 and f25 said a corrected day's flights in the
   first listing's words). Then the draft's `shown.outbound` holds them, and its route, dates,
   travelers and cabin are the search's.
+- **A span of days** (`depart` a `days` form, added 2026-11-17; `tools/overview.py`): after the
+  city and route checks, before the round-trip gate, and writing nothing to the draft, status
+  `days`: the span's `first` and `last` days, the route's daily departure times (`departs`), the
+  days with no flight (`no_flight_days`), each day with its lowest fare in the cabin (`days`, the
+  fare calendar's), the two cheapest marked; `say` (`days`, or `days_some` with days of no
+  flight): "Say the span by its first and last days with their weekdays, then that we fly there
+  every day of it at these times (departs; for three or four a day, how many and the first and
+  last), then the two cheapest days (marked) with their fares, and ask which day they would like
+  to leave. Do not list flights yet." Its card is the calendar of flights (3.4). A span past the
+  window is a `date_problem`, a cabin not sold `cabin_not_offered`, a span with no flight
+  `no_flights_that_day`.
 - `no_flights_that_day`: the two nearest days with flights; `say`: "Say there is no flight that
   day and offer these days."
-- `no_seats`: what is short, the other cabins with seats, the other flights that day.
+- `no_seats`: what is short, the other cabins with seats, the other flights that day; its `say`
+  (and `no_seats_flight`'s) ends "Then wait for their answer; call change_trip only for a cabin
+  the caller asks for." (the owner's live call: the cabin changed after a full flight, unasked).
 - Card: the options (section 3.4).
 
 **`choose_flight`**
 
 - Description: "Pick the flight the caller chose for one leg, from the flights you listed. Pass
-  their choice as they said it: its number in the list, the cheapest, the earliest, the latest,
-  the morning, afternoon or evening one, or its departure time."
+  their choice as they said it: its number in the list, the cheapest, the dearest, the earliest,
+  the latest, the morning, afternoon or evening one, its departure time, or its fare."
 - Arguments: `leg` (`outbound`, `return`); `choice` ("The caller's pick, as they said it; never
   a flight you worked out, nor the time or number of the flight it means, even one a tool
   already named: a part of the day goes as part_of_day, a comparison of when it leaves as
-  earliest or latest, the only flight listed as its number."), one of
-  `{"pick": "number", "n": 1-4}`, `{"pick": "cheapest"}`, `{"pick": "earliest"}`,
-  `{"pick": "latest"}`,
+  earliest or latest, a comparison of fares as cheapest or dearest, a fare they said as fare,
+  the only flight listed as its number.", `picks.py`'s `CHOICE`, compare_cabins' too), one of
+  `{"pick": "number", "n": 1-4}`, `{"pick": "cheapest"}`, `{"pick": "dearest"}`,
+  `{"pick": "earliest"}`, `{"pick": "latest"}`,
   `{"pick": "part_of_day", "part": "morning" | "afternoon" | "evening" | "night"}`,
-  `{"pick": "time", "departs": "HH:MM"}`. Each kind's description (its class docstring in
+  `{"pick": "time", "departs": "HH:MM"}`, `{"pick": "fare", "fare_sar": 1 or more}` (the last
+  two kinds added 2026-11-17: «أغلى واحدة» had no kind, and a fare said went as a time or a
+  number). The dearest is the highest fare among the options with a seat for every traveler
+  (all of them when none has one), the first listed of two; a fare names the options at that
+  fare in the draft's cabin, two of them `unclear_choice`, none every option listed. Each kind's description (its class docstring in
   `tools/picks.py`) says when it is the caller's: a number only for a number or an order word
   said, or for the only flight listed; the earliest or the latest for a pick by how early or
   late it leaves, never its number; a part of the day even when its time or number is known,
@@ -534,11 +577,14 @@ words, and say when to call them. Each one's schema is the only thing the talker
   matches exactly one shown option (`unclear_choice` with the options that match); seats.
 - Result `ok`: the chosen leg; for a round trip with the return not chosen, the return flights
   of the return day, listed as search lists them (`shown.return` set), `say`: "Say the choice
-  back in a few words, then the return flights, at most three, and ask which one. Say once that
-  fares are one way, per person."; when every leg is chosen, the trip whole with its total and
-  `say`: "Call book_trip now and say nothing yourself; the caller hears the trip read back and
-  is asked to confirm it." So the read-back is the one summary and the one gate: the caller
-  hears the trip and its total once, and says yes once.
+  back in a few words, then the return flights as their listing's say (returns.say) asks, and
+  ask which one. Do not say again that fares are one way, per person."; when every leg is
+  chosen, the trip whole with its total and `say`: "Call book_trip now, in this reply, even
+  right after a read-back the caller declined or changed, and say nothing yourself: never ask
+  whether to book or confirm it. The caller hears the trip read back and is asked to confirm
+  it; that is the only question." (2026-11-17: after a declined read-back the model asked its
+  own booking question, so the caller confirmed twice.) So the read-back is the one summary and
+  the one gate: the caller hears the trip and its total once, and says yes once.
 - Card: the return options, or the trip.
 
 **`change_trip`**
@@ -547,9 +593,12 @@ words, and say when to call them. Each one's schema is the only thing the talker
   one way or round trip. For another day or city, call search_flights again."
 - Arguments: `travelers` (1-9, optional), `cabin` (optional), `one_way` (bool, optional); at
   least one.
-- Result: what changed; the legs re-priced; a leg that lost its choice and its options; the new
+- Result (`tools/change.py`): what changed; the legs re-priced; a leg that lost its choice,
+  the departure time of the flight it lost (`lost_departs`), and its options, listed as briefly
+  as a day listing (`count`, `first_departs`, `last_departs`; says `changed_relist*` and
+  `changed_lost*`, each with its brief and full variants, a full one said as full); the new
   total when every leg is chosen. `say` as `choose_flight`'s (so a complete trip goes straight to
-  `book_trip`).
+  `book_trip`). Card: the leg listed again, in its segment, or the trip.
 
 **`get_trip`**
 
@@ -577,8 +626,9 @@ words, and say when to call them. Each one's schema is the only thing the talker
 **`compare_cabins`**
 
 - Description: "Compare economy, business and first class for one listed flight. Pass the
-  caller's pick as they said it: its number in the list, the cheapest, the earliest, the latest,
-  the morning, afternoon or evening one, or its departure time."
+  caller's pick as they said it: its number in the list, the cheapest, the dearest, the
+  earliest, the latest, the morning, afternoon or evening one, its departure time, or its
+  fare."
 - Arguments: `leg`, `choice` (as `choose_flight`'s, described as its is: "The caller's pick, as
   they said it; never a flight you worked out, nor the time or number of the flight it means,
   ...").
@@ -624,19 +674,24 @@ no result holds, so the card is dropped (checked with `check_ids` and the defaul
   airline data and computed values, never caller words), and its data holds every number the
   card shows (the calendar's seven days, not only the three said).
 
-| Result | Title (en / ar) | Rows |
-| --- | --- | --- |
-| search, choose (return list) | "Riyadh to London, Thu 17 Dec" / «الرياض إلى لندن، الخميس ١٧ ديسمبر» | one per option, at most four: title the times local at each end ("09:10 to 16:15", «٠٩:١٠ إلى ١٦:١٥», "next day" when it lands then), detail "7 h 5 min, nonstop, flight T2 401 on a 787-9", value "2,450 SAR"; the cheapest with seats marked best, one with no seat for every traveler unavailable |
-| choose (complete), get_trip, change_trip | "Your trip" / «رحلتك» | each chosen leg (title the route and day, detail its times and flight, value its fare, marked chosen), then "1 traveler in economy", then "Total" with "5,120 SAR" as its value |
-| fare_calendar | "Cheapest days to Istanbul in January" | seven days, each "Wed 13 Jan" with "1,180 SAR" as its value, the three said marked best |
-| compare_cabins | "Cabins on flight T2 401, Thu 17 Dec" | "Economy" with "2,450 SAR", "Business class", "First class"; the trip's cabin marked chosen; one full ("full") or not offered ("not offered on an A321neo") marked unavailable |
-| traveler_profile | none | (the page's "Your trips" shows bookings) |
+Each card names its segment of the page (`Card.slot`, D-110; added 2026-11-17 for the owner's
+three segments): a leg's flights `outbound` or `return`, the trip `review`; the cabins and the
+fare calendar name none.
+
+| Result | Slot | Title (en / ar) | Rows |
+| --- | --- | --- | --- |
+| search (a day), choose (return list), change_trip (a leg listed again) | `outbound` / `return` | the leg, the route, the day and the cabin: "Outbound: Riyadh to London · Thu 17 Dec · economy" / «الذهاب: الرياض إلى لندن · الخميس ١٧ ديسمبر · الدرجة السياحية», "Return: London to Riyadh · Sun 20 Dec · economy" | one per option, at most four: title the times local at each end ("09:10 to 16:15", «٠٩:١٠ إلى ١٦:١٥», "next day" when it lands then), detail "7 h 5 min, nonstop, flight T2 401 on a 787-9", value "2,450 SAR"; the cheapest with seats marked best, one with no seat for every traveler unavailable; then the other leg's pick, when one is kept, as a row marked chosen (its title its times), which the page marks in that leg's segment |
+| search (a span of days) | `outbound` | "Outbound: Riyadh to Paris · Sun 22 Nov to Sat 28 Nov · economy" | the calendar of flights: one row a day ("Sun 22 Nov", its lowest fare as its value), the two cheapest marked best, a day with no flight "No flight" / «لا رحلات», unavailable |
+| choose (complete), get_trip, change_trip | `review` | "Your trip: Riyadh to London · round trip · economy" / «رحلتك: الرياض إلى لندن · رايح جاي · الدرجة السياحية» | each chosen leg (title its times, detail the leg and its day with its flight, "Outbound: Thu 17 Dec, 7 h 5 min, nonstop, flight T2 401 on a 787-9", value its fare, marked chosen), then "1 traveler in economy", then "Total" with "5,120 SAR" as its value |
+| fare_calendar | none | "Cheapest days to Istanbul in January" | seven days, each "Wed 13 Jan" with "1,180 SAR" as its value, the three said marked best |
+| compare_cabins | none | "Cabins on flight T2 401, Thu 17 Dec" | "Economy" with "2,450 SAR", "Business class", "First class"; the trip's cabin marked chosen; one full ("full") or not offered ("not offered on an A321neo") marked unavailable |
+| traveler_profile | | none | (the page's "Your trips" shows bookings) |
 
 (These strings were checked with `check_ids` against a result holding the same numbers: they
 pass. The arrival time in the first row is an illustration.) Card text is the airline's fixed
 data only, never caller words. A card is never needed: the reply says the same. The page shows
-the marks with its own words: "Lowest fare" / «أقل سعر», "Your pick" / «اختيارك», "Not
-available" / «غير متاح».
+the marks with its own words: "Lowest fare" / «أقل سعر» (an outline tag), "Your pick" /
+«اختيارك» (the only filled one), "Not available" / «غير متاح» (struck).
 
 Tests (in A5 and A6): every card of every status, of every tool, in both languages, passes
 `check_ids` with the default `GuardSettings` against its own result's evidence.
@@ -739,19 +794,27 @@ step, stays TD-142(5)'s.
 ### 4.2 Its words (`booking/lines.py`)
 
 The read-back's summary is fixed words with the draft's said parts. It always says the trip's
-kind, so a one-way trip is never booked on a read-back that did not name it. Its closing
-question holds the action's own send word. Examples below are for Riyadh to London, out Thursday
+kind, so a one-way trip is never booked on a read-back that did not name it, and every value
+booked: the party, the cabin, the kind, the route, each leg's day and time, and the total. Since
+2026-11-17 it says no word that holds no value: no lead verb («بحجز», «سأحجز», "I'll book"), the
+return's city not said again (the route said it), the return's month only when it is not the
+outbound's, and "Total" for "The total is". Measured on the owner's three call shapes, the
+summary's words went from 24 to 23 (Saudi one way, Dubai), 32 to 28 (Saudi round trip, Jeddah)
+and 45 to 38 (English round trip, London). Its closing question and its own ask-again line hold
+the action's own send word, so the library's «أسجل الطلب؟» / "Shall I go ahead?" is never said
+for a booking. Examples below are for Riyadh to London, out Thursday
 17 December at 9:10, back Sunday 20 December at 16:00 from London, one traveler, economy, 5,120
 riyals (the figures are illustrations; the airline computes the real ones).
 
 | | Saudi (`ar-SA`) | MSA (`ar`) | English |
 | --- | --- | --- | --- |
-| summary template | بحجز {party_ar_sa} على {cabin}، {trip_kind_ar_sa}: {route_ar_sa}، {outbound_ar_sa}{return_ar_sa}. المجموع {total_ar_sa}. | سأحجز {party_ar} في {cabin}، {trip_kind_ar}: {route_ar}، {outbound_ar}{return_ar}. المجموع {total_ar}. | I'll book {party_en} in {cabin}, {trip_kind_en}: {route_en}, {outbound_en}{return_en}. The total is {total_en}. |
+| summary template | {party_ar_sa} على {cabin}، {trip_kind_ar_sa}: {route_ar_sa}، {outbound_ar_sa}{return_ar_sa}. المجموع {total_ar_sa}. | {party_ar} في {cabin}، {trip_kind_ar}: {route_ar}، {outbound_ar}{return_ar}. المجموع {total_ar}. | For {party_en} in {cabin}, {trip_kind_en}: {route_en}, {outbound_en}{return_en}. Total {total_en}. |
 | `trip_kind`, round trip | رايح جاي | ذهاب وعودة | round trip |
 | `trip_kind`, one way | رايح بس | ذهاب فقط | one way |
-| as said | بحجز لك أنت على الدرجة السياحية، رايح جاي: من الرياض للندن، الخميس سبعطعش ديسمبر تطلع تسع وعشر دقايق الصبح، والرجعة الأحد عشرين ديسمبر تطلع من لندن أربع العصر. المجموع خمسة آلاف ومية وعشرين ريال. | سأحجز لك وحدك في الدرجة السياحية، ذهاب وعودة: من الرياض إلى لندن، يوم الخميس السابع عشر من ديسمبر تقلع التاسعة وعشر دقائق صباحًا، والعودة يوم الأحد العشرين من ديسمبر تقلع من لندن الرابعة عصرًا. المجموع خمسة آلاف ومئة وعشرون ريالًا. | I'll book you in economy, round trip: Riyadh to London, Thursday the seventeenth of December at nine ten in the morning, back on Sunday the twentieth at four in the afternoon from London. The total is five thousand one hundred twenty riyals. |
+| as said | لك أنت على الدرجة السياحية، رايح جاي: من الرياض للندن، الخميس سبعطعش ديسمبر تطلع تسع وعشر دقايق الصبح، والرجعة الأحد عشرين تطلع أربع العصر. المجموع خمسة آلاف ومية وعشرين ريال. | لك وحدك في الدرجة السياحية، ذهاب وعودة: من الرياض إلى لندن، يوم الخميس السابع عشر من ديسمبر تقلع التاسعة وعشر دقائق صباحًا، والعودة يوم الأحد العشرين تقلع الرابعة عصرًا. المجموع خمسة آلاف ومئة وعشرون ريالًا. | For you in economy, round trip: Riyadh to London, Thursday the seventeenth of December at nine ten in the morning, back on Sunday the twentieth at four in the afternoon. Total five thousand one hundred twenty riyals. |
 | closing question | تبيني أحجزها؟ | هل أحجزها لك؟ | Shall I book it? |
-| send words (`ar`, `en`) | احجزها، أحجزها | احجزها، أحجزها | book it |
+| ask-again | المعذرة، ما وضح لي ردك. تبيني أحجزها؟ | عذرًا، لم يتضح لي ردك. هل أحجزها لك؟ | Sorry, I didn't catch that. Shall I book it? |
+| send words (`ar`, `en`) | احجزها، أحجزها، أكد، أكدها، أكد الحجز، احجز | the same | book it, confirm, confirm it |
 | cabin labels | الدرجة السياحية، درجة رجال الأعمال، الدرجة الأولى | the same | economy, business class, first class |
 | `done` | تم، رحلتك {city_ar_sa} {when_ar_sa} جاهزة. | تم، رحلتك {city_ar} {when_ar} جاهزة. | Done. Your trip {city_en}, {when_en}, is all set. |
 | `sending` | جاري الحجز الحين. | جارٍ الحجز الآن. | Making the booking now. |
@@ -760,7 +823,8 @@ riyals (the figures are illustrations; the airline computes the real ones).
 | `declined` | ما سويت أي حجز. إذا تبي ترجع له، قل لي. | لم أُجرِ أي حجز. إن أردت العودة إليه فأخبرني. | No booking was made. Tell me if you'd like to come back to it. |
 
 `{return_*}` is "" for a one-way trip (the trip kind says "one way"), or starts with its own
-«، والرجعة» / ", back on". A reference is never in `done`: the caller hears it only when they
+«، والرجعة» / ", back on", its day said without its month when the month is the outbound's
+(`speak_date(..., month=False)`). A reference is never in `done`: the caller hears it only when they
 ask, from a result that holds it, digit by digit (six digits are an ID to the speaking rules).
 
 **Claims** (`Claims`), blocked by the guard unless the record holds `book_trip`. Only phrases
@@ -780,8 +844,8 @@ No reference phrase is a claim ("your booking reference is", «رقم حجزك»
 already lets a reference be said only when a result of this call holds it.
 
 **The lines' rules**, held by a test as Ole5's `test_lines.py` holds them, run on the final lines
-of the table above: no line but the closing question holds a stop, wait, repeat, listening, yes
-or send word of the presets (so no «تمام», «أوكي», "okay", «لحظة», "one moment", "book it" in
+of the table above: no line but the closing question and the ask-again holds a stop, wait,
+repeat, listening, yes or send word of the presets or the booking's own (so no «تمام», «أوكي», "okay", «لحظة», "one moment", "book it" in
 another line); no line holds a claim phrase; every line is one line of plain words; every
 language the agent speaks is covered.
 
@@ -879,9 +943,10 @@ How you talk:
   caller speaks MSA, every reply is in MSA, from your first one. If they speak English, answer
   in English.
 - One to three short sentences a turn. One question at a time, at the end of the turn.
-- Say every option aloud: at most three in a turn, each by its departure time and its fare
-  ("the 09:10 at 2450 riyals"); when there are more, say how many more. Say once that fares are
-  one way, per person. Never say that anything is on a screen.
+- Say a day's flights briefly: one or two each by its departure time and its fare ("the 09:10
+  at 2450 riyals"); three or four by how many there are, the first and last departure times
+  and the cheapest by its time and fare, and the others only when the caller asks. Say once a
+  call that fares are one way, per person. Never say that anything is on a screen.
 - Write times and fares in digits, exactly as the tools give them. Say a date by its weekday,
   its day in digits and its month's full name ("Friday, March 5" [«الجمعة 5 مارس»]); never
   shorten a month or a weekday.
@@ -905,13 +970,19 @@ Planning a trip:
   they come back, call search_flights in that same reply, with no question first: never ask
   them to confirm a day they said or anything you assume. Until then ask only for what is
   missing, and never fill in a day they did not say.
-- When the caller picks ("the lowest fare", "option three", "the afternoon one", "the last
-  flight out" [«أرخص وحدة», «رقم ثلاثة», «اللي الظهر», «آخر وحدة تطلع», to an MSA caller
-  «الرحلة الليلية»]), call choose_flight with their pick (its result lists the return flights);
-  never guess which flight it is. Pass a pick in the kind the caller said it, to choose_flight
-  and compare_cabins alike: a part of the day as its part, a comparison of when it leaves as the
-  earliest or the latest, a place in the list only for a number or an order word they said or
-  for the only flight listed, and a time only for a time they said. Never turn a pick into the
+- When the caller asks what flies over days and names no single day ("anything during the
+  weekend", "the soonest you have" [«وش عندكم آخر الأسبوع», «أقرب شي عندكم»]), call
+  search_flights at once with that span as the day they leave, before asking when they come
+  back, and never pick a day for them.
+- When the caller picks ("the lowest fare", "the priciest one", "option three", "the afternoon
+  one", "the last flight out", "the one for 1250 riyals" [«أرخص وحدة», «اللي سعرها أعلى», «رقم
+  ثلاثة», «اللي الظهر», «آخر وحدة تطلع», «اللي بـ 980», to an MSA caller «الرحلة الليلية»]),
+  call choose_flight with their pick (its result lists the return flights); never guess which
+  flight it is. Pass a pick in the kind the caller said it, to choose_flight and compare_cabins
+  alike: a part of the day as its part, a comparison of when it leaves as the earliest or the
+  latest, a comparison of fares as the cheapest or the dearest, a fare they said as its fare, a
+  place in the list only for a number or an order word they said or for the only flight listed,
+  and a time only for a time they said. Never turn a pick into the
   time or the number of the flight you think it is, even one a tool already named.
 - Search again when they change the day or the city. A number said alone as a correction after
   a listing ("no, the 19th" [«لا، تسعطعش»]) is a new day. Once flights are listed, call
@@ -927,9 +998,11 @@ Planning a trip:
   them or search with them.
 
 Booking:
-- When every flight of the trip is chosen, call book_trip at once and say nothing more in that
-  reply: the caller hears the whole trip read back, with its total, and is asked to confirm it.
-  Do not sum the trip up yourself first.
+- When every flight of the trip is chosen, call book_trip at once, in that same reply, even
+  right after a read-back the caller declined or changed, and say nothing more in that reply:
+  the caller hears the whole trip read back, with its total, and is asked to confirm it. Do not
+  sum the trip up yourself first, and never ask yourself whether to book or confirm it: the
+  read-back is the only question.
 - A trip is booked only after the caller's spoken yes to that read-back. Never say a trip is
   booked unless the system said so in this call. This line takes no payment: never ask for card
   details; if asked, say payment is not part of this call.
@@ -947,7 +1020,7 @@ When something fails:
   [«ما قدرت أشيك الحين، تبي أجرب مرة ثانية؟»]. A failure never means there are no flights, no
   seats or no past trips: never say so after one.
 - When there is truly no flight that day or no seat, say so and offer the days or cabins the
-  tool gives.
+  tool gives, and change nothing until the caller picks one.
 
 What you cannot do:
 - Other airlines, connections between two other cities, hotels, cars, visas, seats on the
@@ -956,7 +1029,7 @@ What you cannot do:
 ```
 
 `VERSION` in `agent.py` stamps every trace ("2026-11-17.1" at the first build, "2026-11-17.3"
-with run F's second round of text fixes), changed with each change to the instructions, the
+with run F's second round of text fixes, "2026-11-17.4" with the owner's live-test round), changed with each change to the instructions, the
 tools' texts or the lines.
 
 ## 6. The page
@@ -975,7 +1048,11 @@ main:    Where are you flying, Khalid?               («وين ناوي تساف
          ( orb )  <persona> · <airline> voice assistant
          [ Start a call ]  [ End ]   state line: Listening / Thinking / Speaking / Waiting for your yes
          You could say:  "Back to Dubai"   "Cheapest days to London"   "Business to Paris"
-         cards: the newest first, at most three kept (options, your trip, cabins, cheapest days)
+         Your trip, step by step: three segments, each filled in place by its card
+           outbound: the outbound flights, or the calendar of flights for a span of days
+           return:   the return flights (none for a one-way trip)
+           review:   the trip for confirmation; "Waiting for your yes", then "Booked · Reference …"
+         then one card of no segment (the cabins of a flight, the cheapest days)
          Show conversation (collapsed): the captions
          Options (collapsed): access code, "record this call" box, push to talk
 panel:   Your trips: each booking (route, dates, travelers, cabin, fare, reference shown as text),
@@ -988,10 +1065,25 @@ panel:   Your trips: each booking (route, dates, travelers, cabin, fare, referen
   call, by design (`t2v/1` has no such message, which closes the demo's fake-event weakness).
   They come from `GET /api/profile` (the most visited city, a cheapest-days ask, a business ask).
 - **Cards** mirror what was said and are never needed. Each card's text is set with
-  `textContent`, each line `dir="auto"`, the airline's mark as an image file.
+  `textContent`, each line `dir="auto"`, the airline's mark as an image file. **Three segments**
+  (the owner's ruling of 2026-11-17; `cards.js`): each card goes in the segment its `slot` names
+  (3.4), a new one in place of the last. A leg's card never marks its own flights as picked: a
+  row it marks chosen is the other leg's kept pick, which the page marks in that leg's segment in
+  place of the row with its title (the flight's times); the review card's chosen rows mark both
+  legs. So after the outbound pick the outbound segment marks it (the page marks it from the
+  return card, the simpler of the two ways: no tool sends a second card), and a pick a change
+  drops is no longer marked, since each card says the picks anew. An outbound card that keeps
+  no return pick is a new search and clears the return segment; every leg card clears the review
+  and the extra card; a review card that no longer holds the return's pick (the trip made one
+  way) clears the return segment, so a one-way trip shows none. The review segment's status line
+  reads "Waiting for your yes" / «ننتظر موافقتك» while the read-back plays, then "Booked ·
+  Reference …" / «تم الحجز · رقم الحجز …» once "Your trips", loaded at the call's start and again
+  after the read-back, holds a booking it did not (`bookings.js`'s `Made`; none when the list
+  did not load at the start).
 - **The language toggle** sets the call's starting language (`VoiceClient.start({language})`)
   and the page's texts and direction. Mid-call, the caller switches by voice (plan 010's 2.5).
-- **"Your trips"** refreshes when a call ends and every 10 s while open. **"Start over"** asks
+- **"Your trips"** refreshes when a call starts and ends, after a read-back until the booking
+  is found, and every 10 s while open. **"Start over"** asks
   "Clear the trips booked in this demo?" in the page's language, then `POST /api/demo/reset`.
 - **The access code** is typed once and kept in a JavaScript variable for the page's life, never
   in storage (a decision the owner may change).
@@ -1090,13 +1182,24 @@ its expectations:
   own code, never the guard's rule, since f-dev-5's callers heard «…(Waiting for user response)…»
   and `<action tool="book_trip"/>` and no check failed them on its own;
 - `max_words` (45 by default), `max_options` (3: how many listed options' departure times the
-  reply says, digits normalized);
+  reply says, digits normalized; amended 2026-11-17 before any result, rule F's: a brief listing
+  says at most three of them, the first, the last and the cheapest, which `max_options` holds
+  as before; a full flight said as full is one more when it is none of them, and a span's
+  overview says the route's daily times, so a turn on a route with four a day sets
+  `max_options = 4`);
 - `asks_repeat` (true when the caller asks to hear something again: the repeat check is off);
 - `repeat_of_cut` (true on the turn after a `stop`: L's cut-repeat check runs).
 
+`said_any` for the fare's basis (f01, f02, f03, f05, f15, f24) is held on the first listing's
+turn only, where the basis is still said once a call; no turn checks it on a return listing,
+which no longer says it (amended 2026-11-17, rule F's, the brief listing). `args` reads a span
+of days as `span` and a fare pick's `fare_sar`.
+
 **L's checks, per turn** (plan 010's L, the same definitions, from L8's functions): no identical
 reply and no near repeat (the same first clause, or a token overlap of 0.8 or more with an
-earlier reply) unless the turn `asks_repeat` or the reply is a read-back said again; after a
+earlier reply) unless the turn `asks_repeat` or the reply is a read-back said again (a brief
+relisting of another day shares its frame, "four flights, from ... to ..., the cheapest ...", with
+the first listing, and is still held to it, amended 2026-11-17 before any result); after a
 `stop` cut a reply at about 10%, the `repeat_of_cut` turn's reply shares 60% or more of its
 tokens with the cut reply's whole text; a detail given early (travelers, cabin, a date) is still
 used late, checked by `args` and `read_back` on the late turn; the reply in the call's language.
@@ -1143,13 +1246,17 @@ Dev (written now, before any run). Each line: id, language, what it tests.
 | f19_booking_timeout_saudi | ar-SA | booking mode timeout, lookup on → unknown said; asked to book again → the per-call cap refuses it in code; one write in the store's log, none booked twice |
 | f20_reference_asked_english | en | after a booking, "what's my booking reference?" → six digits said; before asking, never |
 | f21_first_class_narrowbody_english | en | first class to Dubai → not offered there, business offered |
-| f22_bare_yes_closing_saudi | ar-SA | bare «إي» over the closing question → asked again; «إي احجزها» → done |
+| f22_bare_yes_closing_saudi | ar-SA | bare «إي» over the closing question, the summary played whole → done (amended 2026-11-17, the owner's "any yes books"; it was asked again, then «إي احجزها» booked) |
 | f23_singapore_tuesday_english | en | Singapore on a Tuesday → no flight that day, the nearest days offered |
 | f24_slow_search_saudi | ar-SA | search mode slow (4 s) → the progress line plays, then the answer |
 | f25_long_no_repeat_saudi | ar-SA | 8 turns: a city, a calendar ask, two date changes, a cabin question, a pick; no identical or near repeat in any reply |
 | f26_cut_repeat_english | en | the listing of London flights cut by `stop` at about 10%; "one more time" → the reply shares 60% of its tokens with the cut reply |
 | f27_detail_kept_saudi | ar-SA | turn 1 «أنا وزوجتي على بزنس»; turns 2-5 dates, the calendar, a date change; turn 6 a pick → the read-back holds 2 travelers in business with neither said again |
 | f28_city_change_msa | ar | Istanbul for three turns, then «لا، أفضّل باريس» → search again; Istanbul never said after, the read-back holds CDG |
+| f29_week_overview_english | en | (added 2026-11-17) "which days have flights to Paris during next week?" → search_flights with the span `next_week`, at once, no return asked first, the card shown; then Thursday, back the Sunday after → CDG 11-26, back 11-29 |
+| f30_dearest_saudi | ar-SA | (added 2026-11-17) Jeddah tomorrow, back Thursday; the afternoon one out; «عطني أغلى وحدة فيهم» on a return list whose 07:45 and 17:15 share the top fare → pick `dearest`, the read-back holds the 07:45 (the first listed); a yes with the send word → done |
+| f31_yes_over_read_back_saudi | ar-SA | (added 2026-11-17; needs the flight app's yes-over-the-read-back setting on) Doha next Sunday, one way; «الأولى لو سمحت» → read-back; a bare «إيه» over its summary, nothing after it → done once the summary has played whole |
+| f32_full_flight_msa | ar | (added 2026-11-17) Doha next Monday in business: the morning flight, the lowest fare, has no business seat → the listing says it as full; picked by its part of the day → `no_seats` with `choose_flight` alone (no change_trip unasked), economy or the other flights offered |
 
 Held-out (about 12), written by a builder who has never seen a dev result, before the first run,
 on other routes and words: a Saudi round trip to Singapore with "the second one"; an English

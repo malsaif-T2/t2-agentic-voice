@@ -1,8 +1,9 @@
 """A card's option rows on the browser side: the reference client `api/static/t2v-client.js`
 hands the page each row as `CardRow` holds it (a title, a detail, a value and a mark of the
 closed set), drops a row that is not one and keeps at most eight, and gives a card from a session
-that sends none an empty list; the dev page shows each row as one line of text, its mark as the
-line's `data-mark`, never as markup. Run in the fake browser (tests/browser.py)."""
+that sends none an empty list; it hands on the slot a card names on the page (D-110) and drops a
+card whose slot is not of its shape; the dev page shows each row as one line of text, its mark as
+the line's `data-mark`, never as markup. Run in the fake browser (tests/browser.py)."""
 
 from __future__ import annotations
 
@@ -31,6 +32,10 @@ def _client(folder: Path, steps: list[Step]) -> Shown:
         location="http://127.0.0.1:7860/",
         steps=[*START, *steps],
     )
+
+
+def _card() -> dict[str, Any]:
+    return {"v": 1, "type": "card", "title": "x", "steps": [], "rows": [], "source": None}
 
 
 def _row(**given: Any) -> dict[str, Any]:
@@ -72,6 +77,22 @@ def test_the_client_drops_a_row_that_is_not_one_and_keeps_at_most_eight(tmp_path
     [[name, value]] = shown["events"]
     assert name == "card"
     assert value["rows"] == [good | {"mark": "chosen"}, _row(title="x" * 80), *([good] * 6)]
+
+
+def test_the_client_hands_the_page_the_cards_slot_and_drops_one_of_another_shape(
+    tmp_path: Path,
+) -> None:
+    # D-110: the slot a card names on the page, so a page with segments puts it in its place;
+    # none from a session that sends none, and a card whose slot is not of the closed shape is
+    # dropped, as one whose source is not text is.
+    named = wire(ShowCard.of(Card(title="Riyadh to London", slot="outbound")))
+    card = _card()
+    odd: list[Any] = ["Outbound", "", "out bound", "x" * 21, "outbound\n", "رحلة", 5, ["outbound"]]
+    kept = [card | {"slot": None}, card | {"slot": "return"}, card | {"slot": "x" * 20}]
+    steps = [named, *(card | {"slot": slot} for slot in odd), card, *kept[1:]]
+    shown = _client(tmp_path, [receive(message) for message in steps])
+    assert [value for _, value in shown["events"]] == [named, *kept]
+    assert named["slot"] == "outbound"
 
 
 def test_the_dev_page_shows_each_row_as_one_line_of_text(tmp_path: Path) -> None:

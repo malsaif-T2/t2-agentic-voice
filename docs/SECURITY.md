@@ -87,14 +87,22 @@ recorder's, for the choice of a call's speech-to-text.
    drop the read-back, nothing sent, and on the agent's own words heard back as it says them
    each is asked again, so its echo never cancels or changes a read-back either. No tool
    argument or model output can stand in for either input: the model judges the heard words,
-   and builds neither.
+   and builds neither. For an agent whose app sets `interruptions.yes_over_read_back` (off by
+   default; the flight agent sets it), the owner's ruling of 2026-11-17, "Any yes books"
+   (D-108), amends this: a yes the rule reads in the caller's own heard words begun over the
+   summary itself, after its first audio, is held, and books once the summary has played in
+   full with no other words begun after it, from a receipt built then; a bare yes, or «خلاص»
+   beside a send word, over the closing question books too; never the agent's own lines heard
+   back, never words before the read-back began, and never on a read-back a new one replaced.
    Enforced by `[[restricted]]` (ARCH-CONSTRUCT) on the confirmed draft (`domain`) and on both
    inputs (`voice`), each added in the commit that creates its class, by adversarial tests
    of the yes rule and of a talker tool call that claims a yes, and by adversarial tests of the
    model's rails (`tests/t2_agentic_voice/domain/test_yes_rule_judged.py`,
    `test_yes_rule_judged_no.py`, `test_yes_rule_send_alone.py`,
    `tests/t2_agentic_voice/voice/session/test_yes_ask.py`,
-   `test_yes_ask_echo.py`, `test_yes_ask_tail.py`, `ActionSafetySuite`'s judged cases).
+   `test_yes_ask_echo.py`, `test_yes_ask_tail.py`, `ActionSafetySuite`'s judged cases; for
+   D-108, `tests/t2_agentic_voice/domain/test_yes_rule_any_yes.py` and
+   `tests/t2_agentic_voice/voice/session/test_read_back_held_yes.py`).
 2. **No claim without a record.** No sentence the agent speaks claims an action (created,
    updated, escalated, handed off), or says a ticket number, unless the call's record of
    completed actions or a ticket-status result holds it. Only `actions` records a completed

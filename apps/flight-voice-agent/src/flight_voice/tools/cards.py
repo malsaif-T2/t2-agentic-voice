@@ -4,6 +4,9 @@ listed flight's times as its title, its length, stops, flight and aircraft as it
 as its value, and its mark (`best` on the cheapest, `chosen` on a leg picked, `unavailable` on one
 full in the cabin), which the page maps to a style; a listing holds at most four.
 
+Each card names its segment of the page (`slot`, D-110): a leg's flights its leg's (`outbound`,
+`return`), titled by the leg, its route, its day and the cabin, with the other leg's pick kept
+beside them as a row marked chosen, so the page marks it there; the trip its `review` segment.
 A card's text is the airline's fixed data and values the code computed, never the caller's
 words, and every number on it is in its result's data, so the output guard's ID rule passes it.
 The rule reads numbers standing next to each other with only marks between them as one group, so
@@ -20,10 +23,11 @@ from typing import TYPE_CHECKING, Final
 from t2_agentic_voice import Card, CardRow
 
 from flight_voice.airline.airports import AIRPORTS, Code
+from flight_voice.airline.bookings import Leg
 from flight_voice.airline.schedule import Cabin
 from flight_voice.said import Tag, arabic, register, words
 from flight_voice.tools.results import Duration, Listing, Option
-from flight_voice.trip import TripDraft
+from flight_voice.trip import LegKind, TripDraft
 
 if TYPE_CHECKING:
     from flight_voice.tools.trip_view import TripView
@@ -89,18 +93,15 @@ def flown(option: Option, tag: Tag) -> str:
 
 
 def option_row(
-    option: Option, tag: Tag, *, title: str | None = None, chosen: bool = False
+    option: Option, tag: Tag, *, chosen: bool = False, detail: str | None = None
 ) -> CardRow:
-    """One option as a card's row: its times (or `title`, with the times moved to the detail),
-    its flight, its fare, and its mark: `unavailable` when it has no seat for every traveler,
-    else `chosen` when picked, else `best` on the cheapest."""
-    sep = "، " if arabic(tag) else ", "
-    detail = (
-        flown(option, tag) if title is None else f"{times(option, tag)}{sep}{flown(option, tag)}"
-    )
+    """One option as a card's row: its times as its title (unique among a leg's flights, so a
+    page finds the row a pick names by it), its flight (or `detail`), its fare, and its mark:
+    `unavailable` when it has no seat for every traveler, else `chosen` when picked, else `best`
+    on the cheapest."""
     return CardRow(
-        title=times(option, tag) if title is None else title,
-        detail=detail,
+        title=times(option, tag),
+        detail=flown(option, tag) if detail is None else detail,
         value=money(option.fare_sar, tag),
         mark="unavailable"
         if not option.seats_ok
@@ -108,14 +109,55 @@ def option_row(
     )
 
 
-def listing_card(listing: Listing, origin: Code, destination: Code, day: date, tag: Tag) -> Card:
-    """A leg's options on `day`: the route and the day, then one row per option."""
-    title = route_title(origin, destination, tag)
-    sep = "، " if arabic(tag) else ", "
-    return Card(
-        title=f"{title}{sep}{day_title(day, tag)}",
-        rows=tuple(option_row(o, tag) for o in listing.options),
-    )
+# Each leg as a segment's title names it.
+LEGS: Final[dict[str, dict[LegKind, str]]] = {
+    "en": {"outbound": "Outbound", "return": "Return"},
+    "ar": {"outbound": "الذهاب", "return": "العودة"},
+}
+_DOT: Final = " · "
+
+
+def leg_title(leg: LegKind, route: tuple[Code, Code], days: str, cabin: Cabin, tag: Tag) -> str:
+    """A leg's segment title: the leg, its route, its day (or days) and the cabin, "Return:
+    London to Riyadh · Sat 28 Nov · economy", «العودة: لندن إلى الرياض · السبت ٢٨ نوفمبر ·
+    الدرجة السياحية»."""
+    named = LEGS["ar" if arabic(tag) else "en"][leg]
+    where = route_title(*route, tag)
+    return f"{named}: {where}{_DOT}{days}{_DOT}{words.cabin(cabin, register(tag))}"
+
+
+def options_card(
+    leg: LegKind,
+    options: tuple[Option, ...],
+    route: tuple[Code, Code],
+    day: date,
+    cabin: Cabin,
+    tag: Tag,
+    *,
+    kept: Option | None = None,
+) -> Card:
+    """A leg's options on `day`, in its segment (`slot`, the leg): its title, then one row per
+    option; `kept`, the other leg's pick, kept beside them as a row marked chosen, so the page
+    marks it in that leg's segment."""
+    rows = tuple(option_row(o, tag) for o in options)
+    if kept is not None:
+        rows += (option_row(kept, tag, chosen=True),)
+    title = leg_title(leg, route, day_title(day, tag), cabin, tag)
+    return Card(title=title, rows=rows, slot=leg)
+
+
+def listing_card(
+    listing: Listing,
+    origin: Code,
+    destination: Code,
+    day: date,
+    tag: Tag,
+    *,
+    kept: Option | None = None,
+) -> Card:
+    """A listing's card (`options_card`): a leg's flights on `day`."""
+    route = (origin, destination)
+    return options_card(listing.leg, listing.options, route, day, listing.cabin, tag, kept=kept)
 
 
 TRIP_EN: Final = "Your trip"
@@ -133,27 +175,31 @@ def party(travelers: int, cabin: Cabin, tag: Tag) -> str:
 
 
 def trip_card(trip: TripView, draft: TripDraft, tag: Tag) -> Card | None:
-    """The trip planned so far: a row for each chosen leg (its route and day, its flight, its
-    fare, marked chosen), then the travelers and the cabin, then the total once every leg is
-    chosen; none while nothing is planned."""
+    """The trip planned so far, in the review segment (`slot` review): its title the route, the
+    trip's kind and the cabin; a row for each chosen leg (its times, the leg and its day with its
+    flight, its fare, marked chosen), then the travelers and the cabin, then the total once every
+    leg is chosen; none while nothing is planned."""
     if draft.destination is None:
         return None
     rows: list[CardRow] = []
-    legs = (
-        (trip.outbound, draft.chosen_outbound, False),
-        (trip.return_flight, draft.chosen_return, True),
+    legs: tuple[tuple[LegKind, Option | None, Leg | None], ...] = (
+        ("outbound", trip.outbound, draft.chosen_outbound),
+        ("return", trip.return_flight, draft.chosen_return),
     )
     sep = "، " if arabic(tag) else ", "
-    for option, chosen, back in legs:
+    named = LEGS["ar" if arabic(tag) else "en"]
+    for leg, option, chosen in legs:
         if option is None or chosen is None:
             continue
-        start, end = (
-            (draft.destination, draft.origin) if back else (draft.origin, draft.destination)
-        )
-        where = f"{route_title(start, end, tag)}{sep}{day_title(chosen.day, tag)}"
-        rows.append(option_row(option, tag, title=where, chosen=True))
+        detail = f"{named[leg]}: {day_title(chosen.day, tag)}{sep}{flown(option, tag)}"
+        rows.append(option_row(option, tag, chosen=True, detail=detail))
     rows.append(CardRow(title=party(trip.travelers, trip.cabin, tag)))
     if trip.total_sar is not None:
         total = "المجموع" if arabic(tag) else "Total"
         rows.append(CardRow(title=total, value=money(trip.total_sar, tag)))
-    return Card(title=TRIP_AR if arabic(tag) else TRIP_EN, rows=tuple(rows))
+    r = register(tag)
+    route = route_title(draft.origin, draft.destination, tag)
+    kind = words.trip_kind(draft.one_way, r)
+    mine = TRIP_AR if arabic(tag) else TRIP_EN
+    title = f"{mine}: {route}{_DOT}{kind}{_DOT}{words.cabin(draft.cabin, r)}"
+    return Card(title=title, rows=tuple(rows), slot="review")

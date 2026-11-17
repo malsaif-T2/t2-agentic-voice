@@ -96,8 +96,8 @@ def test_the_instructions_are_filled_with_the_names_in_each_language() -> None:
     assert "فهد" in filled["ar-SA"] and "طيران نجم" in filled["ar-SA"]
 
 
-# Run F's rules of 2026-11-17, each by the scenarios whose diagnosis asked it: a phrase that
-# carries it, in both files.
+# Run F's rules of 2026-11-17, each by the scenarios (or the live calls) whose diagnosis asked
+# it: a phrase that carries it, in both files.
 RULES: Final = {
     "date_whole_f07": 'its month\'s full name ("Friday, March 5"',
     "date_never_short_f07": "never shorten a month or a weekday",
@@ -118,8 +118,9 @@ RULES: Final = {
     "a_pick_in_its_kind_f09_f10_f16_f25_f26_f28": (
         "Pass a pick in the kind the caller said it, to choose_flight and compare_cabins alike: "
         "a part of the day as its part, a comparison of when it leaves as the earliest or the "
-        "latest, a place in the list only for a number or an order word they said or for the "
-        "only flight listed, and a time only for a time they said."
+        "latest, a comparison of fares as the cheapest or the dearest, a fare they said as its "
+        "fare, a place in the list only for a number or an order word they said or for the only "
+        "flight listed, and a time only for a time they said."
     ),
     "a_pick_never_turned_f09_f26": (
         "Never turn a pick into the time or the number of the flight you think it is, even one "
@@ -130,18 +131,46 @@ RULES: Final = {
     "no_second_booking_f19": "cannot be booked again in this call, with no offer to try again",
     "the_reference_looked_up_f20": "get it from traveler_profile",
     "never_declined_unlooked_f20": "never say you do not have it before you call it",
+    # The owner's live calls of 2026-11-17: the model's own booking question after a declined
+    # read-back.
+    "book_at_once_after_a_decline_live": (
+        "call book_trip at once, in that same reply, even right after a read-back the caller "
+        "declined or changed"
+    ),
+    "the_read_back_the_only_question_live": (
+        "never ask yourself whether to book or confirm it: the read-back is the only question"
+    ),
+    # The owner's live calls of 2026-11-17: a span of days searched at once (no day made up),
+    # the brief day listing (the owner's ruling), and a cabin changed after a full flight, unasked.
+    "a_span_at_once_live": (
+        "call search_flights at once with that span as the day they leave, before asking when "
+        "they come back, and never pick a day for them."
+    ),
+    "the_brief_listing_d109": (
+        "three or four by how many there are, the first and last departure times and the "
+        "cheapest by its time and fare, and the others only when the caller asks. Say once a "
+        "call that fares are one way, per person"
+    ),
+    "nothing_changed_unasked_live": (
+        "offer the days or cabins the tool gives, and change nothing until the caller picks one."
+    ),
 }
 # Each file's own examples: a return in days after leaving (nights), a departure in days, a
-# bare day said as a correction, and a pick of each kind but a time (f-dev-5); in Arabic, the
-# Saudi "now" and retry line (f12, f19), and the MSA forms for an MSA caller with the tools' MSA
-# words, from the first reply (f28, f03).
-_PICKS_EN: Final = '"the lowest fare", "option three", "the afternoon one", "the last flight out"'
+# bare day said as a correction, and a pick of each kind but a time (f-dev-5; the dearest and a
+# fare said, the owner's live calls); in Arabic, the Saudi "now" and retry line (f12, f19), and
+# the MSA forms for an MSA caller with the tools' MSA words, from the first reply (f28, f03).
+_PICKS_EN: Final = (
+    '"the lowest fare", "the priciest one", "option three", "the afternoon one", '
+    '"the last flight out", "the one for 1250 riyals"'
+)
+_SPANS_EN: Final = '"anything during the weekend", "the soonest you have"'
 EXAMPLES: Final = {
     "en": (
         '"back four days later" four nights after leaving',
         '"leave in four days" four days from today',
         '("no, the 19th")',
         f"({_PICKS_EN})",
+        f"({_SPANS_EN})",
     ),
     "ar-SA": (
         "«أرجع بعد أربع أيام» four nights after leaving",
@@ -154,8 +183,9 @@ EXAMPLES: Final = {
         "Your greeting is in Saudi; once the caller speaks MSA, every reply is in MSA, from your "
         "first one.",
         "when they leave («متى ودك تسافر؟», to an MSA caller «متى تودّ السفر؟»)",
-        f"({_PICKS_EN}, «أرخص وحدة», «رقم ثلاثة», «اللي الظهر», «آخر وحدة تطلع», to an MSA caller "
-        "«الرحلة الليلية»)",
+        f"({_PICKS_EN}, «أرخص وحدة», «اللي سعرها أعلى», «رقم ثلاثة», «اللي الظهر», «آخر وحدة "
+        "تطلع», «اللي بـ 980», to an MSA caller «الرحلة الليلية»)",
+        f"({_SPANS_EN}, «وش عندكم آخر الأسبوع», «أقرب شي عندكم»)",
     ),
 }
 SAUDI_EXAMPLES: Final = (
@@ -163,6 +193,9 @@ SAUDI_EXAMPLES: Final = (
     "متى ودك تسافر؟",
     "اللي الظهر",
     "آخر وحدة تطلع",
+    "اللي سعرها أعلى",
+    "وش عندكم آخر الأسبوع",
+    "أقرب شي عندكم",
 )
 MSA_EXAMPLES: Final = ("إلى أين تودّ السفر؟", "متى تودّ العودة؟", "متى تودّ السفر؟", "الرحلة الليلية")
 
@@ -223,7 +256,7 @@ def test_no_example_is_a_dev_calls_line() -> None:
     assert _bare("لا خلها ستطعش") in said  # the search finds a line once pasted (f27)
     assert _bare("المسائية") in said  # and a check's word (f16's said_any)
     picks = _pick_texts()
-    assert len(picks) == 7 and all('"' in text for text in picks[1:])
+    assert len(picks) == 9 and all('"' in text for text in picks[1:])
     texts = (*EXAMPLES["en"], *EXAMPLES["ar-SA"], *picks)
     quoted = [q for text in texts for q in re.findall(r'[«"]([^»"]+)[»"]', text)]
     assert [q for q in (*quoted, *SAUDI_EXAMPLES, *MSA_EXAMPLES) if _bare(q) in said] == []

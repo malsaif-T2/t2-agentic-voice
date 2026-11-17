@@ -2,13 +2,16 @@
 
 The talker speaks Saudi Arabic first, then English, answering a caller who speaks Modern
 Standard Arabic in it; its instructions (instructions/, one file a language, filled with the
-persona's names by persona.py) are written for the ear: short spoken replies, every option said
-aloud (at most three a turn, by departure time and fare), dates passed as the caller said them
-and resolved in code, numbers in digits, nothing ever said to be on a screen, a booking only
-after the read-back and a spoken yes. Its tools are the seven read tools over the mock airline
-and the call's trip (tools/, `flight_tools`) and the one action, `book_trip` (booking/); its
-greetings and progress lines, its pronunciation of the airline's code and its vocabulary are the
-persona's, built from the settings' names, so nothing here holds a name.
+persona's names by persona.py) are written for the ear: short spoken replies, a day's flights
+said briefly (one or two by departure time and fare, three or four by their count, first and
+last times and the cheapest, the owner's ruling), dates passed as the caller said them (a span
+of days searched at once) and resolved in code, numbers in digits, nothing ever said to be on a
+screen, a booking only after the read-back and a spoken yes, which the talker never asks for
+itself.
+Its tools are the seven read tools over the mock airline and the call's trip (tools/,
+`flight_tools`) and the one action, `book_trip` (booking/); its greetings and progress lines,
+its pronunciation of the airline's code and its vocabulary are the persona's, built from the
+settings' names, so nothing here holds a name.
 
 - **The time zone** is Riyadh's fixed UTC+3 (D-106), so the prompt's "Today is" reads the day
   the airline counts in.
@@ -35,7 +38,7 @@ from flight_voice.tools import flight_tools
 from flight_voice.trip import TripBook
 
 NAME: Final = "flight"
-VERSION: Final = "2026-11-17.3"
+VERSION: Final = "2026-11-17.4"
 # Riyadh's offset from UTC, all year (D-106).
 TIME_ZONE: Final = RIYADH.utcoffset(None) or timedelta(hours=3)
 

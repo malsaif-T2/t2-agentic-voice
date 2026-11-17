@@ -35,6 +35,7 @@ def test_the_llm_and_guard_defaults_are_the_designs() -> None:
         "questions_per_reply": 1,
         "question_stop_drops_calls": False,
         "drop_stage_notes": False,
+        "plain_speech": False,
     }
     assert (settings.words.vocabulary, settings.session.mode) == ((), None)
 
