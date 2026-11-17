@@ -921,12 +921,13 @@ assistant (Q14 may change how it names itself).
 
 Greeting templates:
 
-- Saudi: «هلا $traveler، معك $persona، مساعد $airline الصوتي. وين ودّك تسافر؟» (hala Khalid,
-  Saad here, the airline's voice assistant. Where would you like to travel?)
+- Saudi, in Riyadh's Najdi (the owner's ask of 2026-11-17): «هلا والله $traveler، معك $persona
+  من $airline. وين ودّك تسافر؟» (hala wallah Khalid, Saad here, from the airline. Where would
+  you like to travel?)
 - English: "Hi $traveler, this is $persona, $airline's voice assistant. Where would you like to
   fly?"
 
-Progress lines: `searching`: «أشوف لك الرحلات المتاحة.» / "Checking the flights for you.";
+Progress lines: `searching`: «أشوف لك وش فيه رحلات.» / "Checking the flights for you.";
 `fares`: «أشوف لك أرخص الأيام.» / "Looking up the cheapest days." (the calendar's own key).
 
 `VOCABULARY` (the Whisper prompt's terms): Riyadh, Jeddah, Dubai, Doha, Cairo, Istanbul, London,
@@ -1688,7 +1689,8 @@ would mislead: a full flight, a route not served, a date outside the window):
   Its refusals, nothing written: `nothing_listed`, `unknown_id` and `no_seats` with the leg's
   other ids, fares and seats, `cabin_not_offered`.
 - `book_trip` (`lean/book.py`) takes nothing: the booking check, then the store. It gives
-  `booked` with the reference, the total, the route and the legs booked, and the review card
+  `booked` with the reference (as `reference_if_asked`: said only when the caller asks, the
+  owner's ruling of 2026-11-17), the total, the route and the legs booked, and the review card
   ending "Booked ·
   Reference ..."; else `not_confirmed`, `incomplete`, `refused` (the store's reason), `unknown`
   (a write that did not answer and was not found by its request ID) or `already_booked` (the

@@ -33,13 +33,13 @@ def test_an_agreed_trip_is_booked_once_with_its_reference_and_card() -> None:
     assert answer["status"] == "booked" and answer["total"] == total
     assert answer["route"] == "Riyadh to Jeddah" and answer["trip"] == "round trip"
     (booking,) = call.airline.bookings.made
-    assert answer["reference"] == booking.reference and booking.traveler_id == "T-0001"
+    assert answer["reference_if_asked"] == booking.reference and booking.traveler_id == "T-0001"
     assert [leg.flight for leg in booking.legs] == [101, 102] and booking.total_sar == total
     card = made.card
     assert card is not None and card.slot == "review" and card.title.startswith(TRIP_EN)
     assert card.rows[-1].title == f"Booked · Reference {booking.reference}" and card_passes(made)
     again = data(call.book())
-    assert again["status"] == "already_booked" and again["reference"] == booking.reference
+    assert again["status"] == "already_booked" and again["reference_if_asked"] == booking.reference
     assert len(call.airline.bookings.writes) == 1
 
 
@@ -52,7 +52,7 @@ def test_a_trip_changed_after_the_booking_is_answered_with_the_trip_booked() -> 
     assert call.draft.chosen_outbound is not None and call.draft.chosen_outbound.flight != 101
     again = call.book()
     answer = data(again)
-    assert answer["status"] == "already_booked" and answer["reference"] == booked["reference"]
+    assert answer["status"] == "already_booked" and answer["reference_if_asked"] == booked["reference_if_asked"]
     assert answer["outbound"] == booked["outbound"] and answer["outbound"]["id"] == f"T2-101-{OUT}"
     assert again.card is not None and made.card is not None
     assert again.card.rows == made.card.rows  # the booked trip's times, never the new pick's

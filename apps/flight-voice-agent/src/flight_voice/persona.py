@@ -40,9 +40,9 @@ _CODE: Final[dict[Tag, Literal["ar", "en"]]] = {"ar-SA": "ar", "en": "en"}
 
 # The greetings, filled with the names and the traveler's first name.
 GREETINGS: Final[dict[Tag, Template]] = {
-    # hala ..., ma'ak ..., musaa'id ... as-sawti. ween waddak tsaafir?: hello ..., ... here, the
-    # voice assistant of .... Where would you like to travel?
-    "ar-SA": Template("هلا $traveler، معك $persona، مساعد $airline الصوتي. وين ودّك تسافر؟"),
+    # hala wallah ..., ma'ak ... min .... ween waddak tsaafir?: hello ..., ... here, from ....
+    # Where would you like to travel? (Riyadh's Najdi, the owner's ask of 2026-11-17)
+    "ar-SA": Template("هلا والله $traveler، معك $persona من $airline. وين ودّك تسافر؟"),
     "en": Template(
         "Hi $traveler, this is $persona, $airline's voice assistant. Where would you like to fly?"
     ),
@@ -50,9 +50,9 @@ GREETINGS: Final[dict[Tag, Template]] = {
 # The progress lines the tools name (tools/search.py, cabins.py: `searching`; calendar.py:
 # `fares`), said while a search runs long.
 PROGRESS: Final[dict[Tag, dict[str, str]]] = {
-    # ashoof lak ar-riHlaat al-mutaaHa: I am looking up the flights open for you; ashoof lak
-    # arkhas al-ayyaam: I am looking up the cheapest days for you.
-    "ar-SA": {"searching": "أشوف لك الرحلات المتاحة.", "fares": "أشوف لك أرخص الأيام."},
+    # ashoof lak wesh fih riHlaat: I am looking up what flights there are for you (Najdi «وش
+    # فيه»; never «لحظة», a wait word); ashoof lak arkhas al-ayyaam: the cheapest days for you.
+    "ar-SA": {"searching": "أشوف لك وش فيه رحلات.", "fares": "أشوف لك أرخص الأيام."},
     "en": {"searching": "Checking the flights for you.", "fares": "Looking up the cheapest days."},
 }
 # The terms a transcript should write as the airline writes them, the airline's name after them.

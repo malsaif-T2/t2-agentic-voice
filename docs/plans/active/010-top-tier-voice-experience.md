@@ -1386,6 +1386,19 @@ Block 0.
   Earlier the same day, a command that would have printed h06 and h10 was refused whole. The
   three files' `closing_question` lines are to be treated as seen when the held-out set is read at
   M9, for the owner to keep or replace.
+- 2026-11-17: the owner's answers. Najdi: "the lack of Nadji words made it doesn't sound Nadji,
+  although the voice i have picked is capable of talking Nadji Arabic", so Saad's Saudi greeting
+  and searching line are Najdi now («هلا والله ...», «أشوف لك وش فيه رحلات»), beside the lean
+  instructions' Najdi. The reference: "it should only say the reference when asked", so the
+  lean booking's result names it `reference_if_asked` (run F's `reference` check stands). The
+  one-request language switch: "Yes please, try it. I would like a one request language change
+  without hurting the transcription": `stt.live_language = "single"` is being built (D-117), its
+  keep rule registered before any run: against `detected` gated as live, both at one commit, on
+  dev, at the lowest threshold of 0.50 to 0.95 with no false move on a short reply, no more wrong
+  moves than `detected`, right moves at least `detected`'s minus 2, and the owner's condition: in
+  each item language (English, Saudi, MSA, mixed) the corpus WER no worse than `detected`'s by
+  more than 0.5 points, and no item language worse on more items than better by the paired sign
+  test by item at p < 0.05; that threshold becomes the flight app's, otherwise `detected` stands.
 - 2026-11-17: the text-to-speech candidates for the owner's pick by ear (D-114, branch
   `plan-010-tts`): `tts.provider` takes `elevenlabs`, `groq` and `telnyx`, each speaking the
   provider's default voices with `tts.languages` unset. The owner picked ElevenLabs v4 Turbo in
