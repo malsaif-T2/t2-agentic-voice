@@ -15,7 +15,7 @@ from typing import Any
 import pytest
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.events import ModelUsage
-from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.core.settings.tts import LanguageTag, TtsSettings
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, Transcript
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
@@ -46,6 +46,14 @@ from t2_agentic_voice.voice.session.session_events import (
 
 from tests.t2_agentic_voice.fakes import FakeClock, FakePhrases, FakeSpeechToText, FakeTextToSpeech
 from tests.t2_agentic_voice.testing.feed_support import FakeFeed
+
+
+@pytest.fixture
+def settings(settings: VoiceSettings) -> VoiceSettings:
+    """The suite's settings with Groq's Orpheus speaking, whose models differ by language, as
+    these counts are written for (D-114 made ElevenLabs, one model for all, the default)."""
+    return settings.model_copy(update={"tts": TtsSettings(provider="groq")})
+
 
 AGENT = VoiceAgent(name="echo", languages=[Language.english(greeting="Hello there.")])
 SECOND = AudioClip(pcm16=b"\x00\x00" * 16_000)

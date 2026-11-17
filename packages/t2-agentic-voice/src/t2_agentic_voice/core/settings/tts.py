@@ -1,41 +1,41 @@
-"""The `tts` group: text-to-speech, a model and a voice for each language."""
+"""The `tts` group: text-to-speech, the adapter, a model and a voice for each language.
+
+`provider` picks the adapter: ElevenLabs' v4 Turbo, the default by the owner's ruling (D-114),
+on the `elevenlabs` key that Scribe needs too; Groq's Orpheus, the fallback, on the Groq key
+alone; or Telnyx, measured beside them, on its own key. `languages` holds the model and
+voice of each language in the chosen provider's own names; left unset, it is that provider's
+default map (core/settings/tts_voices.py), so choosing a provider is one setting, and a map
+given must hold only that provider's models and voices, checked when the settings load. The
+caches, the usage counts and the doctor read the voices from `languages`, whichever provider."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Annotated, Literal
+from typing import Annotated, Any
 
-from pydantic import Field
+from pydantic import Field, ValidationInfo, field_validator, model_validator
 
 from t2_agentic_voice.core.settings.base import FROZEN, PLAIN, Group
+from t2_agentic_voice.core.settings.tts_voices import (
+    DEFAULT_PROVIDER,
+    LanguageTag,
+    SpokenNumbers,
+    TtsModel,
+    TtsProvider,
+    TtsVoice,
+    default_voices,
+    misfit,
+)
 
-TtsProvider = Literal["groq"]
-# The declaration's language presets (the design's 5.2): Saudi Arabic, MSA and English.
-LanguageTag = Literal["ar-SA", "ar", "en"]
-# How a reply's numbers, times and dates are said (`TtsSettings.spoken_numbers`).
-SpokenNumbers = Literal["as_written", "by_register"]
-# Groq's Orpheus models (the design's 7.6).
-TtsModel = Literal["canopylabs/orpheus-arabic-saudi", "canopylabs/orpheus-v1-english"]
-_ARABIC: TtsModel = "canopylabs/orpheus-arabic-saudi"
-_ENGLISH: TtsModel = "canopylabs/orpheus-v1-english"
-
-
-class TtsVoice(Group):
-    """The model and the voice one language is spoken in."""
-
-    model: TtsModel = Field(description="The Orpheus model.")
-    # A voice's name as the model lists it: a lowercase word. Whether the model has it is
-    # checked against the provider at runtime start, not here.
-    voice: str = Field(pattern=r"^[a-z][a-z0-9_-]{0,31}$", description="The model's voice.")
-
-
-def _voices() -> dict[LanguageTag, TtsVoice]:
-    """The owner's voices (plan 003, Q5): abdullah for both Arabic presets, troy for English."""
-    return {
-        "ar-SA": TtsVoice(model=_ARABIC, voice="abdullah"),
-        "ar": TtsVoice(model=_ARABIC, voice="abdullah"),
-        "en": TtsVoice(model=_ENGLISH, voice="troy"),
-    }
+__all__ = [
+    "DEFAULT_PROVIDER",
+    "LanguageTag",
+    "SpokenNumbers",
+    "TtsModel",
+    "TtsProvider",
+    "TtsSettings",
+    "TtsVoice",
+]
 
 
 class TtsSettings(Group):
@@ -43,18 +43,47 @@ class TtsSettings(Group):
     with the audio."""
 
     provider: TtsProvider = Field(
-        default="groq",
-        description="Which adapter turns text into speech; only Groq's exists for now (D-004).",
-    )
-    languages: Annotated[Mapping[LanguageTag, TtsVoice], FROZEN, PLAIN] = Field(
-        default_factory=_voices,
-        validate_default=True,
+        default=DEFAULT_PROVIDER,
         description=(
-            "The model and voice of each language preset (ar-SA, ar, en), as a JSON object: "
-            '{"en": {"model": "canopylabs/orpheus-v1-english", "voice": "troy"}}. A value '
-            "replaces the whole map."
+            "Which adapter turns text into speech: elevenlabs (v4 Turbo in the owner's voice for "
+            "Saad, the default, D-114; it needs T2V_ELEVENLABS__API_KEY, as Scribe does), groq "
+            "(Orpheus, the fallback, on the Groq key alone) or telnyx (Bayan, measured beside "
+            "them; it needs T2V_TELNYX__API_KEY). With tts.languages unset, each language is "
+            "spoken in the chosen provider's default model and voice."
         ),
     )
+    languages: Annotated[Mapping[LanguageTag, TtsVoice], FROZEN, PLAIN] = Field(
+        default_factory=lambda: default_voices(DEFAULT_PROVIDER),
+        validate_default=True,
+        description=(
+            "The model and voice of each language preset (ar-SA, ar, en), in tts.provider's own "
+            'names, as a JSON object: {"en": {"model": "canopylabs/orpheus-v1-english", "voice": '
+            '"troy"}}. A value replaces the whole map; unset, it is the provider\'s default map.'
+        ),
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _provider_default(cls, data: Any) -> Any:
+        """With `languages` unset, the chosen provider's default map (the module's docstring)."""
+        if isinstance(data, Mapping) and "languages" not in data:
+            provider = data.get("provider", DEFAULT_PROVIDER)
+            if isinstance(provider, str):
+                return {**data, "languages": default_voices(provider)}
+        return data
+
+    @field_validator("languages")
+    @classmethod
+    def _of_provider(
+        cls, value: Mapping[LanguageTag, TtsVoice], info: ValidationInfo
+    ) -> Mapping[LanguageTag, TtsVoice]:
+        provider = info.data.get("provider")
+        for tag, voice in value.items():
+            problem = misfit(provider, voice) if isinstance(provider, str) else None
+            if problem:
+                raise ValueError(f"the voice of {tag} {problem}")
+        return value
+
     timeout_s: float = Field(
         default=6.0,
         gt=0,

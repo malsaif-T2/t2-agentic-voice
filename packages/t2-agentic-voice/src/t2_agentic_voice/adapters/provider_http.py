@@ -8,13 +8,15 @@ provider by raw HTTPS through httpx, with no SDK, so nothing reads a variable of
   failure's class name and the HTTP status, if any: never the provider's text or body, which may
   echo the request, and never the key. A cancel is never caught.
 - `provider_key`: the key its group of the settings gives (core/settings/provider_keys.py), or a
-  ConfigurationError naming the variable to set, so an unavailable provider says so when chosen.
+  ConfigurationError naming the variable to set, so an unavailable provider says so when chosen,
+  and the Groq adapter to pick instead (`STT_INSTEAD`, or `TTS_INSTEAD` for a voice's).
 - `keyterms`: the terms a prompt holds, for a provider that takes a list rather than a prompt.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import Final
 
 import httpx
 from pydantic import JsonValue, SecretStr
@@ -89,31 +91,45 @@ def status_failure(
     return ProviderError("rejected", False, details=details)
 
 
-def provider_key(settings: VoiceSettings, group: ProviderKey, vendor: str) -> SecretStr:
+# What a provider chosen with no key may be swapped for: Groq's adapter, on the Groq key alone.
+STT_INSTEAD: Final = (
+    "pick another speech-to-text provider with stt.provider (groq, Whisper, needs only the Groq "
+    "key)"
+)
+TTS_INSTEAD: Final = (
+    "pick another text-to-speech provider with tts.provider (groq, Orpheus, needs only the Groq "
+    "key)"
+)
+
+
+def provider_key(
+    settings: VoiceSettings, group: ProviderKey, vendor: str, *, instead: str = STT_INSTEAD
+) -> SecretStr:
     """The key `group` of `settings` gives, inline or in its file; a ConfigurationError naming
     its variable under the settings' prefix when none is set, a blank one included."""
     key = group.resolved_api_key(settings.prefix)
     if key is None:
-        raise no_key(vendor, settings.env_name(group.GROUP, "api_key"))
+        raise no_key(vendor, settings.env_name(group.GROUP, "api_key"), instead=instead)
     return key
 
 
-def given_key(api_key: SecretStr, kind: type[ProviderKey], vendor: str) -> SecretStr:
+def given_key(
+    api_key: SecretStr, kind: type[ProviderKey], vendor: str, *, instead: str = STT_INSTEAD
+) -> SecretStr:
     """A key given in code, held to the settings' rules (GP-20): its characters checked, the
     space around it removed; a ConfigurationError naming the setting when it is blank or holds
     a character no key holds, never the key."""
     key = kind(api_key=api_key).resolved_api_key()
     if key is None:
-        raise no_key(vendor, setting_name(kind.GROUP, "api_key"))
+        raise no_key(vendor, setting_name(kind.GROUP, "api_key"), instead=instead)
     return key
 
 
-def no_key(vendor: str, setting: str) -> ConfigurationError:
+def no_key(vendor: str, setting: str, *, instead: str = STT_INSTEAD) -> ConfigurationError:
     """The error for a provider chosen with no key: which variable to set."""
     return ConfigurationError(
         f"No {vendor} API key is set, so its adapter is unavailable. FIX: set {setting}, or "
-        f"{setting}_FILE to a file that holds the key, or pick another speech-to-text provider "
-        "with stt.provider (groq, Whisper, needs only the Groq key).",
+        f"{setting}_FILE to a file that holds the key, or {instead}.",
         details={"setting": setting},
     )
 

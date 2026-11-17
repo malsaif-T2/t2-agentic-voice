@@ -42,7 +42,7 @@ from tests.t2_agentic_voice.adapters.tts_support import (
     wav,
 )
 
-VOICES = TtsSettings().languages
+VOICES = TtsSettings(provider="groq").languages
 VALID: dict[str, Any] = {"api_key": SecretStr(KEY), "languages": VOICES}
 VALID |= {"base_url": "https://api.groq.com", "timeout_s": 6.0}
 

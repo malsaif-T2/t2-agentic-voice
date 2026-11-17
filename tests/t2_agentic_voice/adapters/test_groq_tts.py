@@ -51,7 +51,7 @@ def spoken(reply: Reply, text: str = ENGLISH, language: str = "en", **tts: Any) 
 
 def test_the_request_is_block_0s_baseline() -> None:
     call, want, client = FIXTURE["call"], FIXTURE["request"], FIXTURE["client"]
-    defaults = TtsSettings()
+    defaults = TtsSettings(provider="groq")
     assert (GroqSettings().base_url, defaults.timeout_s) == (
         call["settings"]["groq.base_url"],
         call["settings"]["tts.timeout_s"],
@@ -266,7 +266,9 @@ def test_another_refusal_carries_no_fix(body: dict[str, Any]) -> None:
 MODEL = {"object": "model", "created": 0, "owned_by": "made-up"}
 LISTED = {
     "object": "list",
-    "data": [MODEL | {"id": voice.model} for voice in TtsSettings().languages.values()],
+    "data": [
+        MODEL | {"id": voice.model} for voice in TtsSettings(provider="groq").languages.values()
+    ],
 }
 
 
@@ -318,7 +320,7 @@ def test_check_language_refuses_a_model_groq_does_not_list() -> None:
 
 def test_check_language_refuses_a_language_with_no_model_unasked() -> None:
     fake = FakeGroq()
-    only = {"en": TtsSettings().languages["en"]}
+    only = {"en": TtsSettings(provider="groq").languages["en"]}
     with pytest.raises(ConfigurationError) as raised:
         asyncio.run(_check(fake, "ar", languages=only))
     assert raised.value.details == {"setting": "T2V_TTS__LANGUAGES"}

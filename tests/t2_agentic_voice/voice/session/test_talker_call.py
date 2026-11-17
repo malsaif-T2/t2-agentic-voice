@@ -32,7 +32,7 @@ from t2_agentic_voice.core.events import (
     ToolFinished,
     ToolStarted,
 )
-from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.core.settings.tts import LanguageTag, TtsSettings
 from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.ports.chat_model import Usage
 from t2_agentic_voice.voice.protocol import ShowCard, State
@@ -59,6 +59,14 @@ from tests.t2_agentic_voice.voice.session.talker_support import (
     talked,
     talker_call,
 )
+
+
+@pytest.fixture
+def settings(settings: VoiceSettings) -> VoiceSettings:
+    """The suite's settings with Groq's Orpheus speaking, whose models differ by language, as
+    these counts are written for (D-114 made ElevenLabs, one model for all, the default)."""
+    return settings.model_copy(update={"tts": TtsSettings(provider="groq")})
+
 
 CARD = Card(title="Reset a password", steps=("Open Settings.", "Press Reset."), source="Guide")
 

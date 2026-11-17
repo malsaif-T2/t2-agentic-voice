@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import asyncio
 
+import pytest
 from t2_agentic_voice.agent.talker import ModelReplied, ModelRequested, ReplyDone, SpokenClause
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.conversation import TalkerTurn
+from t2_agentic_voice.core.settings.tts import TtsSettings
 from t2_agentic_voice.domain.ports.chat_model import Usage
 
 from tests.t2_agentic_voice.voice.session.session_support import (
@@ -28,6 +30,14 @@ from tests.t2_agentic_voice.voice.session.talker_support import (
     talked,
     talker_call,
 )
+
+
+@pytest.fixture
+def settings(settings: VoiceSettings) -> VoiceSettings:
+    """The suite's settings with Groq's Orpheus speaking, whose models differ by language, as
+    these counts are written for (D-114 made ElevenLabs, one model for all, the default)."""
+    return settings.model_copy(update={"tts": TtsSettings(provider="groq")})
+
 
 ARABIC = "عندك طلب واحد مفتوح."
 ENGLISH = "Your ticket 4521 is open."

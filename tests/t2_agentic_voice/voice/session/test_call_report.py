@@ -16,6 +16,7 @@ import pytest
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.events import CallEnded
 from t2_agentic_voice.core.settings.storage import StorageSettings
+from t2_agentic_voice.core.settings.tts import TtsSettings
 from t2_agentic_voice.core.tracing_tts import SETTINGS_DIGEST, settings_digest
 from t2_agentic_voice.domain.ports.speech_to_text import Transcript
 from t2_agentic_voice.voice.protocol import Caption
@@ -42,6 +43,14 @@ from tests.t2_agentic_voice.voice.session.session_support import (
     traced,
     turn,
 )
+
+
+@pytest.fixture
+def settings(settings: VoiceSettings) -> VoiceSettings:
+    """The suite's settings with Groq's Orpheus speaking, whose models differ by language, as
+    these counts are written for (D-114 made ElevenLabs, one model for all, the default)."""
+    return settings.model_copy(update={"tts": TtsSettings(provider="groq")})
+
 
 WHISPER = "whisper-large-v3"
 ORPHEUS = "canopylabs/orpheus-v1-english"

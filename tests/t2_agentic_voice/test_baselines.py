@@ -88,7 +88,7 @@ def test_the_speech_baseline_sends_what_the_plan_registers() -> None:
     )
     assert request["url"] == f"{client['base_url']}/openai/v1/audio/speech"
     assert (client["max_retries"], client["timeout_s"]) == (0, settings["tts.timeout_s"])
-    defaults = TtsSettings()  # the baseline's settings are the defaults
+    defaults = TtsSettings(provider="groq")  # the baseline is Groq's Orpheus, its defaults
     assert defaults.languages[language].model_dump() == voice
     assert (GroqSettings().base_url, defaults.timeout_s) == (
         settings["groq.base_url"],

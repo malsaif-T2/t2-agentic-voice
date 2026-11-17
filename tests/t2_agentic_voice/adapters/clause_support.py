@@ -17,7 +17,7 @@ from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk, TextToSpeec
 
 from tests.t2_agentic_voice.fakes import FakeTextToSpeech, tone
 
-VOICES = TtsSettings().languages
+VOICES = TtsSettings(provider="groq").languages  # a model and a voice a language
 # Far past any read of a take, however loaded the machine: the clause cache's own limit
 # (`READ_TIMEOUT_S`, 0.1 s) turns a read that a busy machine delays into a miss
 # (conftest.py's `relaxed_reads`).

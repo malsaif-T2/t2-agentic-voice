@@ -9,6 +9,9 @@ part, since only api may build an adapter (harness.toml [layers]).
 - `stt_kinds`: each speech-to-text provider `stt.provider` names (`SttKind`): its builder, its
   key's group and the models it takes, the one place the dev console's choice reads them from
   (api/stt_choices.py).
+- `tts_kinds`: each text-to-speech provider `tts.provider` names, by its builder: Groq's
+  Orpheus, the fallback, ElevenLabs', the default, and Telnyx's (D-114); the eval commands build
+  theirs with `Providers.text_to_speech`.
 - `opened`: the runtime's start of them: each one's close pushed on its stack, and the
   classifier loaded, off the event loop, with the agent's codes, when the calls hear each
   turn's language (an agent of one code runs none); under `stt.live_language = "hinted"` on a
@@ -111,6 +114,20 @@ def stt_kinds() -> dict[str, SttKind]:
     }
 
 
+def tts_kinds() -> dict[str, Callable[[VoiceSettings], TextToSpeech]]:
+    """Every text-to-speech provider `tts.provider` picks, by its name, Groq's first, each by
+    the builder of its adapter from the settings (no IO)."""
+    from t2_agentic_voice.adapters.elevenlabs_tts import ElevenLabsTTS
+    from t2_agentic_voice.adapters.groq_tts import GroqTTS
+    from t2_agentic_voice.adapters.telnyx_tts import TelnyxTTS
+
+    return {
+        "groq": GroqTTS.from_settings,
+        "elevenlabs": ElevenLabsTTS.from_settings,
+        "telnyx": TelnyxTTS.from_settings,
+    }
+
+
 @dataclass(frozen=True, kw_only=True)
 class Providers:
     """The providers a runtime's calls go through (the design's 5.2): speech-to-text,
@@ -128,11 +145,11 @@ class Providers:
     @classmethod
     def from_settings(cls, settings: VoiceSettings) -> Providers:
         """The built-in adapters the settings pick (`stt.provider`: `speech_to_text`;
-        `tts.provider` and `llm.provider`: Groq's; `stt.classifier` under `classified`), built
-        from the settings with no IO; built in the runtime's lifespan when none are given."""
+        `tts.provider`: `tts_kinds`; `llm.provider`: Groq's; `stt.classifier` under
+        `classified`), built from the settings with no IO; built in the runtime's lifespan when
+        none are given."""
         from t2_agentic_voice.adapters.ecapa_language import EcapaLanguage
         from t2_agentic_voice.adapters.groq_chat import GroqChat
-        from t2_agentic_voice.adapters.groq_tts import GroqTTS
         from t2_agentic_voice.adapters.silero_language import SileroLanguage
 
         classifier: LanguageClassifier | None = None
@@ -141,7 +158,7 @@ class Providers:
             classifier = kind.from_settings(settings)
         return cls(
             stt=cls.speech_to_text(settings),
-            tts=GroqTTS.from_settings(settings),
+            tts=cls.text_to_speech(settings),
             chat=GroqChat.from_settings(settings),
             classifier=classifier,
         )
@@ -152,6 +169,13 @@ class Providers:
         settings with no IO. A ConfigurationError naming the key's setting when that provider
         has none set; the eval commands build theirs here too."""
         return stt_kinds()[settings.stt.provider].build(settings)
+
+    @staticmethod
+    def text_to_speech(settings: VoiceSettings) -> TextToSpeech:
+        """The text-to-speech adapter `tts.provider` names (`tts_kinds`), built from the
+        settings with no IO. A ConfigurationError naming the key's setting when that provider
+        has none set; the eval commands build theirs here too."""
+        return tts_kinds()[settings.tts.provider](settings)
 
     def each(self) -> tuple[SpeechToText | TextToSpeech | ChatModel | LanguageClassifier, ...]:
         """Every provider given, in order: speech-to-text, text-to-speech, then the chat model

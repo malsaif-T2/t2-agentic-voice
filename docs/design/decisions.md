@@ -3977,6 +3977,59 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   picks, cards, ranges and listing, nonsense); the tests in `tests/flight_voice/lean/`,
   `tests/flight_voice/test_server_lean.py` and `tests/flight_voice/evals/test_run_lean.py`.
 
+## D-114 · ElevenLabs v4 Turbo is the default text-to-speech, in the owner's voice; Groq's Orpheus the fallback; Telnyx beside them · 2026-11-17 · Accepted (the owner's pick by ear and their ruling of 2026-11-17, "Make elelevnlabs as the default and groq as the fallback")
+
+- **Context:** the owner wants a better voice for the flight agent's Saad than Groq's Orpheus
+  (abdullah, troy), and will pick it by ear, Saudi speech first; they named ElevenLabs ("V4,
+  maybe turbo") and Telnyx's Bayan. The key reads ElevenLabs' `eleven_v4`, `eleven_v4_turbo`,
+  `eleven_v3`, `eleven_v3_conversational`, `eleven_multilingual_v2` and Flash v2.5, all with
+  Arabic; Bayan is Telnyx's own model of 13 Arabic dialects and English, 113 speakers, the Saudi
+  men among them Fahd, Jasem and Tamer (its voices list, 2026-11-17). Both stream: ElevenLabs'
+  `/stream` answers raw PCM as it is made (v4 and v4 Turbo too, probed), Telnyx's WebSocket
+  base64 PCM frames; Telnyx's REST answer arrives whole.
+- **Decision:** `tts.provider` takes `elevenlabs` (the default, by the owner's ruling below),
+  `groq` (the fallback) or `telnyx`, each on its key group's key (a missing key refused at the
+  build, naming it and the Groq fallback).
+  `tts.languages` holds the chosen provider's own models and voices (core/settings/
+  tts_voices.py); unset, it is that provider's default map (ElevenLabs `eleven_v4_turbo` in the
+  library voice Saud for Arabic and the premade Brian for English, until the owner's pick below;
+  Telnyx Bayan Fahd and Michael), so one setting switches the voice, and the settings refuse a voice of another
+  provider. The caches, the usage counts and the doctor go on reading `tts.languages`, so a
+  take is keyed by the voice that made it whichever provider. `ElevenLabsTTS`
+  (adapters/elevenlabs_tts.py) streams one HTTPS request a clause at 24 kHz with the clause's
+  `language_code`; `TelnyxTTS` (adapters/telnyx_tts.py) one WebSocket a clause at Bayan's own
+  16 kHz; both read the PCM through the Groq adapter's WAV reader (adapters/pcm_takes.py), so
+  the silence trim and the cut-short flag are the same. Telnyx's occasional error frame is a
+  retryable server error.
+- **Consequences:** every developer needs the ElevenLabs key for speech as for Scribe (D-105),
+  or sets `tts.provider = "groq"`, as the quickstart does; `GroqTTS` refuses another provider's
+  voices, and the Ole5 eval commands build the text-to-speech the settings name
+  (`Providers.text_to_speech`). Measured from
+  this laptop on 2026-11-17 (20 requests each, a clause a request): the first audio of a short
+  Saudi clause at p50 0.18 s on Groq, 0.21 s on ElevenLabs v4 Turbo, 0.85 s on v4, and 1.46 s
+  on Telnyx Bayan, whose new WebSocket per clause costs about 0.65 s of it: one socket kept open
+  for the call, each clause flushed on it, gave 0.60 s (not built; a pool of open sockets per
+  voice, closed at Telnyx's 20 s idle limit, would be). An
+  ElevenLabs key may carry its own credit cap: the owner's stopped at 10,000 and, raised, at
+  20,000 during the measurement, and with it every ElevenLabs request, Scribe's included.
+  ElevenLabs' own streaming socket for v4 Turbo (its Text-to-Dialogue socket, the line's
+  clauses sent into one turn) gave 0.17 s and kept the voice's flow across clauses; using it, or
+  Telnyx's kept socket, needs a session per call in the port, a later proposal. No per-call switch on
+  the dev console yet: the greeting cache and the clause cache are built for the runtime's one
+  text-to-speech, so a voice is heard live by starting the server with `T2V_TTS__PROVIDER` set.
+- **The owner's pick:** having heard the sheet, the owner ruled on 2026-11-17: "I Think
+  Elevenlabs v4 turbo takes the cake, although i didn't like the Saud sound", naming two voices
+  of their own search, `nhJWWCFdNdusuVUT3x19` first and `rpGHcNQJvO8dFNNFNj1v`, to be the final
+  choice once they matched Saud's price and latency. Both were billed the same credits as Saud
+  for the same read-backs and timed as Saud was (`tts_pick.md`). So ElevenLabs' default map is
+  `eleven_v4_turbo` in `nhJWWCFdNdusuVUT3x19` for all three presets, one voice for Saad. Asked
+  then whether the library's default should stay Groq, the owner ruled: "Make elelevnlabs as the
+  default and groq as the fallback". So `tts.provider` defaults to `elevenlabs`, and
+  `T2V_TTS__PROVIDER=groq` brings Orpheus back.
+- **Evidence:** the listening sheet, its runs and `tts_pick.md` in the session notes of
+  2026-11-17; `tests/t2_agentic_voice/adapters/test_elevenlabs_tts.py`, `test_telnyx_tts.py`,
+  `tests/t2_agentic_voice/core/test_tts_providers.py`, `tests/flight_voice/test_settings.py`.
+
 ## D-115 · One request a turn: Scribe v3's own language and probability move the call (`stt.live_language = "hinted"`) · 2026-11-17 · Accepted (the owner's request of 2026-11-17; a library setting, off by default until run H's Scribe arms are measured, GP-18)
 
 - **Context:** under `detected` (D-103), each turn of 1.2 s of voiced speech or more goes twice at once: once naming the call's language, and once naming none so that the provider detects the language. On 2026-11-17 the owner asked: "we should utilize Elevenlabs scribe v3 language probability to switch the language seamlessly during a call instead of sending two requests", and "I thought that Elevenlabs scribe v3 give me the ability to limit the detected languages to a list, or at least gives the probability with each request, which then we can change the parameter for the language if the other has surpassed a certain threshold". ElevenLabs' API reference (speech-to-text convert, read 2026-11-17) says:

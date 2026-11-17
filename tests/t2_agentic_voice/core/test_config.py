@@ -73,6 +73,7 @@ def test_reads_each_group_nested_with_two_underscores(monkeypatch: pytest.Monkey
         "GROQ__API_KEY": MADE_UP_KEY,
         "STT__MODEL": "whisper-large-v3-turbo",
         "STT__TIMEOUT_S": "4.5",
+        "TTS__PROVIDER": "groq",  # Orpheus, the fallback (D-114)
         "TTS__LANGUAGES": '{"en": {"model": "canopylabs/orpheus-v1-english", "voice": "troy"}}',
         "TURNS__VAD_STOP_MS": "250",
         "SERVER__FORWARDED_ALLOW_IPS": '["127.0.0.1"]',

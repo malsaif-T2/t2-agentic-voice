@@ -176,6 +176,20 @@ def test_a_yes_over_the_read_back_is_held_unless_the_environment_sets_it(
     ).interruptions.yes_over_read_back
 
 
+def test_saad_speaks_in_the_owners_elevenlabs_voice_unless_the_environment_names_groq(
+    environment: pytest.MonkeyPatch,
+) -> None:
+    """D-114: the owner's pick by ear, the library's default, ElevenLabs' v4 Turbo in one voice
+    for every language; Groq's Orpheus, the fallback, with `T2V_TTS__PROVIDER=groq`."""
+    tts = load().voice.tts
+    assert tts.provider == "elevenlabs"
+    assert {(v.model, v.voice) for v in tts.languages.values()} == {
+        ("eleven_v4_turbo", "nhJWWCFdNdusuVUT3x19")
+    }
+    environment.setenv("T2V_TTS__PROVIDER", "groq")
+    assert load().voice.tts.languages["ar-SA"].voice == "abdullah"
+
+
 def test_the_demo_traveler_is_the_dev_caller_under_dev_alone(
     environment: pytest.MonkeyPatch,
 ) -> None:

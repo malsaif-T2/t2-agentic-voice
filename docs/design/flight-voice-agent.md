@@ -914,8 +914,9 @@ value. Tests read the names from settings, so the owner's pick changes no test, 
 builds the agent with a non-default name and checks the greeting, the pronounce map and the
 vocabulary all hold it.
 
-The voice: the library's defaults, `abdullah` (Arabic) and `troy` (English), male. 1.9 may move
-the English voice nearer abdullah by the owner's ear. The persona says it is the airline's voice
+The voice: the owner's pick by ear of 2026-11-17 (D-114), ElevenLabs' `eleven_v4_turbo` in the
+voice `nhJWWCFdNdusuVUT3x19` for Saudi, MSA and English alike, one voice for Saad: the library's
+default; Groq's Orpheus, `abdullah` and `troy`, the fallback with `T2V_TTS__PROVIDER=groq`. The persona says it is the airline's voice
 assistant (Q14 may change how it names itself).
 
 Greeting templates:
