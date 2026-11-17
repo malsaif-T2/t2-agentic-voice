@@ -8,7 +8,8 @@ sound, whatever the interruption rule would say, so the read-back plays on (`pla
   enough, an Arabic stop word and a filler to the yes rule, which the rule judges as any stop
   word): the summary plays on, and the words count for nothing.
 - **Under `interruptions.yes_over_read_back`** (D-108), off by default, for speech begun once
-  the summary's first clause began (`Confirming.since_summary`):
+  the summary could first be heard (`since_summary`; read_back_times.py's `began`), whose turn
+  is then the yes rule's (`takes`):
   - khalas beside a yes or a send word, with only yes words, send words, fillers and listening
     sounds else (`okay`), over the summary or the closing question, is no stop: it plays on,
     and its turn is the yes rule's (held_yes.py over the summary, yes_turns.py over the
@@ -30,6 +31,23 @@ from t2_agentic_voice.domain.yes_words import ConsentWords, covered
 from t2_agentic_voice.voice.session.read_back import Confirming
 
 
+def takes(confirming: Confirming, speech_at: float | None, *, over: ReplyId | None) -> bool:
+    """Whether a turn begun at `speech_at` that the agent's voice went on over is the yes rule's:
+    it answers the current read-back (`Confirming.answering`), or is an overlap of its reply
+    (`over`) begun over its summary (`since_summary`)."""
+    read_back = confirming.read_back
+    if read_back is None or speech_at is None or confirming.answering(speech_at):
+        return confirming.answering(speech_at)
+    return over == read_back.reply_id and since_summary(confirming, speech_at)
+
+
+def since_summary(confirming: Confirming, speech_at: float) -> bool:
+    """Under `interruptions.yes_over_read_back` only (D-108; held_yes.py): whether speech begun
+    at `speech_at` began once the current read-back's summary could first be heard."""
+    began = confirming.summary_began_at() if confirming.holds_yes else None
+    return began is not None and began < speech_at
+
+
 def plays_on(
     confirming: Confirming, reply_id: ReplyId, speech_at: float, text: str, *, words: Words
 ) -> bool:
@@ -39,7 +57,7 @@ def plays_on(
     if read_back is None or reply_id != read_back.reply_id:
         return False
     consent, listening = confirming.words(read_back.plan), words.backchannel
-    since = confirming.since_summary(speech_at)
+    since = since_summary(confirming, speech_at)
     if holds_stop(text, words=words):  # a stop or wait word is the rule's, but khalas (D-108)
         return since and okay(text, consent, words=words, listening=listening)
     if confirming.answering(speech_at):  # once the summary played: the yes rule's

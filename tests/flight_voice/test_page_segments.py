@@ -2,8 +2,11 @@
 ruling of 2026-11-17), run in the fake browser: each card in the segment its `slot` names,
 outbound, return, review, then one card of no segment, a new one in place of the last, every
 text as text; a pick marked in its leg's segment from the card that keeps it, lost when a change
-drops it, a new search clearing the return and the review, a one-way trip showing no return; and
-the review waiting for the yes, then booked with its reference from "Your trips"."""
+drops it, a new search clearing the return and the review, a one-way trip showing no return, made
+one way before or after a return was picked; and the review waiting for the yes from when the
+whole trip is shown, whatever states the call goes through, then booked with its reference from
+"Your trips", which loads again when the call ends; a later trip of the call never shows the
+first's booking."""
 
 from __future__ import annotations
 
@@ -11,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from t2_agentic_voice import CardRow
-from t2_agentic_voice.voice.protocol import ShowCard, State, wire
+from t2_agentic_voice.voice.protocol import CallState, Ended, ShowCard, State, wire
 
 from tests.browser import descendants, receive, text
 from tests.flight_voice.page_support import (
@@ -140,3 +143,77 @@ def test_the_review_waits_for_the_yes_then_says_booked_with_its_reference(
     assert text(waiting["children"][-1]) == "Waiting for your yes"
     assert waiting["children"][-1]["attrs"]["class"] == "card-status"
     assert text(booked["children"][-1]) == "Booked · Reference 262307"
+
+
+def test_a_trip_made_one_way_before_its_return_was_picked_shows_no_return(tmp_path: Path) -> None:
+    total = CardRow(title="Total", value="3,560 SAR")
+    whole = ShowCard(title="Your trip", rows=(PICKED[0], total), slot="review")
+    shown = page(
+        tmp_path,
+        [ENGLISH, *call(*(receive(wire(card)) for card in (OUT, BACK, whole)), look("cards"))],
+    )
+    (segments,) = (_segments(s) for s in shown["snapshots"])
+    assert set(segments) == {"outbound", "review"}
+    assert _rows(segments["outbound"])[0] == (A.title, "chosen")
+
+
+TOTAL = CardRow(title="Total", value="5,950 SAR")
+WHOLE = REVIEW.model_copy(update={"rows": (*PICKED, TOTAL)})
+
+
+def test_the_review_waits_from_the_whole_trip_and_says_booked_with_no_confirming_state(
+    tmp_path: Path,
+) -> None:
+    """A yes held over the read-back books with the call never shown `confirming`."""
+    made = {"reference": "262307", "depart": "2026-12-17", "return_date": None, "total_sar": 900}
+    later = {"bookings": [TRIP | made, *BOOKINGS["bookings"]]}
+    answers = ANSWERS | {"GET bookings": {"sequence": [[200, BOOKINGS]] * 2 + [[200, later]]}}
+    states: tuple[CallState, ...] = ("speaking", "thinking", "speaking", "listening")
+    shown = page(
+        tmp_path,
+        [
+            ENGLISH,
+            *call(
+                receive(wire(WHOLE)),
+                look("cards"),
+                receive(wire(State(state=states[0]))),
+                look("cards"),
+                *(receive(wire(State(state=now))) for now in states[1:]),
+                look("cards"),
+                receive(wire(Ended(reason="hangup"))),
+                look("trips-list"),
+            ),
+        ],
+        answers,
+    )
+    shown_whole, speaking, booked = (_segments(s)["review"] for s in shown["snapshots"][:3])
+    assert text(shown_whole["children"][-1]) == "Waiting for your yes"
+    assert text(speaking["children"][-1]) == "Waiting for your yes"
+    assert text(booked["children"][-1]) == "Booked · Reference 262307"
+    loads = [r for r in shown["requests"] if r["path"] == "/api/bookings"]
+    assert len(loads) == 4  # the call's start, two states until found, and the call's end
+    assert "262307" in text(shown["snapshots"][3])
+
+
+def test_a_later_trip_in_the_call_never_shows_the_first_trips_booking(tmp_path: Path) -> None:
+    made = {"reference": "262307", "depart": "2026-12-17", "return_date": None, "total_sar": 900}
+    later = {"bookings": [TRIP | made, *BOOKINGS["bookings"]]}
+    answers = ANSWERS | {"GET bookings": {"sequence": [[200, BOOKINGS], [200, later]]}}
+    shown = page(
+        tmp_path,
+        [
+            ENGLISH,
+            *call(
+                receive(wire(WHOLE)),
+                receive(wire(State(state="listening"))),
+                look("cards"),
+                *(receive(wire(card)) for card in (OUT, BACK, WHOLE)),
+                receive(wire(State(state="speaking"))),
+                look("cards"),
+            ),
+        ],
+        answers,
+    )
+    booked, second = (_segments(s)["review"] for s in shown["snapshots"])
+    assert text(booked["children"][-1]) == "Booked · Reference 262307"
+    assert text(second["children"][-1]) == "Waiting for your yes"

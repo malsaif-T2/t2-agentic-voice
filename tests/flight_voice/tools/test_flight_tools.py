@@ -45,6 +45,9 @@ SAYS = {
     "no_seats_flight",
     "nothing_listed",
     "unclear_choice",
+    "unclear_choice_full",
+    "unclear_choice_brief",
+    "unclear_choice_brief_full",
     "chosen_then_return",
     "chosen_then_outbound",
     "chosen_needs_return",
@@ -103,7 +106,8 @@ def test_a_day_of_three_or_four_flights_is_said_briefly_the_others_only_when_ask
         "how many flights there are (count), the first and last departure times (first_departs, "
         "last_departs), and the cheapest by its departure time and"
     )
-    for start in ("listed", "return_listed", "relisted", "changed_relist", "changed_lost"):
+    starts = ("listed", "return_listed", "relisted", "changed_relist", "changed_lost")
+    for start in (*starts, "unclear_choice"):
         for key in (f"{start}_brief", f"{start}_brief_full"):
             assert brief in SAY[key], key
             assert "say the other flights only when the caller asks for them" in SAY[key]
@@ -168,7 +172,7 @@ def test_a_full_flight_is_said_as_full_before_the_fares_basis_and_never_as_the_c
         "full, with no fare, and never as the cheapest."
     )
     keys = [k for k in SAY if k.endswith("_full") and k != "chosen_return_full"]
-    assert len(keys) == 10
+    assert len(keys) == 12
     for key in keys:
         assert full in SAY[key], key
         basis = [at for at in (SAY[key].find(" Say once"), SAY[key].find(" Do not say")) if at > 0]

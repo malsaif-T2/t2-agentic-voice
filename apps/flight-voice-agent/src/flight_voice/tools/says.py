@@ -11,9 +11,10 @@ listing is said from its day and its weekday, in place of the caller's request s
 after one of another day in the call is said from its day (`relisted`). A full flight is said
 by its departure time as full, never with its fare nor as the cheapest (`_full`). After a full
 flight or a day with no seat, the talker offers what the result gives and changes nothing the
-caller did not ask for; a change that lost a leg's flight names that flight by its departure
-time, and lists that leg's flights as briefly. A span of days is said by its first and last
-days, the daily times and its two cheapest days (`days`).
+caller did not ask for; a pick that names no flight listed has them said as briefly as their
+listing, a full one as full (`_unclear`); a change that lost a leg's flight names that flight by
+its departure time, and lists that leg's flights as briefly. A span of days is said by its
+first and last days, the daily times and its two cheapest days (`days`).
 """
 
 from __future__ import annotations
@@ -57,6 +58,19 @@ _TIMES: Final = (
     "the two cheapest days (marked) with their fares, and ask which day they would like to "
     "leave. Do not list flights yet."
 )
+
+
+def _unclear() -> dict[str, str]:
+    """A pick's `unclear_choice` says: the flights it could mean, each by its time and fare, or,
+    when it named none of three or four listed, those as briefly as their listing; each with its
+    full variant."""
+    each = "Say the flights the caller could mean, each by its departure time and fare."
+    none = "Say none of the flights listed is the one they named, then "
+    return {
+        "unclear_choice_full": each + _FULL + _WHICH,
+        "unclear_choice_brief": none + _brief("fare") + _WHICH,
+        "unclear_choice_brief_full": none + _brief("fare") + _FULL + _WHICH,
+    }
 
 
 def _listings(start: str, opening: str, basis: str) -> dict[str, str]:
@@ -108,6 +122,7 @@ SAY: Final[dict[str, str]] = {
     "nothing_listed": "Search first.",
     "unclear_choice": "Say the flights the caller could mean, each by its departure time and "
     "fare, and ask which one they want.",
+    **_unclear(),
     "chosen_then_return": "Say the choice back in a few words, then the return flights as their "
     "listing's say (returns.say) asks, and ask which one. Do not say again that fares are one "
     "way, per person.",

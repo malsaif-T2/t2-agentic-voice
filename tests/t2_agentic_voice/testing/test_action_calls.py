@@ -8,7 +8,9 @@ said, one write. A stop or pause word over the read-back, or a stop said whole w
 confirming, sends nothing, the talker asked what to change with its draft in view, and only a
 new read-back, once the model calls the action again, can earn a yes. A repeat request while
 confirming, whole or over the closing question, says the read-back again, and only a yes after
-that reading confirms. The turn holds the action call with the arguments the model wrote."""
+that reading confirms. The turn holds the action call with the arguments the model wrote. Under
+`interruptions.yes_over_read_back` (D-108) a yes over the summary books once it played whole, and
+the call's yes-rule check reads it as the held yes it is, never as one begun too soon."""
 
 from __future__ import annotations
 
@@ -16,9 +18,12 @@ import asyncio
 from typing import Any
 
 import pytest
+from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.events import ActionCompleted, ConfirmationAnswered
+from t2_agentic_voice.core.settings.interruptions import InterruptionSettings
 from t2_agentic_voice.domain.words import PRESET_WORDS, rule_form
 from t2_agentic_voice.domain.yes_words import PRESET_CONSENT
+from t2_agentic_voice.testing import text_checks
 from t2_agentic_voice.testing.text_call import TextCall
 from t2_agentic_voice.testing.text_read_back import readings, summary_played_at
 from t2_agentic_voice.testing.text_watch import plans_of
@@ -96,6 +101,40 @@ def test_a_draft_is_written_once_after_a_yes_with_a_send_word_heard_once_it_play
             return call.violations
 
     assert asyncio.run(scene()) == ()
+
+
+@pytest.mark.parametrize("words", LANGUAGES, ids=_ids)
+@pytest.mark.parametrize("read", [True, False], ids=["held", "not_read_as_held"])
+def test_a_yes_held_over_the_summary_books_once_it_played_and_the_check_reads_it_so(
+    words: Words, read: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """GP-08: read as a yes begun before the summary played whole, as the check reads any yes
+    with the setting off, the same booking is a violation."""
+    if not read:
+        monkeypatch.setattr(text_checks, "_held_over", lambda *given: False)
+    backend = Backend()
+    llm = model({words.request: call_action(words.note)})
+    held = InterruptionSettings(mode="two_step", yes_over_read_back=True)
+    settings = VoiceSettings(env="test", interruptions=held)
+
+    async def scene() -> tuple[str, ...]:
+        async with TextCall(
+            agent_of(backend), llm=llm, language=words.tag, settings=settings
+        ) as call:
+            await call.user(words.request)
+            await call.advance(0.5)  # into the summary, past its first audio
+            over = await call.user(words.yes_send, during="read_back")
+            await call.advance(SETTLE_S)
+            over.expect.confirmed(ACTION, room=ROOM, note=words.note)
+            assert backend.writes == 1
+            return call.violations
+
+    found = asyncio.run(scene())
+    if read:
+        assert found == ()
+    else:
+        (only,) = found
+        assert "began before a read-back of its draft played whole" in only
 
 
 def test_the_turn_holds_the_action_call_with_the_arguments_the_model_wrote() -> None:

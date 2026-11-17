@@ -71,6 +71,7 @@ async def answer_events(
                     for said in reply.gate.said(splitter.feed(unnoted.feed(piece))):
                         yield said
                     if reply.gate.stopped or reply.gate.not_speech:
+                        reply.leak.close()  # what the leak check held of it is never said
                         return
                     if reply.leak.found:  # the rest is reasoning: what was held is said
                         break

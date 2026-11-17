@@ -95,6 +95,8 @@ def test_a_flight_not_listed_or_not_clear_is_said_so() -> None:
     call.search(destination="Jeddah", depart=DEC_17, one_way=True)
     unclear = data(_compare(call, {"pick": "part_of_day", "part": "morning"}))
     assert unclear["status"] == "unclear_choice" and len(unclear["options"]) == 2
+    none = data(_compare(call, {"pick": "fare", "fare_sar": 1}))  # none of the four: briefly
+    assert none["say"].startswith("Say none of the flights listed") and none["count"] == 4
 
 
 def test_a_read_that_does_not_answer_is_said_as_a_failure() -> None:

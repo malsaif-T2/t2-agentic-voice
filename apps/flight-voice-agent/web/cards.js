@@ -9,9 +9,11 @@
 // marked as the pick. The review card's chosen rows are the trip's picks, marked in both legs. A
 // pick lost by a change is no longer marked, since every card says the picks anew. An outbound
 // card that keeps no return pick is a new search: it clears the return segment; a leg's card
-// clears the review and the extra; a review card that no longer holds the return's pick (the
-// trip made one way) clears the return segment, so a one-way trip shows none. The review segment
-// shows a status line (`status`): waiting for the caller's yes, or booked with its reference.
+// clears the review and the extra; a review card that no longer holds the return's pick, or one
+// of the whole trip (`complete`: its total, a row with a value and no mark) with one leg picked
+// (the trip made one way), clears the return segment, so a one-way trip shows none. The review
+// segment shows a status line (`status`): waiting for the caller's yes, or booked with its
+// reference.
 //
 // A card is data, never instructions: its title and its texts are set with textContent, each in
 // the direction of its own first strong character (dir="auto"). A row's mark is one of `MARKS`
@@ -54,6 +56,9 @@ function part(tag, className, said) {
 
 const picked = (rows) => rows.filter((row) => row.mark === "chosen");
 
+// Whether a card's rows are the whole trip's: a row with a value and no mark is its total.
+export const complete = (rows) => rows.some((row) => row.value && !row.mark);
+
 export class Cards {
   // The segments shown in `list` (an ol), their section `section` hidden while there are none;
   // `marks()` gives the words a row's mark is shown with, in the page's language.
@@ -95,7 +100,7 @@ export class Cards {
     const picks = new Set(picked(card.rows).map((row) => row.title));
     const back = this.shown.return?.rows ?? [];
     const dropped = back.some((r) => this.picks.has(r.title)) && !back.some((r) => picks.has(r.title));
-    if (dropped) this.shown.return = null;
+    if (dropped || (complete(card.rows) && picks.size === 1)) this.shown.return = null;
     this.shown.review = card;
     this.picks = picks;
   }

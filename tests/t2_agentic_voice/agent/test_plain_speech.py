@@ -8,7 +8,9 @@ whole, and whose two questions joined by a run of dots were both said).
   a tag's opening, Arabic harakat counted as letters; the invisible and markdown marks are taken
   out of what is said.
 - **In the talker**: a request that is not speech and said nothing is sent once more, and its
-  retry said cleanly; a retry that is not speech either says nothing, and no request follows;
+  retry said cleanly, nothing the leak check held of the first reaching it; none is sent once a
+  leak or the question limit stopped the reply; a retry that is not speech either says nothing,
+  and no request follows;
   a dot run's second question is dropped by the question limit; a clause that is not speech
   after one said ends its request, with no retry and no tool of it run; the marks are taken out
   of a clause said; with the setting off, each is said as written (GP-18).
@@ -133,10 +135,10 @@ async def quick() -> dict[str, bool]:
     return {"ok": True}
 
 
-def _settings(on: bool, *, most: int = 3) -> VoiceSettings:
+def _settings(on: bool, *, most: int = 3, **guard: bool) -> VoiceSettings:
     return VoiceSettings(
         env="test",
-        guard=GuardSettings(plain_speech=on),
+        guard=GuardSettings.model_validate({"plain_speech": on, **guard}),
         llm=LlmSettings(max_requests_per_turn=most),
     )
 
@@ -161,6 +163,35 @@ def test_a_retry_that_is_not_speech_either_says_nothing_and_no_request_follows()
     events = reply(talker(model, settings=_settings(True, most=4)), TURN)
     assert _spoken(events) == [] and kinds(events)[-1] == "ReplyDone"
     assert len(model.requests) == 2  # once more, never twice
+
+
+@pytest.mark.parametrize(
+    ("pieces", "notes"),
+    [(("[cut here]. U", "ser more junk"), False), (("{x}. [", "more junk"), True)],
+    ids=["role_start", "bracket"],
+)
+def test_a_retry_is_said_as_written_whatever_the_leak_check_held_of_the_dropped_request(
+    pieces: tuple[str, str], notes: bool
+) -> None:
+    """The junk ends partway through the stream, the leak check holding what could open a
+    role's line or a stage note: none of it reaches the retry."""
+    model = FakeChat(said(*pieces), said("Sure, which day?"))
+    events = reply(talker(model, settings=_settings(True, drop_stage_notes=notes)), TURN)
+    assert _spoken(events) == ["Sure, which day?"] and len(model.requests) == 2
+
+
+def test_no_request_follows_a_request_that_leaked_or_passed_the_question_limit() -> None:
+    """D-089 and the question limit's stop come before the retry: the reply ends."""
+    leaked = FakeChat(said('{"a": 1} <action book>'), said("Never asked for."))
+    settings = _settings(True, drop_stage_notes=True)
+    assert _spoken(reply(talker(leaked, settings=settings), TURN)) == []
+    assert len(leaked.requests) == 1
+    first: list[Step] = [TextDelta(text="Which day suits you? "), call("quick")]
+    first.append(Done(finish_reason="tool_calls"))
+    asked = FakeChat(first, said("Could you tell me the day? ", "{x} more"), said("Never."))
+    settings = _settings(True, most=4, question_stop_drops_calls=True)
+    events = reply(talker(asked, quick, settings=settings), TURN)
+    assert _spoken(events) == ["Which day suits you?"] and len(asked.requests) == 2
 
 
 def test_the_last_request_that_is_not_speech_is_never_sent_again() -> None:

@@ -61,8 +61,9 @@ turn and the call as it was heard to the events the session plays, within the re
   check, a clause that is not speech ending its request as a leak does, no tool of it run, and
   the invisible and markdown marks taken out of each clause (agent/plain_speech.py). A request
   that said nothing so is sent once more, the same messages, a new first line and nothing of
-  its text kept, while the turn has a request left; after that, or with none left, the reply
-  ends, and the session says the `error` notice when none of it was said.
+  its text kept (what the leak check held of it included), while the turn has a request left
+  and neither a leak nor the question limit stopped the reply; after that, or with none left,
+  the reply ends, and the session says the `error` notice when none of it was said.
 - **Time** is the call's clock's alone: a tool's `ms`, a request's
   `first_token_s` and the prompt's date (the runner times each tool's timeout on it too).
 - **Warmth.** Each request's `ModelReplied` says whether it went out on a kept-alive connection
@@ -228,7 +229,8 @@ class Turn:
             )
             warm = answer.warm if requests == 1 else warm
             if self.gate.not_speech:  # D-111: nothing more of it; said nothing, sent once more
-                retry = not (retried or self.gate.said_now or last)
+                stopped = self.leak.found or self.gate.questions.stopped  # no request follows
+                retry = not (retried or self.gate.said_now or last or stopped)
                 ids = {"call_id": self.ctx.call_id, "turn_id": self.turn.turn_id}
                 _log.info("talker_not_speech_dropped", **ids, request=requests, retry=retry)
                 if retry:

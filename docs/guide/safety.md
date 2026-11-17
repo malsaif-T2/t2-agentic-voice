@@ -163,7 +163,10 @@ app that books for real declares an action.) Then:
   the lists leave unplaced go to the chat model first: its yes is held the same way, and its no
   or change stops the read-back and declines it. Once the summary has played in full, with no
   other words begun since, the held yes books: the closing question is cut, or never said, and
-  the `sending` line answers the caller's yes.
+  the `sending` line answers the caller's yes. It books a moment after the summary's end (the
+  speech detector's `turns.vad_start_ms`, and 0.2 s more), so words begun just before the end,
+  which the detector reports that late, still count; and words count in the order they were
+  said, whatever order their transcripts come in.
 - **Other words drop it.** A second yes, a filler or a listening sound keeps it held; any other
   words after it (a single no, a question, a word on no list) drop it, and the caller answers
   after the question as before. Words that stop the summary decline it, as before.

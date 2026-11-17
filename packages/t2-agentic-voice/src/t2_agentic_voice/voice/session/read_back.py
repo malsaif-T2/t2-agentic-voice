@@ -13,25 +13,22 @@ call's confirming state, and the only place a `ReadBackReceipt` is built, from t
   the summary plays on, and they count for nothing (overlap.py takes them as a listening
   sound). Words that hold a stop or pause word are never ignored, so khalas (enough), a stop
   word and a filler, stops it, but beside a yes word under `interruptions.yes_over_read_back`,
-  which holds a yes over the summary (`takes`, held_yes.py; D-108). A stop or pause word (the
-  interruption rule's stop and wait words) over the read-back, or real words over its summary,
-  stop it (`cut_by`): no receipt, the confirming state ends and nothing is sent; the turn
-  reaches the talker, its stop word included, the action declined as `stopped` after a stop or
-  pause word, as a `no` after words that are a plain no by the yes rule's lists, and as a
-  `correction` after other real words (`handed`), so the talker answers in its own words, or
-  asks what to change, its draft kept; and only a new read-back played in full can earn a yes.
+  which holds a yes over the summary (read_back_heard.py's `takes`, held_yes.py; D-108). A stop
+  or pause word (the interruption rule's stop and wait words) over the read-back, or real words
+  over its summary, stop it (`cut_by`): no receipt, the confirming state ends and nothing is
+  sent; the turn reaches the talker, its stop word included, the action declined as `stopped`
+  after a stop or pause word, as a `no` after words that are a plain no by the yes rule's
+  lists, and as a `correction` after other real words (`handed`), so the talker answers in its
+  own words, or asks what to change, its draft kept; and only a new read-back played in full
+  can earn a yes.
   A turn begun in the gap before its first audio is no overlap, and the summary plays on over
   it; its words reaching the talker decline it as a `correction` (or a `no`) all the same
   (`handed`). A repeat request over it, or said whole while it is confirming, has the session
   say it again (`again`; read_back_moved.py's `read_again`), the earlier one void. Other words
   over the closing question are the yes rule's. The client's `stop` while it plays, its reply
   ending before its summary played whole, and the call's end end it too.
-- **The receipt** (`receipt`), built only when the yes rule is called, so a verdict landing late
-  can still deny it: it stands for a summary that played whole, every clause of it played, none
-  cut short, each with audio (a stop that cut the reply after its summary changes none of that);
-  no overlap begun over the summary undecided; and the turn's speech begun once its last clause
-  played. Its `question_ended_at` is the closing question's last `ClausePlayed`, None until every
-  clause of the question has played so; its `summary_began_at` the summary's first audio queued.
+- **The receipt** (`receipt`), built only when the yes rule is called: what it stands for, and
+  when each part of the read-back played or could first be heard, are read_back_times.py's.
 - **The answer** (yes_turns.py). A turn whose speech began once the summary's last clause played
   answers it (`answering`) and goes to the yes rule with its words (`words`): a yes ends
   confirming (`confirmed`); a no or a correction too, the turn reaching the talker with the
@@ -43,16 +40,11 @@ call's confirming state, and the only place a `ReadBackReceipt` is built, from t
   turns declined it, and how, are read_back_declines.py's.
 - **The flow.** Each read-back's action moves through domain/action_flow.py's table as
   confirming ends or goes on (`state`; read_back_flow.py), a move it refuses logged, never raised.
-- **What was still heard** (D-082's echo rail). Whether a turn's speech began while the
-  read-back, or a line that asked it again, was still heard (`over_read_back`,
-  `over_follow_up`): its reply playing, or within its tail after it ended, the drop rule's
-  window (playback.py's `Reply.over`); True when the session cannot tell.
+- **What was still heard** (D-082's echo rail; `over_read_back`, `over_follow_up`, and whether
+  speech answers it, `answering`) is read_back_times.py's `ReadBackTimes`.
 """
 
 from __future__ import annotations
-
-from collections.abc import Callable, Collection
-from dataclasses import dataclass
 
 from t2_agentic_voice.core.conversation import DeclinedAction, DeclineKind
 from t2_agentic_voice.core.events import ConfirmationRequested, ReplyId, TurnId
@@ -62,15 +54,13 @@ from t2_agentic_voice.domain.action_lines import ReadBackPlan
 from t2_agentic_voice.domain.interruptions import Verdict
 from t2_agentic_voice.domain.yes_words import ConsentWords, consent_words
 from t2_agentic_voice.voice.protocol import ClauseIndex
+from t2_agentic_voice.voice.session import read_back_times as times
 from t2_agentic_voice.voice.session.io import CallSetup
 from t2_agentic_voice.voice.session.open_reply import OpenReply, language_of
 from t2_agentic_voice.voice.session.playback import Playback, Reply
 from t2_agentic_voice.voice.session.read_back_declines import Declines
 from t2_agentic_voice.voice.session.read_back_flow import ReadBackFlow
-
-# Whether an overlap of a reply, its speech begun before a time, is still undecided (overlap.py's
-# `Overlaps.undecided`).
-Undecided = Callable[[ReplyId, float], bool]
+from t2_agentic_voice.voice.session.read_back_times import ReadBack, ReadBackTimes, Undecided
 
 
 def played_receipt(
@@ -83,7 +73,7 @@ def played_receipt(
     summary_began_at: float | None = None,
 ) -> ReadBackReceipt:
     """The receipt of `action`'s read-back of `draft_json` in reply `reply_id`. The caller has
-    checked everything the module's docstring says; this only builds it."""
+    checked everything read_back_times.py's docstring says; this only builds it."""
     values = {
         "action": action,
         "draft_json": draft_json,
@@ -95,18 +85,7 @@ def played_receipt(
     return ReadBackReceipt.model_validate(values, context=READ_BACK_SEAL)
 
 
-@dataclass(frozen=True, kw_only=True)
-class ReadBack:
-    """One draft read back: its `plan`, the reply that says it, and the indexes of its clauses
-    there, the summary's and the closing question's."""
-
-    plan: ReadBackPlan
-    reply_id: ReplyId
-    summary: tuple[ClauseIndex, ...]
-    question: tuple[ClauseIndex, ...]
-
-
-class Confirming:
+class Confirming(ReadBackTimes):
     """One call's confirming state (the module's docstring), over the replies `playback` keeps,
     in the call `setup` gives."""
 
@@ -178,37 +157,6 @@ class Confirming:
             action_send=plan.send_words,
         )
 
-    def answering(self, speech_at: float | None) -> bool:
-        """Whether speech begun at `speech_at` answers the current read-back: it began once
-        the read-back's summary had played its last clause (yes_turns.py's)."""
-        read_back = self.read_back
-        if read_back is None or speech_at is None:
-            return False
-        return not self._over_summary(read_back, speech_at)
-
-    def takes(self, speech_at: float | None, *, over: ReplyId | None) -> bool:
-        """Whether a turn begun at `speech_at` that the agent's voice went on over is the yes
-        rule's: it answers the current read-back, or is an overlap of its reply (`over`) begun
-        over its summary (`since_summary`)."""
-        read_back = self.read_back
-        if read_back is None or speech_at is None or self.answering(speech_at):
-            return self.answering(speech_at)
-        return over == read_back.reply_id and self.since_summary(speech_at)
-
-    def since_summary(self, speech_at: float) -> bool:
-        """Under `interruptions.yes_over_read_back` only (D-108; held_yes.py): whether speech
-        begun at `speech_at` began once the current read-back's summary began to play."""
-        began = self.summary_began_at() if self.holds_yes else None
-        return began is not None and began < speech_at
-
-    def summary_began_at(self) -> float | None:
-        """When the current read-back's summary's first audio was queued; None before."""
-        read_back = self.read_back
-        reply = None if read_back is None else self._playback.reply(read_back.reply_id)
-        if read_back is None or reply is None or read_back.summary[0] >= len(reply.clauses):
-            return None
-        return reply.clauses[read_back.summary[0]].queued_at
-
     def decline(self, turn_id: TurnId, kind: DeclineKind) -> None:
         """The caller's turn `turn_id` declined the current read-back, as `kind`: confirming
         ends, and the turn reaches the talker with the action declined so (`handed`)."""
@@ -249,33 +197,6 @@ class Confirming:
         if self.read_back is not None:
             self._follow_ups.add(reply_id)
 
-    def over_read_back(self, speech_at: float | None) -> bool:
-        """Whether speech begun at `speech_at` began while the current read-back was still
-        heard: its reply playing, or within its tail after it ended (playback.py's
-        `Reply.over`, the drop rule's window, the transport's reports); True when the session
-        cannot tell, so the yes rule's echo rail keeps its lines (domain/yes_rule.py's
-        `judged`)."""
-        read_back = self.read_back
-        return read_back is None or self._heard(speech_at, (read_back.reply_id,))
-
-    def over_follow_up(self, speech_at: float | None) -> bool:
-        """Whether speech begun at `speech_at` began while a line that asked the current
-        read-back again was still heard: from its reply's first audio queued to the end of its
-        tail after it ended, as `over_read_back` reads the read-back's; True when the session
-        cannot tell, so the echo rail keeps that line."""
-        return self._heard(speech_at, self._follow_ups)
-
-    def _heard(self, speech_at: float | None, reply_ids: Collection[ReplyId]) -> bool:
-        """Whether speech begun at `speech_at` began over one of `reply_ids`, its tail included;
-        True with no time, or for a reply the session no longer holds."""
-        if speech_at is None:
-            return True
-        for reply_id in reply_ids:
-            reply = self._playback.reply(reply_id)
-            if reply is None or reply.over(speech_at):
-                return True
-        return False
-
     def cut_by(
         self, turn_id: TurnId, *, reply_id: ReplyId, speech_at: float, verdict: Verdict
     ) -> None:
@@ -295,7 +216,8 @@ class Confirming:
             self._declines.repeat(turn_id, read_back.plan)
             self.read_back = None
             return
-        if verdict.kind != "stop" and not self._over_summary(read_back, speech_at):
+        summary = self._playback.reply(read_back.reply_id), read_back.summary
+        if verdict.kind != "stop" and not times.over(*summary, speech_at):
             return
         self.decline(turn_id, "stopped" if verdict.kind == "stop" else "correction")
 
@@ -345,7 +267,7 @@ class Confirming:
         read_back = self.read_back
         if read_back is None or reply.reply_id != read_back.reply_id:
             return
-        if self._whole(read_back, read_back.summary) is None:
+        if times.whole(reply, read_back.summary) is None:
             self.read_back = None
 
     def end(self) -> None:
@@ -355,12 +277,13 @@ class Confirming:
 
     def receipt(self, *, speech_at: float | None, undecided: Undecided) -> ReadBackReceipt | None:
         """The current read-back's receipt for a turn whose speech began at `speech_at`, built
-        now (the module's docstring); None while any of it does not hold, or no read-back is
-        current."""
+        now (read_back_times.py's docstring); None while any of it does not hold, or no
+        read-back is current."""
         read_back = self.read_back
         if read_back is None or speech_at is None:
             return None
-        summary_at = self._whole(read_back, read_back.summary)
+        reply = self._playback.reply(read_back.reply_id)
+        summary_at = times.whole(reply, read_back.summary)
         if summary_at is None or speech_at < summary_at:
             return None
         if undecided(read_back.reply_id, summary_at):
@@ -370,27 +293,6 @@ class Confirming:
             draft_json=read_back.plan.draft_json,
             reply_id=read_back.reply_id,
             summary_played_at=summary_at,
-            question_ended_at=self._whole(read_back, read_back.question),
-            summary_began_at=self.summary_began_at(),
+            question_ended_at=times.whole(reply, read_back.question),
+            summary_began_at=times.began(reply, read_back.summary),
         )
-
-    def _whole(self, read_back: ReadBack, indexes: tuple[ClauseIndex, ...]) -> float | None:
-        """When the last of `indexes`, clauses of the read-back's reply, played, once every one
-        of them played whole with audio; None until then, or when one never will."""
-        reply = self._playback.reply(read_back.reply_id)
-        if reply is None or not indexes:
-            return None
-        clauses = [reply.clauses[index] for index in indexes if index < len(reply.clauses)]
-        if len(clauses) != len(indexes):
-            return None
-        if not all(c.played and not c.cut_short and c.audio_s > 0 for c in clauses):
-            return None
-        return max(c.played_at or 0.0 for c in clauses)
-
-    def _over_summary(self, read_back: ReadBack, speech_at: float) -> bool:
-        """Whether speech begun at `speech_at` began before the read-back's summary had played
-        its last clause."""
-        reply = self._playback.reply(read_back.reply_id)
-        last = None if reply is None else reply.clauses[read_back.summary[-1]]
-        ended = None if last is None or not last.played else last.played_at
-        return ended is None or speech_at < ended

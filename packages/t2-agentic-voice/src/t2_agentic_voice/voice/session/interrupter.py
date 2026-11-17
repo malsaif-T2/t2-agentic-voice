@@ -71,6 +71,7 @@ from t2_agentic_voice.voice.session.overlap_ask import OverlapAsks
 from t2_agentic_voice.voice.session.overlap_follow import Answer, Follows
 from t2_agentic_voice.voice.session.playback import Reply
 from t2_agentic_voice.voice.session.read_back import Confirming
+from t2_agentic_voice.voice.session.read_back_heard import takes
 from t2_agentic_voice.voice.session.read_back_moved import read_again
 from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.session_events import Transcribed, Transcribing, TurnOpened
@@ -262,12 +263,12 @@ class Interrupter:
         request said whole, or nothing was heard (a command); new words or a correction whose
         own transcript failed hear the `error` notice, as with no talker, and so do those its
         whole overlap held after its window's stop or repeat request (`OverlapState.instead`).
-        A turn the reply went on over is answered only when it is the yes rule's (read_back.py's
-        `takes`): its speech begun once the summary played (a bare yes over the closing
-        question), or a yes held over the summary (held_yes.py)."""
+        A turn the reply went on over is answered only when it is the yes rule's
+        (read_back_heard.py's `takes`): its speech begun once the summary played (a bare yes
+        over the closing question), or a yes held over the summary (held_yes.py)."""
         decided = await self._judged_again(state, turn, event)
         if decided is not None and decided.action == "go_on":
-            if heard is not None and self._confirming.takes(heard.speech_at, over=turn.over_reply):
+            if heard is not None and takes(self._confirming, heard.speech_at, over=turn.over_reply):
                 await self._answer(self._follows.pending(turn), heard, event)
             else:
                 self._turns.settle(turn)

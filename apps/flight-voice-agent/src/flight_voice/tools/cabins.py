@@ -24,14 +24,13 @@ from flight_voice.airline.schedule import CABINS, Cabin
 from flight_voice.airline.system import Airline, AirlineUnavailableError
 from flight_voice.said import Tag, arabic, words
 from flight_voice.tools.cards import day_title, money
-from flight_voice.tools.listing import listed_again
+from flight_voice.tools.listing import listed_again, unclear
 from flight_voice.tools.picks import CHOICE, Choice, departure_of, pick
 from flight_voice.tools.results import (
     SAY,
     SEARCH_FAILED,
     DateSaid,
     NothingListed,
-    Unclear,
     _Result,
     date_said,
     result,
@@ -106,7 +105,7 @@ def compare_cabins(airline: Airline, trips: TripBook) -> Tool:
                 tag=tag,
                 name=airline.flight_name,
             )
-            return result(Unclear(leg=leg, options=could))
+            return result(unclear(leg, could, named=bool(named)))
         (one,) = named
         flight = departure_of(one).flight
         try:

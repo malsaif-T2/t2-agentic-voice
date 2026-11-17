@@ -109,10 +109,12 @@ export function referencesOf(trips) {
 }
 
 // The booking a call made (app.js), found from the page's own "Your trips" route: the
-// references loaded at the call's start (`start`); once a read-back was asked (the state
-// `confirming`), the list loaded again at each state after it until a booking not among them is
-// there, its reference then kept (`seen`). When the list did not load at the start, no booking
-// is ever taken for this call's, so a past one is never shown as made.
+// references loaded at the call's start (`start`); once the whole trip was shown for review
+// (`ask`) or a read-back was asked (the state `confirming`), the list loaded again at each state
+// after it until a booking not among them is there, its reference then kept (`seen`). A new leg
+// listed after it (`forget`) makes every booking loaded a known one, so the next trip of the
+// call looks for its own. When the list did not load at the start, no booking is ever taken for
+// this call's, so a past one is never shown as made.
 export class Made {
   constructor(trips) {
     this.trips = trips;
@@ -125,6 +127,17 @@ export class Made {
     await this.trips.load();
     const known = this.trips.failed ? null : referencesOf(this.trips);
     Object.assign(this, { known, asked: false, reference: "" });
+  }
+
+  // The whole trip is shown for review: its booking is looked for from now on.
+  ask() {
+    this.asked = true;
+  }
+
+  // A new leg is listed: the bookings loaded are known ones, and none is looked for yet.
+  forget() {
+    if (this.known) for (const ref of referencesOf(this.trips)) this.known.add(ref);
+    Object.assign(this, { asked: false, reference: "" });
   }
 
   // The reference of the booking this call made, "" while there is none, the state `now`.

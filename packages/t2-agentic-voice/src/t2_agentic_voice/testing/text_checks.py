@@ -20,7 +20,10 @@ what the yes rule let through, so `call.violations` says what a guard or a rule 
   - **Rule C**: once the talker asked for a read-back, it spoke no more words of its own in
     that turn.
   - **The yes rule**: every action the session confirmed was confirmed by words begun once a
-    read-back of its own draft had played whole, that summary unbroken.
+    read-back of its own draft had played whole, that summary unbroken; or, under
+    `interruptions.yes_over_read_back` (D-108), by words begun over the summary of the
+    read-back it names once that summary could first be heard, the summary then played whole
+    before the action ran (`_held_over`).
 
 A clause the caller never heard, a fixed phrase, and a line of the runtime's own (a read-back,
 an ask-again, `declined`, `sending`, an outcome) are not checked: the guard never checks a
@@ -44,11 +47,18 @@ from t2_agentic_voice.domain.completed_action import CompletedAction
 from t2_agentic_voice.domain.guard import check_clause, check_ids
 from t2_agentic_voice.domain.yes_rule import is_confirmed
 from t2_agentic_voice.testing.text_actions import own_lines
-from t2_agentic_voice.testing.text_read_back import is_template, readings, summary_played_at
+from t2_agentic_voice.testing.text_read_back import (
+    Reading,
+    is_template,
+    readings,
+    summary_played_at,
+)
 from t2_agentic_voice.testing.text_reads import TextReads
 from t2_agentic_voice.testing.text_turn import TextTurn
-from t2_agentic_voice.testing.text_watch import plans_of
+from t2_agentic_voice.testing.text_watch import JobRun, plans_of
 from t2_agentic_voice.testing.turn_data import HeardClause
+from t2_agentic_voice.voice.session.playback import Playback
+from t2_agentic_voice.voice.session.read_back_times import began
 
 
 def _heard(reads: TextReads) -> list[tuple[int, HeardClause]]:
@@ -175,9 +185,21 @@ def _rule_c(reads: TextReads) -> list[str]:
     return found
 
 
+def _held_over(playback: Playback, reading: Reading, run: JobRun) -> bool:
+    """Whether `run`'s yes is one held over `reading`'s summary (D-108): `reading` is the
+    read-back its yes names, its speech began once that summary could first be heard and
+    before it played whole, and it played whole before the action ran."""
+    confirmed, reply = run.confirmed, playback.reply(reading.reply_id)
+    start, ended = began(reply, reading.summary), summary_played_at(playback, reading)
+    if reading.reply_id != confirmed.reply_id or start is None or ended is None:
+        return False
+    return start < confirmed.speech_at < ended <= run.began_at
+
+
 def _yes_rule(reads: TextReads) -> list[str]:
     playback, found = reads.session.playback, list[str]()
     every = readings(playback, plans_of(reads.watched))
+    holds = reads.session.setup.settings.interruptions.yes_over_read_back
     for run in [] if reads.jobs is None else reads.jobs.runs:
         confirmed = run.confirmed
         turn, name = confirmed.turn_id, confirmed.action
@@ -187,7 +209,8 @@ def _yes_rule(reads: TextReads) -> list[str]:
         mine = (name, confirmed.draft_json)
         own = [r for r in every if (r.plan.action, r.plan.draft_json) == mine]
         ended = [at for r in own if (at := summary_played_at(playback, r)) is not None]
-        if not any(at <= confirmed.speech_at for at in ended):
+        held = holds and any(_held_over(playback, r, run) for r in own)
+        if not held and not any(at <= confirmed.speech_at for at in ended):
             found.append(
                 f"turn {turn}'s yes to {name} began before a read-back of its draft played whole"
             )
