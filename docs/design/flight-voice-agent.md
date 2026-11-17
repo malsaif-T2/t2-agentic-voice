@@ -1618,9 +1618,10 @@ same airline, trip state, persona, names, words and page, compared on live calls
 kept. The setting `FLIGHT_VOICE_AGENT` chooses it (`scripted` by default, or `lean`); the server
 declares the agent chosen and, for the lean one, registers its booking check's observers
 (`AgentSpeechEnded`, `UserTurnEnded`, `CallEnded`). Its settings path turns on
-`guard.plain_speech`, `guard.drop_stage_notes`, `guard.question_stop_drops_calls` and four model
-requests a turn, as the scripted agent's does, and not the yes held over a read-back, which it
-has none of. Its name is `flight-lean`, so its traces and its runtime's folder are its own.
+`guard.plain_speech`, `guard.drop_stage_notes`, `guard.question_stop_drops_calls`, four model
+requests a turn and `tts.spoken_numbers = "by_register"` (D-107: the times and fares it writes in
+digits are said as words in the caller's register, "14:00" «ثنتين الظهر»), as the scripted
+agent's does, and not the yes held over a read-back, which it has none of. Its name is `flight-lean`, so its traces and its runtime's folder are its own.
 
 **What stays in code, and nothing more.**
 

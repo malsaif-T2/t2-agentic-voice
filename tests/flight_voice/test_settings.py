@@ -18,6 +18,7 @@ from flight_voice.settings import (
     GUARD_ON,
     PREFIX,
     REQUESTS_PER_TURN,
+    SPOKEN_NUMBERS,
     TOKENS_PER_DAY,
     YES_OVER_READ_BACK,
     for_the_app,
@@ -188,6 +189,16 @@ def test_saad_speaks_in_the_owners_elevenlabs_voice_unless_the_environment_names
     }
     environment.setenv("T2V_TTS__PROVIDER", "groq")
     assert load().voice.tts.languages["ar-SA"].voice == "abdullah"
+
+
+def test_numbers_and_times_are_said_in_the_callers_register_unless_set(
+    environment: pytest.MonkeyPatch,
+) -> None:
+    """D-107 for the flight agent: "14:00" is said as a clock says it, never digit by digit."""
+    assert VoiceSettings(env="test").tts.spoken_numbers == "as_written"
+    assert load().voice.tts.spoken_numbers == SPOKEN_NUMBERS == "by_register"
+    environment.setenv("T2V_TTS__SPOKEN_NUMBERS", "as_written")
+    assert load().voice.tts.spoken_numbers == "as_written"
 
 
 def test_the_demo_traveler_is_the_dev_caller_under_dev_alone(

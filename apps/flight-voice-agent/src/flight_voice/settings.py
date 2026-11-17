@@ -25,6 +25,10 @@ default (persona.py's `Names`).
   more (D-111), a refused booking's next pick and its read-back fit in one turn, and a yes over
   the read-back books once its summary has played (D-108, the owner's "Any yes books"); the lean
   agent has no read-back to hold a yes over (`for_the_app`'s `agent`);
+- **says numbers, times and dates in the caller's register** (`tts.spoken_numbers =
+  "by_register"`, `SPOKEN_NUMBERS`, D-107) unless the environment sets it: "14:00" is said
+  «ثنتين الظهر» to a Saudi caller and "two in the afternoon" in English, never digit by digit,
+  since the lean agent writes times and fares in digits;
 - **under `env` dev alone**, names the demo traveler the test console's dev caller, so a call the
   console starts is the traveler's, as a page's call is;
 - **refuses a name that breaks the lines' rule** (persona.py's `breaking`), naming its setting.
@@ -71,6 +75,7 @@ ACTIONS_PER_DAY: Final = 50
 GUARD_ON: Final = ("question_stop_drops_calls", "drop_stage_notes", "plain_speech")
 REQUESTS_PER_TURN: Final = 4
 YES_OVER_READ_BACK: Final = "yes_over_read_back"
+SPOKEN_NUMBERS: Final = "by_register"
 # The agent the app serves: today's scripted one, or the lean one beside it (D-113).
 AgentKind = Literal["scripted", "lean"]
 AGENTS: Final[tuple[AgentKind, ...]] = ("scripted", "lean")
@@ -228,8 +233,8 @@ def for_the_app(voice: VoiceSettings, *, agent: AgentKind = "scripted") -> Voice
     """`voice` as the app runs `agent`: its folder nested (`APP_FOLDER`), its bookings a caller
     a day `ACTIONS_PER_DAY`, the guard's `GUARD_ON` on, its most requests a turn
     `REQUESTS_PER_TURN` and, for the scripted agent alone (the lean one has no read-back),
-    `YES_OVER_READ_BACK` on, each unless set, and under `env` dev alone the demo traveler the
-    test console's dev caller; every other setting as it was."""
+    `YES_OVER_READ_BACK` on, numbers said `SPOKEN_NUMBERS`, each unless set, and under `env` dev
+    alone the demo traveler the test console's dev caller; every other setting as it was."""
     storage = StorageSettings.model_validate(
         voice.storage.model_dump() | {"var_dir": voice.storage.var_dir / APP_FOLDER}
     )
@@ -248,6 +253,8 @@ def for_the_app(voice: VoiceSettings, *, agent: AgentKind = "scripted") -> Voice
         update["llm"] = LlmSettings.model_validate(
             voice.llm.model_dump() | {"max_requests_per_turn": REQUESTS_PER_TURN}
         )
+    if "spoken_numbers" not in voice.tts.model_fields_set:
+        update["tts"] = voice.tts.model_copy(update={"spoken_numbers": SPOKEN_NUMBERS})
     if voice.env == "dev":
         update["server"] = ServerSettings.model_validate(
             voice.server.model_dump() | {"dev_caller": demo_caller()}
