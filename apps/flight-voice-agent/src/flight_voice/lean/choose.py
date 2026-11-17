@@ -10,11 +10,12 @@ this call's latest options for its leg is `unknown_id`, and a flight with no sea
 travelers in the cabin `no_seats`, each with the leg's other flights' ids, fares and seats as
 data. An error writes nothing.
 
-It returns the trip so far (`TripSoFar`): the route and the trip's kind, each chosen leg with its
-day, times, length, nonstop and fare, the travelers, the cabin, `missing` (the legs still to
-choose, each listed again in `listed`) and, when complete, `total` (each leg's fare times the
-travelers). The call's
-trip is written once, its last step, and marked for the booking check. Its card: a leg still to
+It returns the trip so far (`TripSoFar`): the route and the trip's kind, each with its MSA form
+beside a Saudi reply's, each chosen leg with its day, times, length, nonstop and fare, the
+travelers, the cabin, `missing` (the legs still to choose, each listed again in `listed`: on a
+round trip the return's, once the outbound is chosen) and, when complete, `total` (each leg's
+fare times the travelers), the one total the agent says. The call's trip is written once, its
+last step, and marked for the booking check. Its card: a leg still to
 choose in its segment, the other leg's pick kept beside it (the return's on a round trip once
 the outbound is chosen); the whole trip and its total in the review segment once complete.
 """
@@ -43,8 +44,9 @@ from flight_voice.lean.results import (
     leg_options,
     option_id,
     route_said,
+    trip_said,
 )
-from flight_voice.said import Tag, register, words
+from flight_voice.said import Tag
 from flight_voice.tools import cards
 from flight_voice.tools.picks import departure_of
 from flight_voice.tools.results import Duration
@@ -95,6 +97,7 @@ class TripSoFar(_Data):
     route: str
     route_msa: str | None = None
     trip: str
+    trip_msa: str | None = None
     outbound: Chosen | None = None
     return_: Chosen | None = Field(default=None, alias="return")
     travelers: int
@@ -228,10 +231,12 @@ def _so_far(picking: _Picking, lost: list[tuple[LegKind, Leg | None]], to: Code)
         if (shown := draft.shown(leg))
     }
     said, msa = route_said(route, tag)
+    kind, kind_msa = trip_said(draft.one_way, tag)
     answer = TripSoFar(
         route=said,
         route_msa=msa,
-        trip=words.trip_kind(draft.one_way, register(tag)),
+        trip=kind,
+        trip_msa=kind_msa,
         outbound=picking.chosen("outbound"),
         return_=picking.chosen("return"),
         travelers=draft.travelers,

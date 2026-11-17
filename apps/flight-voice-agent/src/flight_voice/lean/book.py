@@ -16,8 +16,12 @@ reason; and a trip whose total was not said, played and answered is `not_confirm
 the one fixed text the lean tools hold (`NOT_CONFIRMED`). Then the store books it, priced again,
 under a request ID of the call's own: a refusal is `refused`; a write that does not answer
 within `WRITE_S` is looked up by its request ID (when the store can find one), and `unknown`
-when nothing is found. A booking made returns its reference (`reference_if_asked`), its total
-and its route, and the review card marked booked with its reference.
+when nothing is found. A booking made returns its status and its total alone, as the caller has
+just heard the trip, and the review card marked booked with its reference. Its data holds no
+reference, which the model read out unasked as it confirmed (f-dev-lean-3, 14 of 41 bookings;
+the owner, 2026-11-17: "it should only say the reference when asked"): asked for it, the model
+reads it from `traveler_profile`, whose bookings list it. A booking already made is told whole,
+its trip as it was booked, but for its reference.
 
 The tool finishes when a barge-in comes (`on_interrupt="finish"`), so a write is never cut in
 half; a write begun is counted before it is sent, so a call cut off mid-write is `unknown`.
@@ -43,16 +47,16 @@ from flight_voice.airline.system import Airline
 from flight_voice.booking.action import NO_TRAVELER, traveler_of
 from flight_voice.lean.booking_check import BookingCheck, Ledger
 from flight_voice.lean.choose import chosen_legs
-from flight_voice.lean.results import lean_result, route_said
-from flight_voice.said import Tag, arabic, register, words
+from flight_voice.lean.results import lean_result, route_said, trip_said
+from flight_voice.said import Tag, arabic
 from flight_voice.tools import cards
 from flight_voice.tools.trip_view import view
 from flight_voice.trip import TripBook, TripDraft
 
 BOOK_TRIP: Final = "book_trip"
 DESCRIPTION: Final = (
-    "Book the trip chosen so far, only after you said the whole trip with its total and the "
-    "caller agreed. It takes no arguments."
+    "Book the trip chosen so far, only once the caller heard the trip with its total and "
+    "agreed. It takes no arguments."
 )
 NOT_CONFIRMED: Final[dict[str, JsonValue]] = {
     "status": "not_confirmed",
@@ -74,19 +78,24 @@ def booked_card(draft: TripDraft, airline: Airline, reference: str, tag: Tag) ->
     return trip.model_copy(update={"rows": (*trip.rows, CardRow(title=line))})
 
 
-def _booked(
-    booking: Booking, draft: TripDraft, airline: Airline, tag: Tag, status: str = "booked"
-) -> ToolResult:
+def _booked(booking: Booking, draft: TripDraft, airline: Airline, tag: Tag) -> ToolResult:
+    """A booking just made: its status and total alone (the module's docstring)."""
+    answer: dict[str, JsonValue] = {"status": "booked", "total": booking.total_sar}
+    return lean_result(answer, booked_card(draft, airline, booking.reference, tag))
+
+
+def _already(booking: Booking, draft: TripDraft, airline: Airline, tag: Tag) -> ToolResult:
+    """A booking made before in this call, told whole as it was booked (`draft`), but for its
+    reference."""
     said, msa = route_said((booking.origin, booking.destination), tag)
+    kind, kind_msa = trip_said(booking.return_date is None, tag)
     answer: dict[str, JsonValue] = {
-        "status": status,
-        # Named for when it is said (the owner, 2026-11-17: "it should only say the reference
-        # when asked"): the model reads a key's name as closely as its value.
-        "reference_if_asked": booking.reference,
+        "status": "already_booked",
         "total": booking.total_sar,
         "route": said,
         "route_msa": msa,
-        "trip": words.trip_kind(booking.return_date is None, register(tag)),
+        "trip": kind,
+        "trip_msa": kind_msa,
         "travelers": booking.travelers,
         "cabin": booking.cabin,
     }
@@ -126,7 +135,7 @@ def book_trip(airline: Airline, trips: TripBook, check: BookingCheck) -> Tool:
         draft = trips.get(ctx.call_id)
         if ledger.booked is not None:
             booked = draft if ledger.trip is None else ledger.trip
-            return _booked(ledger.booked, booked, airline, tag, status="already_booked")
+            return _already(ledger.booked, booked, airline, tag)
         if ledger.unsure:
             return lean_result({"status": "unknown"})
         missing: list[JsonValue] = [m for m in draft.missing() if m in ("outbound", "return")]

@@ -1413,6 +1413,18 @@ Block 0.
   corrected the lead's exploratory figure (at 0.8, 165 right against `detected`'s 174; at 0.50 to
   0.65, 174 with none wrong). Its arm is read by the keep rule registered above, at the merge
   commit, with its own gate pass.
+- 2026-11-18: the lean agent's first practice run, f-dev-lean-3 (gpt-oss-120b at medium, 9067b0b):
+  13 of 32 dev scenarios passed, 0 violations, $0.38; an earlier start (f-dev-lean-1) stopped at
+  its smoke play on a retry after a made-up total was blocked. Four read-only diagnoses found the
+  causes: round trips listed both days at once and one pick chose both legs (wrong bookings in f09
+  and f30), the reference volunteered from book_trip's data, MSA callers given Saudi phrases, the
+  fare basis's digit word joined with a fare by rule B. Fixed in the lean files (1dc60b5); a
+  library word-list change was left out under GP-18. Four lean checks were found to misjudge a
+  natural agent and were amended by the lead before any result of them (the flight spec's
+  section 13, 2026-11-18): a tie at the fare a fare pick names books either flight, a near repeat
+  counts only when the reply adds no new fact, a first clause alone under the near overlap is no
+  repeat, and max_words counts the reply as written. Rescored offline, the same plays pass 18 of
+  32 under the amended checks (the checks' change alone, not the agent's).
 - 2026-11-17: the text-to-speech candidates for the owner's pick by ear (D-114, branch
   `plan-010-tts`): `tts.provider` takes `elevenlabs`, `groq` and `telnyx`, each speaking the
   provider's default voices with `tts.languages` unset. The owner picked ElevenLabs v4 Turbo in

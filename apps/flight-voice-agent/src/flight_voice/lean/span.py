@@ -30,7 +30,7 @@ from t2_agentic_voice import Card, CardRow, ToolResult
 from flight_voice.airline.airports import Airport, Code
 from flight_voice.airline.schedule import Cabin, departures, flights, window
 from flight_voice.airline.system import Airline
-from flight_voice.lean.results import FARES_ARE, Day, _Data, day_of, lean_result, route_said
+from flight_voice.lean.results import Day, _Data, day_of, fares_are, lean_result, route_said
 from flight_voice.said import Tag, arabic
 from flight_voice.tools import cards
 from flight_voice.tools.search import nearest_days
@@ -78,7 +78,8 @@ class Spanned(_Data):
     first: Day
     last: Day
     cabin: Cabin
-    fares_are: str = FARES_ARE
+    fares_are: str
+    fares_are_msa: str | None = None
     departs: tuple[str, ...]
     days: tuple[SpanDay, ...] = ()
     weeks: tuple[SpanWeek, ...] = ()
@@ -118,9 +119,12 @@ async def span_search(
     cheapest = sorted(days, key=lambda d: (d.lowest_fare, d.date))[:CHEAPEST]
     said, msa = route_said((start.code, end.code), tag)
     daily = (last - first).days < DAILY_DAYS
+    basis, basis_msa = fares_are(tag, round_trip=False)
     answer = Spanned(
         route=said,
         route_msa=msa,
+        fares_are=basis,
+        fares_are_msa=basis_msa,
         first=day_of(first, tag),
         last=day_of(last, tag),
         cabin=cabin,

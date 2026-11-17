@@ -1,7 +1,8 @@
 """The lean agent's `find_flights` (flight_voice/lean/find.py, span.py), run through the
 library's own runner: a day's flights each way as plain data (stable ids, times, fares, seats,
 the count, the first and last times, the cheapest), the trip written and one way with no return,
-the route in the caller's register, the outbound card; a span of days with each day's count and
+the route and the fares' basis in the caller's register, the basis with no digit word beside a
+fare, the outbound card; a span of days with each day's count and
 lowest fare, the two cheapest days and its calendar card, nothing written; and each refusal as
 data: a route not served, a day past or past the window, a span too long, a return before its
 departure, a cabin not sold, a day with no flight, a full flight's note, and a failed search."""
@@ -10,17 +11,17 @@ from __future__ import annotations
 
 from typing import Any
 
-from flight_voice.lean.results import FARES_ARE
+from flight_voice.lean.results import EACH_WAY, PER_PERSON
 
 from tests.flight_voice.lean.lean_support import BACK, OUT, LeanCall, ids
-from tests.flight_voice.tools.tool_support import airline, card_passes, data
+from tests.flight_voice.tools.tool_support import airline, card_passes, data, ids_pass
 
 
 def test_a_day_lists_each_way_as_plain_data_and_writes_the_trip() -> None:
     call = LeanCall()
     found = call.find(destination="Jeddah", depart=OUT, return_date=BACK)
     answer = data(found)
-    assert answer["status"] == "ok" and answer["fares_are"] == FARES_ARE
+    assert answer["status"] == "ok" and answer["fares_are"] == EACH_WAY
     assert answer["route"] == "Riyadh to Jeddah" and "say" not in answer
     out, back = answer["outbound"], answer["return"]
     assert out["day"] == {"date": OUT, "weekday": "Thursday"}
@@ -42,19 +43,34 @@ def test_no_return_makes_the_trip_one_way_and_lists_the_outbound_alone() -> None
     call = LeanCall()
     answer = data(call.find(destination="JED", depart=OUT))
     assert "return" not in answer and call.draft.one_way
+    assert answer["fares_are"] == PER_PERSON and "fares_are_msa" not in answer
+
+
+def test_a_fare_said_with_its_basis_passes_the_id_rule() -> None:
+    # f-dev-lean-3, f07: "a fare of 910, one-way per person" read as 9101, and the reply
+    # blocked whole; the basis holds no digit word, so the fare said beside it passes.
+    for depart in ({"depart": OUT, "return_date": BACK}, {"depart": OUT}):
+        found = LeanCall().find(destination="Jeddah", **depart)
+        answer = data(found)
+        fare = answer["outbound"]["options"][0]["fare"]
+        said = f"The cheapest leaves at 06:00 with a fare of {fare}, {answer['fares_are']}."
+        assert ids_pass([said], found.texts()), said
 
 
 def test_a_saudi_reply_gets_its_route_in_saudi_and_in_msa() -> None:
     answer = data(LeanCall("ar-SA").find(destination="جدة", depart=OUT))
     assert answer["route"] == "من الرياض لجدة" and answer["route_msa"] == "من الرياض إلى جدة"
     assert answer["outbound"]["day"]["weekday"] == "الخميس"
+    # Its MSA form too, so an MSA caller is never given the Saudi phrase (f-dev-lean-3, f03).
+    assert answer["fares_are"] == "للشخص، رايح بس"
+    assert answer["fares_are_msa"] == "للشخص، ذهاب فقط"
 
 
 def test_a_span_gives_each_day_and_the_two_cheapest_and_writes_nothing() -> None:
     call = LeanCall()
     found = call.find(destination="Singapore", depart={"first": "2026-11-16", "last": "2026-11-22"})
     answer = data(found)
-    assert answer["status"] == "days" and answer["fares_are"] == FARES_ARE
+    assert answer["status"] == "days" and answer["fares_are"] == PER_PERSON
     assert [d["date"] for d in answer["no_flight_days"]] == ["2026-11-17"]  # a Tuesday
     assert len(answer["days"]) == 6 and all(d["flights"] >= 1 for d in answer["days"])
     lowest = sorted(answer["days"], key=lambda d: (d["lowest_fare"], d["date"]))[:2]

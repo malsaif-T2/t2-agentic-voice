@@ -1,12 +1,15 @@
 """The lean agent's `book_trip` (flight_voice/lean/book.py): it books the trip chosen so far
-only once the booking check holds, for the verified traveler alone, and returns the reference,
-the total, the route and the review card marked booked; and, writing nothing, it answers a trip
-not complete, a trip not confirmed (its one fixed `say`), a booking already made (told as it was
-booked, though the trip changed since), a refusal of
+only once the booking check holds, for the verified traveler alone, and returns its status and
+total alone, never the reference (asked for, it is the profile's), with the review card marked
+booked with its reference; and, writing nothing, it answers a trip not complete, a trip not
+confirmed (its one fixed `say`), a booking already made (told whole as it was booked, though the
+trip changed since, but for its reference), a refusal of
 the store, and a write that did not answer (looked up by its request ID when the store can
 find one, `unknown` when it cannot, and never written again in that call)."""
 
 from __future__ import annotations
+
+import json
 
 import pytest
 from flight_voice.lean import book
@@ -14,7 +17,7 @@ from flight_voice.lean.book import NOT_CONFIRMED
 from flight_voice.tools.cards import TRIP_EN
 
 from tests.flight_voice.lean.lean_support import OUT, LeanCall, chosen_trip, ids
-from tests.flight_voice.tools.tool_support import CALLER, airline, card_passes, data
+from tests.flight_voice.tools.tool_support import CALLER, airline, data, ids_pass
 
 STRANGER = CALLER.model_copy(update={"attributes": {"traveler_id": "T-9999"}})
 
@@ -25,21 +28,29 @@ def _agreed(call: LeanCall) -> LeanCall:
     return call
 
 
-def test_an_agreed_trip_is_booked_once_with_its_reference_and_card() -> None:
+def test_an_agreed_trip_is_booked_once_and_answered_with_its_total_alone() -> None:
+    # f-dev-lean-3: the reference read out unasked in 14 of 41 bookings, and the whole trip said
+    # again as it was booked; the caller has just heard the trip.
     call = _agreed(chosen_trip())
     total = call.total()
     made = call.book()
     answer = data(made)
-    assert answer["status"] == "booked" and answer["total"] == total
-    assert answer["route"] == "Riyadh to Jeddah" and answer["trip"] == "round trip"
+    assert answer == {"status": "booked", "total": total}
     (booking,) = call.airline.bookings.made
-    assert answer["reference_if_asked"] == booking.reference and booking.traveler_id == "T-0001"
+    assert booking.traveler_id == "T-0001" and booking.reference not in json.dumps(answer)
     assert [leg.flight for leg in booking.legs] == [101, 102] and booking.total_sar == total
     card = made.card
     assert card is not None and card.slot == "review" and card.title.startswith(TRIP_EN)
-    assert card.rows[-1].title == f"Booked · Reference {booking.reference}" and card_passes(made)
-    again = data(call.book())
-    assert again["status"] == "already_booked" and again["reference_if_asked"] == booking.reference
+    assert card.rows[-1].title == f"Booked · Reference {booking.reference}"
+    assert made.evidence == card.texts()  # the card passes the guard, its reference with it
+    again = call.book()
+    told = data(again)
+    assert told["status"] == "already_booked" and told["total"] == total
+    assert told["route"] == "Riyadh to Jeddah" and told["trip"] == "round trip"
+    assert booking.reference not in json.dumps(told)
+    # Every number the card shows is in what the model was given, but the reference.
+    assert ids_pass(card.texts(), (json.dumps(told), booking.reference))
+    assert not ids_pass(card.texts(), (json.dumps(told),))
     assert len(call.airline.bookings.writes) == 1
 
 
@@ -52,9 +63,8 @@ def test_a_trip_changed_after_the_booking_is_answered_with_the_trip_booked() -> 
     assert call.draft.chosen_outbound is not None and call.draft.chosen_outbound.flight != 101
     again = call.book()
     answer = data(again)
-    assert answer["status"] == "already_booked"
-    assert answer["reference_if_asked"] == booked["reference_if_asked"]
-    assert answer["outbound"] == booked["outbound"] and answer["outbound"]["id"] == f"T2-101-{OUT}"
+    assert answer["status"] == "already_booked" and answer["total"] == booked["total"]
+    assert answer["outbound"]["id"] == f"T2-101-{OUT}"
     assert again.card is not None and made.card is not None
     assert again.card.rows == made.card.rows  # the booked trip's times, never the new pick's
     assert len(call.airline.bookings.writes) == 1
@@ -64,6 +74,8 @@ def test_an_arabic_booking_card_says_booked_in_arabic() -> None:
     call = _agreed(chosen_trip("ar-SA"))
     made = call.book()
     assert made.card is not None and made.card.rows[-1].title.startswith("تم الحجز · رقم الحجز")
+    told = data(call.book())
+    assert told["trip"] == "رايح جاي" and told["trip_msa"] == "ذهاب وعودة"
 
 
 def test_a_trip_not_confirmed_books_nothing() -> None:

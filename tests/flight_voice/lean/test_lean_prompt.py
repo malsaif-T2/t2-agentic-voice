@@ -1,9 +1,9 @@
 """The lean agent's declaration and prompt (flight_voice/lean/agent.py, prompt.py,
 instructions/): its four tools and no action, today's languages, names and time zone; the
 calendar in each reply's language (today, the next 21 days, this week and next, this weekend and
-next, the Saudi week Sunday to Saturday, none before today); its short instructions, filled,
-holding the owner's rulings in both files; the library's action rules never in its prompt; and,
-by D-011, no example of theirs a string of a dev call's turn."""
+next, the Saudi week Sunday to Saturday, none before today, and the booking window's last day);
+its short instructions, filled, holding the owner's rulings in both files; the library's action
+rules never in its prompt; and, by D-011, no example of theirs a string of a dev call's turn."""
 
 from __future__ import annotations
 
@@ -31,13 +31,25 @@ LEAN_DIR = CALLS.parents[1] / "src" / "flight_voice" / "lean" / "instructions"
 RULES = (
     "any yes is a yes",
     "say how many flights there are, the first and last departure times, and the cheapest",
-    "name the others only when asked",
+    "each flight said once; name the others only when asked",
+    # f-dev-lean-3: both days of a round trip listed in one reply, and one pick taken for both.
+    "On a round trip, give the way out and ask which they want. Once it is chosen, "
+    "choose_flights lists the way back",
+    "for the leg they picked, or both when they plainly pick both",
+    "when two flights fit it alike, take one and say which",
+    "Say once in the call what `fares_are` says.",
     "never say that anything is on a screen",
     "Work the caller's pick out yourself from the options you have",
     "Only when a pick is truly unclear, ask, with the fares",
+    # f-dev-lean-3: a total the model added up itself, blocked by the output guard.
     "say it in one sentence: the route, each leg's day and time, the cabin, the travelers and "
-    "the total. Then ask whether to book it.",
+    "the total choose_flights gives, never a sum of your own. Then ask whether to book it.",
     "Call book_trip only after the caller agrees",
+    # f-dev-lean-3: a pick said after the summary answered in words, never chosen, then booked.
+    "When they pick or change something, even after the summary, make it in that same reply "
+    "with choose_flights or find_flights, then say what changed, with the new total once the "
+    "trip is complete, and ask again.",
+    "Once book_trip says the trip is booked, say so in a few words, without the trip again",
     # Each of book_trip's statuses by its name: "can't tell" is for `unknown` alone.
     "When book_trip answers not_confirmed, do what its say says; when it answers unknown, say "
     "you cannot tell whether it went through, and never book again in this call.",
@@ -91,6 +103,11 @@ def test_the_calendar_holds_today_three_weeks_and_the_saudi_weeks() -> None:
     assert "Next week: Sunday 22 November 2026 (2026-11-22) to Saturday 28 November" in text
     assert "Next weekend: Friday 27 November 2026 (2026-11-27) and Saturday 28" in text
     assert "Sunday to Saturday" in text and "Friday and Saturday" in text
+    # The window's last day, so a day past the 21 is searched (f-dev-lean-3 refused one).
+    assert text.endswith(
+        "- Bookings are open up to Tuesday 16 March 2027 (2027-03-16): any day up to it can be "
+        "searched, listed above or not."
+    )
 
 
 def test_on_a_saturday_this_weekend_is_today_alone() -> None:
@@ -105,6 +122,7 @@ def test_the_arabic_calendar_is_written_in_arabic() -> None:
     assert text.startswith("اليوم الاثنين 16 نوفمبر 2026 (2026-11-16).")
     assert "الثلاثاء 17 نوفمبر 2026 (2026-11-17)، غدًا" in text
     assert "عطلة هذا الأسبوع: الجمعة 20 نوفمبر 2026 (2026-11-20) والسبت 21" in text
+    assert "- الحجز مفتوح حتى الثلاثاء 16 مارس 2027 (2027-03-16):" in text
 
 
 @pytest.mark.parametrize("tag", TAGS)
@@ -122,10 +140,17 @@ def test_the_saudi_file_keeps_the_register_lines() -> None:
     text = instructions(Names(), TODAY)["ar-SA"]
     for line in (
         '"now" is «الحين», never «الآن»',
-        "never with «ودك», «وين» or «الحين»",
+        # f-dev-lean-3: MSA callers answered «ما فيه… تبي» on a turn with no tool.
+        "Answer in the caller's own register",
+        "To a caller who speaks Modern Standard Arabic, speak MSA in every reply, a short one too",
+        "never with «ودك», «وين», «تبي», «اللي», «ما فيه», «أبشر» or «الحين»",
         "Your greeting is in Saudi; once the caller speaks MSA, every reply is in MSA, from your "
         "first one.",
-        "say a result's `route_msa` in place of its `route`",
+        "say a result's `route_msa`, `trip_msa` and `fares_are_msa` in place of the field beside "
+        "each",
+        # f-dev-lean-3: «ستطعش» (the 16th) said after a day's times, taken for a time.
+        "A Saudi caller says 11 to 19 the Najdi way, ending in «طعش»; a bare number said to name "
+        "or correct a day is that day of the month, not a time.",
     ):
         assert line in text
 

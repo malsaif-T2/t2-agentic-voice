@@ -15,7 +15,6 @@ from t2_agentic_voice.voice.protocol import ShowCard, wire
 from tests.browser import receive, text
 from tests.flight_voice.lean.lean_support import BACK, OUT, LeanCall, ids
 from tests.flight_voice.page_support import ENGLISH, call, look, page
-from tests.flight_voice.tools.tool_support import data
 
 
 def _shown(card: Card | None) -> dict[str, Any]:
@@ -40,7 +39,7 @@ def test_the_lean_cards_fill_the_three_segments_then_the_booking(tmp_path: Path)
     lean.said(f"Riyadh to Jeddah and back, economy, one traveler, {lean.total()} riyals in all.")
     lean.heard("yes")
     booked = lean.book()
-    reference = data(booked)["reference_if_asked"]
+    reference = lean.airline.bookings.made[0].reference
     shown = page(
         tmp_path,
         [

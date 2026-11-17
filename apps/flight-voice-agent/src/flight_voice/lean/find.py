@@ -10,12 +10,12 @@ the route is flown (`not_served`, with the cities served); the dates; the cabin 
 route (`cabin_not_offered`); each day has a flight (`no_flights`, with the nearest days that
 have one). Then:
 
-- **A day:** the route, the cabin, the travelers, the fare's basis once (`fares_are`) and the
-  outbound flights (results.py's `LegList`), with the return day's in the same shape when a
-  return is given. The call's trip takes the route, the days, the travelers, the cabin and the
-  options, in one assignment, and is marked for the booking check; a search with no return
-  makes it one way. Its card is the outbound segment; the return segment's comes once the
-  outbound is chosen (choose.py).
+- **A day:** the route, the cabin, the travelers, the fares' basis (`fares_are`: per person,
+  each way on a round trip; results.py) and the outbound flights (results.py's `LegList`), with
+  the return day's in the same shape when a return is given. The call's trip takes the route,
+  the days, the travelers, the cabin and the options, in one assignment, and is marked for the
+  booking check; a search with no return makes it one way. Its card is the outbound segment;
+  the return segment's comes once the outbound is chosen (choose.py).
 - **A span** (span.py), of up to two months: the route's daily departure times and the two
   cheapest days with their fares; for two weeks or less each day with its weekday, its flight
   count and its lowest fare and the days with no flight, for longer each week's days with a
@@ -38,11 +38,11 @@ from flight_voice.airline.schedule import CABINS, Cabin, Departure, flights, rou
 from flight_voice.airline.system import Airline, AirlineUnavailableError
 from flight_voice.lean.booking_check import BookingCheck
 from flight_voice.lean.results import (
-    FARES_ARE,
     Built,
     LegList,
     _Data,
     day_of,
+    fares_are,
     lean_result,
     leg_list,
     leg_options,
@@ -87,7 +87,8 @@ class Found(_Data):
     route_msa: str | None = None
     cabin: Cabin
     travelers: int
-    fares_are: str = FARES_ARE
+    fares_are: str
+    fares_are_msa: str | None = None
     outbound: LegList
     return_: LegList | None = Field(default=None, alias="return")
     note: str | None = None
@@ -172,9 +173,12 @@ def find_flights(airline: Airline, trips: TripBook, check: BookingCheck) -> Tool
         trips.put(ctx.call_id, made)
         check.mark(ctx.call_id, made)
         said, msa = route_said((start.code, end.code), tag)
+        basis, basis_msa = fares_are(tag, round_trip=back is not None)
         found = Found(
             route=said,
             route_msa=msa,
+            fares_are=basis,
+            fares_are_msa=basis_msa,
             cabin=kept,
             travelers=party,
             outbound=leg_list(depart, out, tag),

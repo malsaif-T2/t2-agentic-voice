@@ -1666,8 +1666,10 @@ would mislead: a full flight, a route not served, a date outside the window):
   the start unless another), the day they leave as an ISO date or a span of at most two months, 62
   days (`{"first", "last"}`, the owner's ruling of 2026-11-17), the return day or null (one way, or not said yet), and the cabin and the
   travelers (the trip's own, economy and one at first). A day gives the route in the caller's
-  register (`route`, with `route_msa` beside a Saudi reply's), `fares_are: "one way, per
-  person"`, and the outbound flights with the return day's in the same shape: each a stable id
+  register (`route`, with `route_msa` beside a Saudi reply's), the fares' basis in it
+  (`fares_are`, with `fares_are_msa`: "per person, each way" on a round trip, "per person" on a
+  one way, «للشخص، رايح بس», «للشخص، ذهاب فقط»; no English digit word, as "910, one way" reads
+  as one number to the output guard, f-dev-lean-3), and the outbound flights with the return day's in the same shape: each a stable id
   (`T2-401-2026-11-19`), its name and aircraft (said only when asked, as the card shows them),
   its times, its length, its fare per person, `seats_ok`, `nonstop` and `part_of_day`, with
   `count`, `first_departs`, `last_departs` and `cheapest_id`; the trip takes
@@ -1680,21 +1682,23 @@ would mislead: a full flight, a route not served, a date outside the window):
   `cabin_not_offered`, `no_flights` with the nearest days.
 - `choose_flights` (`lean/choose.py`) takes `outbound_id`, `return_id`, `cabin` and `travelers`,
   each optional: the model resolves the caller's pick itself from the options it was given. It
-  gives the trip so far: each chosen leg's id, name, aircraft, day, times, length, `nonstop` and
-  fare (`book_trip` gives the legs booked in the same shape), the
-  travelers, the cabin,
+  gives the trip so far: the route and the trip's kind (`trip`, with `trip_msa` beside a Saudi
+  reply's), each chosen leg's id, name, aircraft, day, times, length, `nonstop` and fare
+  (`book_trip`'s `already_booked` gives the legs booked in the same shape), the travelers, the
+  cabin,
   `missing` (each listed again in `listed`), `lost` (a leg a change left with no seats, by its
   departure time) and, once complete, `total`; a changed cabin or traveler count prices the trip
   again. Its card is the return segment with the outbound pick kept beside it, then the review.
   Its refusals, nothing written: `nothing_listed`, `unknown_id` and `no_seats` with the leg's
   other ids, fares and seats, `cabin_not_offered`.
 - `book_trip` (`lean/book.py`) takes nothing: the booking check, then the store. It gives
-  `booked` with the reference (as `reference_if_asked`: said only when the caller asks, the
-  owner's ruling of 2026-11-17), the total, the route and the legs booked, and the review card
-  ending "Booked ·
-  Reference ..."; else `not_confirmed`, `incomplete`, `refused` (the store's reason), `unknown`
-  (a write that did not answer and was not found by its request ID) or `already_booked` (the
-  booking and the trip as it was booked, never the call's trip changed since).
+  `booked` with its total alone, the caller having just heard the trip, and the review card
+  ending "Booked · Reference ..."; its data holds no reference (the owner's ruling of
+  2026-11-17: said only when the caller asks; f-dev-lean-3 read it out unasked in 14 of 41
+  bookings), which the model reads from `traveler_profile` when asked. Else `not_confirmed`,
+  `incomplete`, `refused` (the store's reason), `unknown` (a write that did not answer and was
+  not found by its request ID) or `already_booked` (the booking and the trip as it was booked,
+  never the call's trip changed since, but for its reference).
 - `traveler_profile` is today's tool.
 
 **The prompt** (`lean/instructions/en.md` and `ar-SA.md`, about 30 lines each, filled by
@@ -1702,17 +1706,25 @@ would mislead: a full flight, a route not served, a date outside the window):
 short sentences, one question at the end, never a list read out, never markdown, never a screen
 (D-075). A calendar written in code in the reply's language: today with its weekday, the next 21
 days each with its weekday, and the days "this week", "this weekend", "next week" and "next
-weekend" cover (the Saudi week Sunday to Saturday, the weekend Friday and Saturday); the model
-reads every date from it, never a day the caller did not say, and searches a span for days asked
-about. The defaults (Riyadh, economy, one traveler) never asked and said in the summary; the
-return asked only when not said. A day listed briefly (its count, its first and last departures,
-the cheapest by time and fare; the others only when asked; "one way, per person" once a call), a
-span by its departures and its two cheapest days (a span past two weeks, given week by week, by
-its two cheapest days and an offer to look at a week). The pick resolved by the model, asked with the
-fares only when truly unclear. The trip confirmed in one sentence (the route, each leg's day and
-time, the cabin, the travelers, the total), booked only after any yes, a change confirmed again.
-Facts only from tool results of this call; a reference only when asked. The Saudi and MSA
-register lines and the greeting rule copied from today's instructions. No example copies a line
+weekend" cover (the Saudi week Sunday to Saturday, the weekend Friday and Saturday), then the
+booking window's last day, any day up to it searched; the model reads every date from it, never a
+day the caller did not say, and searches a span for days asked about; in Saudi, the teens said
+the Najdi way («…طعش»), a bare number naming a day that day. The defaults (Riyadh, economy, one
+traveler) never asked and said in the summary; the return asked only when not said. One leg's
+day listed at a time, briefly (its count, its first and last departures, the cheapest by time
+and fare, each flight once; the others only when asked; `fares_are` once a call): on a round
+trip the way out first, then the way back once it is chosen, as `listed` gives it. A span by its
+departures and its two cheapest days (a span past two weeks, given week by week, by its two
+cheapest days and an offer to look at a week). The pick resolved by the model for the leg picked,
+asked with the fares only when truly unclear, one of two that fit it alike taken and named. The
+trip confirmed in one sentence (the route, each leg's day and time, the cabin, the travelers,
+the total choose_flights gives, never a sum of the model's), booked only after any yes; a pick or
+change after it made in the same reply and said with its new total; a booking said in a few
+words.
+Facts only from tool results of this call; a reference only when asked. The register first:
+Najdi to a Saudi caller, MSA in every reply to an MSA caller, short ones too, never a Saudi form
+named there, each result's `_msa` field said in place of the one beside it; and the greeting
+rule copied from today's instructions. No example copies a line
 of a scripted call (D-011; `tests/flight_voice/lean/test_lean_prompt.py`). The calendar is
 written when the agent is declared, so a server holds the day it started, and its airline keeps
 that day as its today; the library's "Today is" line follows the clock, so the server is restarted
@@ -1742,3 +1754,41 @@ stops the reply playing. A scenario whose
 `asked_again` only makes sense for the read-back counts on its booking alone. The run, its
 scorecard and its history line name the agent (`scripted` or `lean`), so the two compare by
 scenario.
+
+**Run F's outcome mode, the lead's amendments of 2026-11-18**, registered before any result of
+it, for the lean outcome mode alone (the scripted mode and the library's repeat definitions,
+D-101, stay as they are; `evals/lean_checks.py` and `lean_repeats.py`). The owner, 2026-11-17:
+"do not be too strict on edge cases that it would restrict the agent too much and make it feels
+deterministic or robotic"; run F measures Saad, never punishes a natural agent.
+
+1. **`booked`, a tie.** Where the read-back's flight of a leg ties another flight of its route
+   on the same day at the same fare in the cabin, read from the airline's own fares (`tied`),
+   and the scenario's last pick of that leg is by fare (`cheapest`, `dearest` or `fare`), a
+   booking holding either flight passes: f30's "the dearest" on 19 Nov, T2 102 and T2 106 at
+   470 each. Everything else in the booking must still match: the other leg, the days, the
+   travelers, the cabin, the demo traveler alone. The pick by fare is the builder's reading of
+   the amendment, for the lead to confirm: a tie on a leg picked by time, part of day or order
+   is a wrong booking (f02's "the earliest", T2 201, ties T2 203 at its fare).
+2. **`repeat`, a reply with new facts.** A near repeat (`find_repeat`'s) counts only when the
+   two replies hold the same facts: the same number tokens once `normalize_digits` has read
+   them (days, times, fares, totals, travelers; "2,290" read as 2290, "09:10" as "9:10"), and
+   the same weekday and city words (a city by its airport), read from each reply as written. A
+   read-back after a change (f14: one traveler made two, 260 made 520) or a new day's or city's
+   listing in the same frame (f25) is not a repeat; an identical repeat always is. Each
+   earlier reply is read on its own, so a true repeat of an older reply is still found. "The
+   same facts" is read as no new fact: the near repeat goes only when the later reply states a
+   number, weekday or city the earlier one did not, so a reply that only leaves a fact out
+   (f22's booked trip said again without its arrival time) is still a repeat. The word one
+   («واحد») is no fact: mostly a pronoun ("Which one", "one-way", «أي واحد»), and a change of
+   travelers moves the total, so "Which one would you like?" for "Which would you like?" is
+   still a repeat. Both are the builder's reading, after a review, for the lead to confirm.
+3. **`repeat`, the first clause alone.** A match that rests only on a first clause of 3 or more
+   words, the whole reply's overlap under the library's near-repeat threshold (0.8), is not a
+   repeat: f19's required «ما أقدر أأكد إذا تم الحجز ولا لا» said again with a new sentence.
+4. **`max_words`, one unit for every reply.** The words of the reply as written are counted
+   (`TextTurn.written`, the talker's clauses as the output guard passed them, digits one word
+   each), in every language: the caller hears an English clause cut into several requests
+   with its numbers said in words (f29's first reply, over the cap as heard, under it as
+   written), where an Arabic one keeps its digits. The cap stays the one the scenario sets (45
+   unless it sets another). A lean play's record keeps each turn's reply as written
+   (`written`).
