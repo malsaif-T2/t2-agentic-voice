@@ -5,7 +5,7 @@ per `poe eval` run that called a provider, kept or not; never edited by hand
 ([generated docs](README.md), GP-11). Every number describes one speaker, the owner (D-006).
 Full scorecards stay out of git, in each run's `--out` folder.
 
-Spend so far: 87 run(s), 74317.5 billed seconds, $8.3322.
+Spend so far: 88 run(s), 74317.5 billed seconds, $8.3322.
 
 ## Runs
 
@@ -143,6 +143,7 @@ Spend so far: 87 run(s), 74317.5 billed seconds, $8.3322.
 | 64 | 2026-11-11T23:13:59+00:00 | lid1-dev-silero | 94573f81ffb2e2afe9a23cb7c0d2e158a22f2b95 | silero | dev | 292 | 298 | 167 | 0 | 8 | — | 10 | 32, 70, 68 | 0 | — | yes |
 | 65 | 2026-11-12T00:00:21+00:00 | lid1-dev-ecapa | 94573f81ffb2e2afe9a23cb7c0d2e158a22f2b95 | ecapa | dev | 292 | 298 | 152 | 14 | 231 | 85 | 10 | 5, 33, 102 | 0 | — | yes |
 | 66 | 2026-11-12T00:46:51+00:00 | lid1-dev-off-b | 94573f81ffb2e2afe9a23cb7c0d2e158a22f2b95 | off | dev | 292 | 300 | 0 | 0 | — | — | 11 | 0, 0, 0 | 0 | — | yes |
+| 88 | 2026-11-17T17:04:58+00:00 | sa-dev-gate | 374a40039583832c90f03bcbc6192d85e2270092 | detected | dev | 292 | 294 | 0 | 0 | — | — | 5 | 0, 0, 0 | 0 | — | yes |
 
 ## Each run
 
@@ -8734,3 +8735,39 @@ Spend so far: 87 run(s), 74317.5 billed seconds, $8.3322.
 | language | none | 5 | 0.0% |
 | language | saudi | 45 | 43.0% |
 | split | dev | 98 | 44.2% |
+
+### 88 · sa-dev-gate
+
+| Field | Value |
+| --- | --- |
+| Why | Gate of Scribe arm detected \(D-115\) |
+| Data digest | `9ffaec013e41c75b9dc1efc7a14bffcfd5095c060183cd47aa61f70701c9139b` |
+| Scorecard | scorecard.json |
+| Setting env | dev |
+| Setting run.lead_s | 1.0 |
+| Setting run.smoke_only | false |
+| Setting run.tail_s | 4.5 |
+| Setting stt.classifier | none |
+| Setting stt.classifier_from_s | 2.0 |
+| Setting stt.classifier_min_share | 0.7 |
+| Setting stt.classifier_threads | 2 |
+| Setting stt.detect_from_s | 1.2 |
+| Setting stt.live_language | detected |
+| Setting turns.complete_hold_ms | 600 |
+| Setting turns.max_silence_ms | 3000 |
+| Setting turns.smart_turn | true |
+| Setting turns.smart_turn_max_duration_s | 8.0 |
+| Setting turns.smart_turn_pre_speech_ms | 500 |
+| Setting turns.smart_turn_stop_ms | 3000 |
+| Setting turns.smart_turn_threshold | 0.5 |
+| Setting turns.vad_confidence | 0.7 |
+| Setting turns.vad_min_volume | 0.6 |
+| Setting turns.vad_start_ms | 200 |
+| Setting turns.vad_stop_ms | 200 |
+| Turns chosen session | 294 |
+| Variants changed, call label | 0 |
+| Variants changed, call ar | 0 |
+| Variants changed, call en | 0 |
+| Variants whose turns differ, call label | 0 |
+| Variants whose turns differ, call ar | 0 |
+| Variants whose turns differ, call en | 0 |

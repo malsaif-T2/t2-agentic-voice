@@ -1371,6 +1371,10 @@ Block 0.
   is not kept and `detected` stands; (b) secondary languages without a hint are refused by Scribe
   (both smoke requests failed); (c) no hint moved 179 of 194 at 0.8 with 20 false moves on short
   replies.
+  `detected`, the reference, gated as live, moved 174 with no wrong move (p50 0.80 s, p95 1.46 s);
+  D-115's amendment holds the numbers, and an exploratory reading (the no-hint answer alone on
+  turns past the 1.2 s gate) that moves as `detected` does with one request a turn, p95 0.32 s
+  sooner, to be built and run as its own registered arm if the owner wants it.
 - 2026-11-17: the text-to-speech candidates for the owner's pick by ear (D-114, branch
   `plan-010-tts`): `tts.provider` takes `elevenlabs`, `groq` and `telnyx`, each speaking the
   provider's default voices with `tts.languages` unset. The owner picked ElevenLabs v4 Turbo in

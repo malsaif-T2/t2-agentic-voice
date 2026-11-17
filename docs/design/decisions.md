@@ -4085,3 +4085,21 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   - `tests/ole5_voice/evals/test_scribe_arm_run.py`.
 
   Run H's Scribe arms' numbers are added when they are read.
+- *Amended 2026-11-17, run H's Scribe arms on dev (292 variants, each read as a turn of an
+  Arabic and of an English call, 584 turns, 194 due to move; passes `sa-dev-hinted`,
+  `sa-dev-none`, `sa-dev-detected` and the gate `sa-dev-gate`, at 374a400):*
+  - **(a) `hinted`** moved the call on 0 of 194 due turns at every threshold from 0.50 to 0.95:
+    a request naming a language is answered in that language at probability 1.0, so Scribe echoes
+    the hint. It fails the keep rule; `hinted` stays off and `detected` stands.
+  - **(b) secondary languages without a hint** are refused by Scribe (both smoke requests failed),
+    so the arm was dropped.
+  - **(c) no hint** moved 179 at 0.8, with 20 wrong moves, all on short replies, and 15 missed.
+    WER: English 5.0 %, MSA 7.2 %, Saudi 17.2 %, mixed 12.4 % (against (a)'s 4.0, 9.1, 20.7 and
+    14.1). Seconds to the transcript p50 0.72, p95 1.10.
+  - **`detected`, gated as live**, moved 174, with no wrong move, and missed 20, every one a short
+    Arabic turn in an English call under the 1.2 s gate. Seconds p50 0.80, p95 1.46 (the slower of
+    its two requests).
+  - An exploratory reading, found after these results and so not a kept result: the no-hint
+    answer alone on the gated turns (348 of 584), the named answer on the rest. It moves as
+    `detected` does at 0.8 (165 right, 0 wrong, 0 on short replies), with one request a turn,
+    p50 0.71 s and p95 1.14 s. A mode built on it needs its own registered run.
