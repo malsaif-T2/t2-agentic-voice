@@ -1241,6 +1241,19 @@ Block 0.
   new example is off the dev items (D-011: another date, another number; a test holds that no
   quoted example is a dev line). Run F's records now keep each tool call's arguments and the
   clauses the guard blocked (no verdict moves).
+- 2026-11-17: run F's dev pass on round 1, f-dev-5 (ce8cbe3, three plays each, $0.473): 20 of 28
+  pass against f-dev-4 re-scored, 13 (f04, f07, f08, f12, f14, f17, f18, f19 and f20 added),
+  violations zero in every play of 84; `max_options` and `notice` failures 12 and 5 to none,
+  `repeat` 9 to 3, `register` 8 to 5, «الآن» in a Saudi reply 5 to 1. The kept rule does not hold:
+  f10 and f16, passed before, pass 1 of 3. f10's failed plays repeat the baseline's own failures (a
+  search made up on the caller's first turn, as in its play 2; «(Waiting…)» stage notes said aloud,
+  as in its play 3; one «الآن»), the model's variance; f16's two fail its args check on the morning
+  pick sent as its listed time (`pick = "time"`, 09:30), the same flight, which the scenario codes
+  as a part of the day. Across the dev set a part-of-day pick failed its args in 15 of 39 turns
+  reached (11 of 39 in f-dev-4; f13, f16, f25, f28). Round 1 stays on the branch, not yet kept;
+  next, round 2: the pick passed as the caller said it, the stage notes, and the scenarios still
+  failing (f06, f09, f25, f26, f27, f28) diagnosed from the new records, the two rounds then
+  measured together against f-dev-4 re-scored.
 
 ## Decision log
 
