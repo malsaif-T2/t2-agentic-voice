@@ -1284,6 +1284,34 @@ Block 0.
   D-089's stop) and `llm.max_requests_per_turn` (4 in the app, in place of turn.py's fixed 3: f26's
   refused booking then its pick and its read-back); run F's cost estimate counts the app's 4. The
   two rounds are measured together against f-dev-4 re-scored (13 of 28) by the next pass, f-dev-6.
+- 2026-11-17: run F's dev pass on rounds 1 and 2, f-dev-6 (5e7689d, three plays each, $0.553): 19
+  of 28 (f-dev-5 20; f10 and f26 added, f01, f04 and f24 lost). Across the 84 plays, failed `calls`
+  checks 24 to 10 and `args` 31 to 16, the picks and the search at once; `said_any` 6 to 8 and
+  `repeat` 3 to 7. The kept rule does not hold: f01 and f24, passed in f-dev-4 re-scored, pass 1 of
+  3, their listing saying «للرايح بس» with no «للشخص» (4 of their 6 plays; the first listing's
+  longer say, `_DAY`, the likely cause); f16 stays at 1 of 3, Saudi forms («الصبح», «تقدر») in
+  replies to its MSA caller; and two English listings (f13 p3, f18 p3) wrote their times as digit
+  words ("zero eight:zero zero"), which rule B reads as "0800" with no evidence: 2 violations. The
+  rounds stay on the branch, not kept. The owner's live test of the same day (five calls, their
+  notes in the next line) comes first; run F's failures are weighed against it.
+- 2026-11-17: the owner's live test of the flight agent on this branch (five calls, 10:23 to 10:48
+  local, read from the worktree's `var/flight/dev-console`, nothing written there), and their
+  notes: "The demo is still far from spotless or flawless, so we need to work on it." Five
+  read-only readers traced each note to the code. (1) The confirmation: one call heard the
+  read-back six times. The model asked its own "shall I book?" after a declined read-back, though
+  the `complete` say forbids it; a yes said over the summary counts for nothing by invariant 1, so
+  it plays on and asks again; confirm words on no list («أكد الحجز», «خلاص، أكد») cut it as a
+  correction or a stop, and each new book_trip call reads it whole again; and it runs 26 to 50
+  words, 12 to 21 s. (2) No pick by price but the cheapest: «أريد أغلى واحدة» got two wrong
+  either-or questions, and a fare said («اللي بـ 400») was passed as a time against line 16; a
+  full flight was listed with its fare and no word that it was full, and after its `no_seats`
+  the model moved the trip to business unasked. (3) The page keeps three snapshot cards, so a
+  "Your pick" stays on a flight changed away from, a list never marks its pick, a cabin change
+  shows no list of its new fares, and "Lowest fare" looks like a pick. (4) No date form holds a
+  span: "in the next week" became a made-up Monday, then two questions; the only tool over days,
+  fare_calendar, is for prices. (5) English nonsense: two degenerate gpt-oss replies (markdown
+  around zero-width spaces and "[cut ...", and two questions joined by a run of dots that the
+  question limit read as one clause), which no filter caught.
 
 ## Decision log
 
@@ -1307,3 +1335,18 @@ Block 0.
   off by default, turned on by the flight app alone (GP-18), so D-085's question limit, D-089's
   leak rule and the turn's request cap stay as approved for every other app and team; the three
   settings are the owner's to keep or turn off (`for_the_app`, one line each).
+- 2026-11-17: the owner ruled on the three design questions of their live test's notes. (1) A yes
+  said over the flight agent's read-back books once the summary has played to its end, a bare yes
+  word («إيه», «نعم») too ("Any yes books", over the lead's recommendation to hold only an explicit
+  "book it"), unless the caller says anything else before it ends; a library setting off by
+  default, which the flight app turns on (GP-18), amending invariant 1 for an agent that sets it.
+  (2) A day's flights are said briefly, voice only: how many, the first and last departure times,
+  and the cheapest with its fare; the others when asked; the cards show every flight (amending
+  D-101's "every option is said aloud" for the flight agent). (3) The page is reworked into three
+  segments, in the owner's words: "First it shows the outbound flights as options (or a calendar
+  of flights if asked about a range of time of flights), then the return flights, and finally the
+  review for confirmation. It should handle one way flight too." Round 3 builds these with the
+  fixes that need no ruling (no own booking question, confirm words, a shorter read-back with
+  every value kept, picks by the dearest and by a fare said, a full flight said as full, no change
+  the caller did not ask for, a span of days for search_flights, a plain-speech check with one
+  retry behind a library setting).
