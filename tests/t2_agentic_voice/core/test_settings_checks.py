@@ -330,7 +330,8 @@ def test_the_interruption_and_word_defaults_are_plan_005s() -> None:
     prototype's duck level, run W3's window and the starting rule's bounds, the short output's
     as the rule's one revision set it (1.2 s); no word added; the filter for text from silence
     on, as the registered rule F and its one revision set it (0.55 and the caption list); a yes
-    over a read-back's summary counting for nothing, as before D-108's setting (GP-18)."""
+    over a read-back's summary counting for nothing, as before D-108's setting, and a yes over a
+    reply's closing question let go, as before D-116's (GP-18)."""
     settings = VoiceSettings(env="test")
     assert settings.interruptions.model_dump() == {
         "mode": "two_step",
@@ -341,6 +342,7 @@ def test_the_interruption_and_word_defaults_are_plan_005s() -> None:
         "short_s": 1.2,
         "own_words_s": 5.0,
         "yes_over_read_back": False,
+        "answer_yes_over_question": False,
     }
     kinds = ("stop", "wait", "repeat", "backchannel", "no", "yes", "send")
     assert settings.words.model_dump() == {kind: {} for kind in kinds} | {"vocabulary": ()}

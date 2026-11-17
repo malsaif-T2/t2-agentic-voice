@@ -102,6 +102,7 @@ class CallLife:
         self._confirming.end()
         self.limits.stop()
         await self._interrupter.asks.end()
+        self._interrupter.yes_over.end()
         await self._speaker.cut(at)
         if self._talking is not None:
             await self._talking.end()

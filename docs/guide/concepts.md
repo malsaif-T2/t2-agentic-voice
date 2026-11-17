@@ -543,7 +543,10 @@ goes to the talker too, which says again what the caller heard, from the history
 
 **Going on**, under either, brings the voice back and leaves the turn unanswered. If the caller
 keeps talking in the same turn, the turn's own transcript is read again, and may still stop the
-agent.
+agent. One exception, with a talker, under `interruptions.answer_yes_over_question` (off by
+default; D-116): a yes said over the question that ends a reply, or in the 0.3 s after it, is
+answered as the caller's next turn once the reply ends, unless the caller said other words
+after it ([safety.md](safety.md), "A yes over any reply's question").
 
 **Words said while a tool runs.** A turn said while a reply's tool still runs, with nothing yet
 playing, is no overlap: nothing of that reply plays while the turn is open. What the talker
@@ -755,6 +758,7 @@ T2V_TURNS__COMPLETE_HOLD_MS=0
 | `T2V_INTERRUPTIONS__MIN_WORDS` | 2 | The fewest real words that stop the agent when none is a listed word |
 | `T2V_INTERRUPTIONS__SHORT_WORDS`, `__SHORT_S` | 2, 1.2 | The short output the agent goes on through |
 | `T2V_INTERRUPTIONS__OWN_WORDS_S` | 5 | How far back the agent's own words count |
+| `T2V_INTERRUPTIONS__ANSWER_YES_OVER_QUESTION` | false | Whether a yes said over the question that ends a reply is answered once the reply ends ([safety.md](safety.md)) |
 | `T2V_WORDS__STOP`, `__WAIT`, `__REPEAT`, `__BACKCHANNEL`, `__NO` | none | Your words, added to each language's lists |
 | `T2V_STT__NO_SPEECH_MAX` | 0.55 | Above this no-speech probability, a transcript is no words |
 | `T2V_STT__CAPTION_FILTER` | true | Whisper's invented captions count as no words |

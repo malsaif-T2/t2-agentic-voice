@@ -60,10 +60,13 @@ class LeanCall:
         )
         asyncio.run(self.check.observed(event))
 
-    def heard(self, words: str) -> None:
-        """A turn of the caller's ended, `words` heard."""
+    def heard(self, words: str, played: str | None = None) -> None:
+        """A turn of the caller's ended, `words` heard, begun once `played` of the reply it
+        was said over had played (None: said while the agent was silent)."""
         self._turn += 1
-        event = UserTurnEnded(call_id=CALL_ID, turn_id=self._turn, at=AT, heard=words)
+        event = UserTurnEnded(
+            call_id=CALL_ID, turn_id=self._turn, at=AT, heard=words, reply_played=played
+        )
         asyncio.run(self.check.observed(event))
 
     def ended(self) -> None:

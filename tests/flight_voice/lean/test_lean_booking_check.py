@@ -2,11 +2,13 @@
 the runtime's observers would: it holds once a reply since the trip was completed states its
 total, played up to it, and the caller spoke after it (a later turn that cut the reply past its
 total counting though its transcript came before the reply's end); and it refuses with no total
-said, the
-total cut off before it played, no caller turn after the reply, and the trip changed after the
-summary. A total is read in digits (a thousands mark, Arabic-Indic digits) or in words in
-English, Saudi Arabic and MSA; a call held in text reads its events from the call itself, and
-an ended call's are dropped."""
+said, the total cut off before it played, no caller turn after the reply, and the trip changed
+after the summary. A yes said over the closing question, which the library answers only once the
+reply has ended (D-116), so its transcript came first, holds when what had played as its speech
+began (`UserTurnEnded.reply_played`) begins the reply and states the total; never when it began
+before the total, over another reply, or is the turn the reply answers. A total is read in
+digits (a thousands mark, Arabic-Indic digits) or in words in English, Saudi Arabic and MSA; a
+call held in text reads its events from the call itself, and an ended call's are dropped."""
 
 from __future__ import annotations
 
@@ -62,10 +64,10 @@ def test_a_turn_that_cut_the_reply_after_its_total_holds_though_it_ended_first()
     assert _holds(call)
 
 
-def test_a_turn_before_the_reply_ended_counts_only_when_it_cut_the_reply_past_its_total() -> None:
+def test_a_turn_before_the_reply_ended_counts_only_once_its_total_played() -> None:
     whole = chosen_trip()
     whole.heard("the first ones")
-    whole.heard("mm")  # turn 2, said over the summary, which went on and played whole
+    whole.heard("mm", played="")  # turn 2, over the summary, which went on and played whole
     whole.said(_summary(whole) + " Shall I book it?", played=1.0, turn=1)
     assert not _holds(whole)
     early = chosen_trip()
@@ -76,6 +78,35 @@ def test_a_turn_before_the_reply_ended_counts_only_when_it_cut_the_reply_past_it
     same = chosen_trip()
     same.heard("the first ones")  # turn 1 itself, heard before the cut reply that answers it
     same.said(_summary(same) + " Shall I book it?", played=0.93, turn=1)
+    assert not _holds(same)
+
+
+def test_a_yes_over_the_closing_question_holds_once_the_total_had_played() -> None:
+    call = chosen_trip()
+    call.heard("the first ones")  # turn 1: the summary answers it
+    summary = _summary(call)
+    call.heard("yes", played=summary)  # turn 2, over the question: its transcript came first
+    call.said(f"{summary} Shall I book it?", played=1.0, turn=1)  # the reply went on, whole
+    assert _holds(call)
+
+
+def test_a_yes_over_the_reply_before_its_total_played_is_refused() -> None:
+    for case in ("before the total", "nothing played", "another reply", "silent"):
+        call = chosen_trip()
+        call.heard("the first ones")
+        opening = "Riyadh to Jeddah and back."
+        played = {
+            "before the total": opening,
+            "nothing played": "",
+            "another reply": f"Said before: {call.total()} riyals.",
+            "silent": None,
+        }[case]
+        call.heard("yes", played=played)
+        call.said(f"{opening} {_summary(call)} Shall I book it?", turn=1)
+        assert not _holds(call), case
+    same = chosen_trip()
+    same.heard("the first ones", played=_summary(same))  # the turn the reply answers itself
+    same.said(f"{_summary(same)} Shall I book it?", turn=1)
     assert not _holds(same)
 
 

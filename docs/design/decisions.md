@@ -4103,3 +4103,45 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
     answer alone on the gated turns (348 of 584), the named answer on the rest. It moves as
     `detected` does at 0.8 (165 right, 0 wrong, 0 on short replies), with one request a turn,
     p50 0.71 s and p95 1.14 s. A mode built on it needs its own registered run.
+
+## D-116 · A yes over the question that ends any reply is answered once the reply ends, for an agent that sets it · 2026-11-17 · Accepted (the owner's ruling of 2026-11-17, "Any yes books"; a library setting, off by default, which the flight app turns on for its lean agent: GP-18)
+
+- **Context:** the lean flight agent (D-113) ends its summary with "Shall I book it?" /
+  «أحجزها لك؟» and has no library read-back. A bare yes said over that question, or in the 0.3 s
+  tail after the reply, was settled as a go-on overlap and never answered, so the call went
+  quiet. A go-on overlap was answered only when the read-back's rule took it. The same holds for
+  any agent's yes/no question whose yes is said over its last words.
+- **Decision:** under `interruptions.answer_yes_over_question`, a go-on overlap that the
+  read-back's rule does not take (it is asked first and wins) is held until its reply ends.
+  - **What is held:** words that are a yes by the yes rule's lists in the language heard, the
+    `words` group's additions included (`yes_kinds.question_yes`): a yes or a send word among only
+    yes words, send words and fillers. Never with a question mark or a change marker, never
+    fillers alone, never the agent's own lines heard back as the speech began. Its verdict must
+    not be `own_words`.
+  - **What drops it,** in the order said, as D-108 drops a held yes: any other words begun after
+    it (over the reply, in its tail or once the agent was silent), a turn that stopped the reply or
+    was answered, a command, a failed transcript.
+  - **When it is answered:** as the caller's next turn, its words handed to the talker, once the
+    reply has ended and its tail (0.3 s), `turns.vad_start_ms` and `LAG_S` (0.2 s) have passed,
+    with no turn open, none awaiting its words and no overlap undecided. The reply must not have
+    been stopped or cut, its last clause must have played and end with a question mark, no clause
+    may be a read-back's, and the speech must have begun once that clause could first be heard or
+    within the tail. At most one per reply, the first said; others settle as went_on.
+  - `UserTurnEnded` gains the optional, read-only `reply_played`: the reply's clauses that played
+    whole before the speech began (`voice/session/reply_played.py`).
+  - The flight app turns the setting on for its lean agent, and adds `booking/lines.py`'s
+    `SEND_WORDS` to its `words.send` («احجزها», "book it"), each unless the environment sets it.
+    The lean booking check accepts a later turn heard before the summary ended whose
+    `reply_played` begins the summary's text and states the total; its four refusals stand. Run F's
+    lean mode says a `closing_question` turn over the reply's last clause once the clauses before it
+    stated the trip's total (otherwise once the agent is silent), then waits up to `HELD_S` for it.
+- **Consequences:** with the setting off nothing changes, and nothing is ever confirmed by it: it
+  only hands words to the talker. A held yes's answer starts about 0.7 s after the reply ends, by
+  default, which buys safety against a no begun in the tail. Log lines `question_yes_held`,
+  `question_yes_answered` and `question_yes_let_go` (why: stopped, not_over, second or words).
+  `interrupter.py` was split first as a pure move (`overlap_acts.py`). The scripted agent keeps it
+  off: safe, but its other questions ("Which one would you like?") would change, unmeasured.
+- **Evidence:** the lean review's scratch TextCalls and a checker's (a no after the yes, the
+  Arabic send words, a total and question in one clause), each reproduced before its fix; the
+  tests in `tests/t2_agentic_voice/voice/session/test_yes_over_question*.py` and
+  `tests/flight_voice/lean/test_lean_yes_over_question.py`.

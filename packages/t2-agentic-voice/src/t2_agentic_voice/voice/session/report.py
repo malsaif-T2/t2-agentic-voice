@@ -260,10 +260,12 @@ class CallEvents:
         self._emit(CallStarted(call_id=self._id, at=at))
         return at
 
-    def heard(self, turn_id: TurnId, heard: str) -> None:
-        self._emit(
-            UserTurnEnded(call_id=self._id, turn_id=turn_id, at=self._clock.wall(), heard=heard)
+    def heard(self, turn_id: TurnId, heard: str, played: str | None = None) -> None:
+        at = self._clock.wall()
+        ended = UserTurnEnded(
+            call_id=self._id, turn_id=turn_id, at=at, heard=heard, reply_played=played
         )
+        self._emit(ended)
 
     def metrics(self, turn: TurnLog, usage: tuple[ModelUsage, ...] = ()) -> None:
         """The turn settled: its `TurnMetrics`, with each model's `usage` in the call so far."""

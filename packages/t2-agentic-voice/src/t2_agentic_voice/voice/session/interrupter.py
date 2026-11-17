@@ -4,18 +4,8 @@
 docstring says when each decides and when each `unduck` goes), and carries out each verdict; and
 it reads each other turn, said while the agent was silent, for a command said whole (`alone`).
 
-- **stop:** every reply asked for is dropped (`StopSpeaking`), which cancels each one's scope,
-  `unduck` right after it, the clause playing marked cut (its caption sent again with the mark)
-  and in the heard history; one `Interrupted` of the verdict's kind and reason. A stop or pause
-  word's turn is taken as a command and never said back; new words or a correction are
-  answered (the echo) from the turn's own transcript, and so are those of the whole overlap,
-  judged still after a window's stop (it may hold only a request's first word).
-- **repeat:** stopped as above, then the last reply the caller heard is said again, as the reply
-  answering the turn, a command, once the whole overlap's transcript has come, so it never
-  starts while the caller still speaks; new words (or a correction) in it are answered instead.
-- **go_on:** `unduck`, the turn not answered (it `went_on`), and an `Interrupted` of kind
-  `false`. When speech followed in the same turn, its own transcript is judged again once it
-  comes (no request: `_judged_again`), and may still stop the agent.
+- **stop, repeat, go_on:** what each verdict does is overlap_acts.py's (`OverlapActs`, this
+  class's base).
 - **what followed** a stop word or a repeat request in the same turn is read from the turn's own
   transcript and carried out by overlap_follow.py's `Follows`, with the repeat.
 
@@ -46,43 +36,37 @@ pause request said whole stays a command. The fixed repeat (D-064) is a session'
 **Over an action's read-back** a stop that cuts it is told to the call's confirming state first
 (`Confirming.cut_by`), and a repeat request over it, or said whole while it is confirming, has
 the session say it again (`_read_again`): read_back.py says what each does to it.
+
+**A yes over a reply's closing question** that it went on over, under
+`interruptions.answer_yes_over_question` (D-116), is held until the reply ends, then answered as
+the caller's next turn unless words said after it let it go (yes_over_question.py; `flush`).
 """
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable
 from dataclasses import replace
 
 from t2_agentic_voice.core.events import TurnId
 from t2_agentic_voice.core.yes_inputs import HeardWords, ReadBackReceipt
-from t2_agentic_voice.domain.action_lines import ReadBackPlan
-from t2_agentic_voice.domain.interruptions import (
-    REPEAT_WORD,
-    STOP_WORD,
-    Verdict,
-    WholeCommand,
-    whole_command,
-)
-from t2_agentic_voice.voice.protocol import Unduck
+from t2_agentic_voice.domain.interruptions import Verdict, WholeCommand, whole_command
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.io import CallSetup, Commands, Guarded
 from t2_agentic_voice.voice.session.overlap import Overlaps, OverlapState, answers
+from t2_agentic_voice.voice.session.overlap_acts import OverlapActs
 from t2_agentic_voice.voice.session.overlap_ask import OverlapAsks
 from t2_agentic_voice.voice.session.overlap_follow import Answer, Follows
 from t2_agentic_voice.voice.session.playback import Reply
 from t2_agentic_voice.voice.session.read_back import Confirming
 from t2_agentic_voice.voice.session.read_back_heard import takes
-from t2_agentic_voice.voice.session.read_back_moved import read_again
 from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.session_events import Transcribed, Transcribing, TurnOpened
 from t2_agentic_voice.voice.session.speaker import Speaker
 from t2_agentic_voice.voice.session.turn_book import TurnBook
-
-# What a whole command said as a reply began stops it as: an overlap's stop word or repeat.
-_STOPS: Mapping[WholeCommand, Verdict] = {"stop": STOP_WORD, "repeat": REPEAT_WORD}
+from t2_agentic_voice.voice.session.yes_over_question import YesOverQuestion
 
 
-class Interrupter:
+class Interrupter(OverlapActs):
     """One call's overlaps as the session carries them out; `over` says whether the call has
     ended or is ending, `answer` answers a turn, and `guarded` and `sync` run a chat model's
     word on an uncertain overlap as a step of the session's (overlap_ask.py)."""
@@ -115,6 +99,15 @@ class Interrupter:
         self._talker = setup.talker is not None
         self.asks = OverlapAsks(setup, books, guarded=guarded, over=over, decide=self.model_said)
         self._held: dict[TurnId, tuple[TurnLog, HeardWords | None, Transcribed]] = {}
+        self.yes_over = YesOverQuestion(
+            setup,
+            speaker.playback,
+            turns=turns,
+            follows=self._follows,
+            answer=answer,
+            guarded=guarded,
+            sync=sync,
+        )
 
     async def opened(self, event: TurnOpened, over: Reply) -> None:
         """The turn `event` opens is an overlap of `over`: the agent's voice lowered, and the
@@ -186,6 +179,7 @@ class Interrupter:
         each a command, the replies answering earlier turns stopped first (`_stop_earlier`);
         any other is answered, as under `drop`. While confirming, a whole stop or pause request
         declines the read-back, the talker asking what to change (the owner's stop ruling)."""
+        self.yes_over.heard(turn, heard, event, answered=True)
         command = None if self._over() else self.command(heard)
         if command == "stop" and self._confirming.active:
             self._confirming.decline(turn.turn_id, "stopped")
@@ -265,14 +259,19 @@ class Interrupter:
         whole overlap held after its window's stop or repeat request (`OverlapState.instead`).
         A turn the reply went on over is answered only when it is the yes rule's
         (read_back_heard.py's `takes`): its speech begun once the summary played (a bare yes
-        over the closing question), or a yes held over the summary (held_yes.py)."""
+        over the closing question), or a yes held over the summary (held_yes.py); else a yes
+        over a reply's closing question may be held until the reply ends (D-116, `flush`), and
+        every other turn's words are told to it, which may let one go."""
         decided = await self._judged_again(state, turn, event)
         if decided is not None and decided.action == "go_on":
             if heard is not None and takes(self._confirming, heard.speech_at, over=turn.over_reply):
+                self.yes_over.heard(turn, heard, event, answered=True)
                 await self._answer(self._follows.pending(turn), heard, event)
-            else:
-                self._turns.settle(turn)
+                return
+            played = () if state is None else self._played(state)
+            self.yes_over.went_on(turn, heard, event, decided, played)  # held, or settled
             return
+        self.yes_over.heard(turn, heard, event, answered=True)
         answered = decided is None or answers(decided) or (state is not None and state.instead)
         failed = event.failure is not None and answered
         plan = None if answered else self._confirming.again(turn.turn_id)
@@ -286,74 +285,11 @@ class Interrupter:
             return
         await self._answer(self._follows.pending(turn), heard, event)
 
-    async def _judged_again(
-        self, state: OverlapState | None, turn: TurnLog, event: Transcribed
-    ) -> Verdict | None:
-        """The verdict that decided the overlap `state` (None for no overlap, or one undecided):
-        after a verdict to go on, the turn's own transcript `event` judged again when speech
-        followed it (`Overlaps.judge_after`), and a verdict that stops the agent carried out
-        then, deciding it in the go-on's place."""
-        decided = None if state is None else state.decided
-        if state is None or decided is None or decided.action != "go_on":
-            return decided
-        played = self._played(state)
-        again = self._overlaps.judge_after(event, played=played, ended_at=turn.speech_ended_at)
-        if again is None or again.action == "go_on":
-            return decided
-        self._judged(event, again)
-        await self._act(state, again, event.at)
-        return again
-
-    async def _stop_earlier(self, turn: TurnLog, command: WholeCommand, at: float) -> None:
-        """Before `turn`'s whole `command`: the replies in progress to earlier turns stopped,
-        with one `Interrupted` as an overlap's, of the newest of their turns (playback.py's
-        `Playback.earlier`)."""
-        earlier = self._speaker.playback.earlier(turn.turn_id)
-        if not earlier:
-            return
-        await self._speaker.stop(at, client=False)
-        verdict = _STOPS[command]
-        newest = max(reply.turn_id or 0 for reply in earlier)
-        self._events.interrupted(newest, verdict.kind, verdict.reason)
-
-    async def _act(self, state: OverlapState, verdict: Verdict, at: float) -> None:
-        """Carry out `verdict` on the overlap `state`: its `Interrupted`, the turn's fate, and
-        for a stop or a repeat, the stop and what follows it; each `unduck` now due."""
-        turn = self._turns.turn(state.turn_id)
-        unducks = self._overlaps.settle()
-        if verdict.action == "go_on":
-            self._turns.ended(turn, "went_on")
-            for _ in range(unducks):
-                await self._speaker.send(Unduck())
-        else:
-            over = self._speaker.playback.reply(state.reply_id)
-            if over is not None and over.ended_at is None:  # not one heard whole, in its tail
-                turn.cut_reply = state.reply_id
-            self._confirming.cut_by(
-                turn.turn_id, reply_id=state.reply_id, speech_at=state.speech_at, verdict=verdict
-            )
-            await self._speaker.stop(at, client=False, unducks=unducks)
-            if self._talker:
-                self._turns.ended(turn, "pending")  # the talker reads it whole
-            elif verdict.action == "repeat" and state.decided_by == "window":
-                # said again once the whole overlap is heard
-                self._follows.repeats.add(turn.turn_id)
-            else:
-                if verdict.action == "repeat":
-                    await self._follows.repeat(turn, at)
-                self._turns.ended(turn, "pending" if answers(verdict) else "command")
-        spoken = self._speaker.playback.reply(state.reply_id)
-        turn_id = None if spoken is None else spoken.turn_id
-        self._events.interrupted(turn_id, verdict.kind, verdict.reason)
-
-    async def _read_again(self, turn: TurnLog, plan: ReadBackPlan, at: float) -> None:
-        """Say `plan`'s read-back again, as the reply answering `turn` (read_back.py's
-        `read_again`), unless the call has ended or is ending."""
-        if not self._over():
-            reply_id = await read_again(
-                self._speaker, self._confirming, plan, turn_id=turn.turn_id, at=at
-            )
-            turn.reply_id = reply_id
+    async def flush(self, at: float) -> None:
+        """After each step of the session's, at `at`: each yes held over a closing question
+        answered or let go once due (yes_over_question.py's), quiet when no words are on the way."""
+        quiet = self._turns.all_heard and not self._overlaps.open_turns and not self._held
+        await self.yes_over.flush(at, quiet=quiet)
 
     def receipt(self, speech_at: float | None, *, quiet: bool = False) -> ReadBackReceipt | None:
         """The current read-back's receipt, built now, for a turn whose speech began at
@@ -362,11 +298,3 @@ class Interrupter:
         if quiet and self._overlaps.open_turns:
             return None
         return self._confirming.receipt(speech_at=speech_at, undecided=self._overlaps.undecided)
-
-    def _played(self, state: OverlapState) -> tuple[str, ...]:
-        """What the agent's own voice heard back would say over the overlap: the clauses that
-        played within `own_words_s` before its speech began, or since, and the one playing."""
-        return self._speaker.playback.heard_since(state.speech_at - self._own_s)
-
-    def _judged(self, event: Transcribed, verdict: Verdict) -> None:
-        self._recorder.judged(event, verdict)

@@ -33,8 +33,7 @@ What it does, and where each part is:
   asked of `setup.consent` itself (recording.py); the heard words, which only voice builds
   (`HeardWords`, invariant 1; heard.py); and what the caller heard (history.py).
 
-Its tests are under tests/t2_agentic_voice/voice/session/, each module's docstring saying which it
-holds.
+Its tests are under tests/t2_agentic_voice/voice/session/, each module's docstring naming its own.
 """
 
 from __future__ import annotations
@@ -289,12 +288,13 @@ class CallSession:
         return self._setup.call_id
 
     async def _sync_state(self) -> None:
-        """After each step: an action's outcome due at a turn boundary said (action_job.py),
-        then the client told what the agent is doing, when it changed."""
+        """After each step: a yes held over a closing question answered (interrupter.py), an
+        action's outcome due said (action_job.py), then the client told what the agent does."""
         if self._close.ended is None and self._close.connected:
             if (code := self._setup.now.untold()) is not None:  # the talker's tool moved the call
                 await self._commands.run(ListenIn(language=code))
-            if self._talking is not None:
-                await self._talking.yes.flush(self._setup.clock.now())
+            if self._talking is not None:  # a yes over a closing question first (D-116)
+                await self._interrupter.flush(now := self._setup.clock.now())
+                await self._talking.yes.flush(now)
             confirming = self._confirming.active
             await self._speaker.show_state(awaited=self._turns.awaited, confirming=confirming)

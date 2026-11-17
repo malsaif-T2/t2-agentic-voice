@@ -1375,6 +1375,17 @@ Block 0.
   D-115's amendment holds the numbers, and an exploratory reading (the no-hint answer alone on
   turns past the 1.2 s gate) that moves as `detected` does with one request a turn, p95 0.32 s
   sooner, to be built and run as its own registered arm if the owner wants it.
+- 2026-11-17: D-116 built and merged: a yes said over the question that ends a reply is answered
+  once the reply ends (`interruptions.answer_yes_over_question`, on for the lean agent), so the
+  lean agent's "Shall I book it?" no longer meets dead air; run F's lean mode says its
+  `closing_question` turns over the question, after the total. The flight app also says times and
+  fares in the caller's register (`tts.spoken_numbers = "by_register"`, D-107), at the owner's
+  question about "06:00" and "14:00". **A held-out exposure to record:** the fix's builder ran a
+  `grep -rn` for `closing_question` over `apps/flight-voice-agent/evals/`, which printed the
+  matching lines of h01, h02 and h03 to that agent (not to the lead); it reports using none of them.
+  Earlier the same day, a command that would have printed h06 and h10 was refused whole. The
+  three files' `closing_question` lines are to be treated as seen when the held-out set is read at
+  M9, for the owner to keep or replace.
 - 2026-11-17: the text-to-speech candidates for the owner's pick by ear (D-114, branch
   `plan-010-tts`): `tts.provider` takes `elevenlabs`, `groq` and `telnyx`, each speaking the
   provider's default voices with `tts.languages` unset. The owner picked ElevenLabs v4 Turbo in

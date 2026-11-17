@@ -2,8 +2,10 @@
 on its lists (`kinds`), a plain no (`plain_no`), a change marker (`marked`), and the echo rail's
 reading of the agent's own lines heard back (`echoes`, `SaidLines`, `playing`), and, under
 `interruptions.yes_over_read_back` (D-108), khalas beside a send word (`holds_okay`) and a yes
-said over the summary (`held_yes`). Pure, with no IO; the yes rule alone issues anything from
-them.
+said over the summary (`held_yes`), and, under `interruptions.answer_yes_over_question` (D-116), a
+yes said over the question that ends a reply (`question_yes`). Pure, with no IO; the yes rule
+alone issues anything from them (`question_yes` issues nothing: the turn it reads goes to the
+talker).
 
 The words are read in the rule's form (domain/words.py's `rule_form`), as the interruption rule
 reads them: each listed phrase one word, the longest that starts at a word first, and a word on
@@ -144,3 +146,13 @@ def held_yes(
     if found <= {"yes", "send", "filler"}:
         return bool(found & {"yes", "send"})
     return word in ("yes", "send") and "no" not in found | kinds(form, rail)
+
+
+def question_yes(text: str, words: ConsentWords, *, played: Sequence[str]) -> bool:
+    """Whether `text`, said over the question that ends a reply, is a yes to the lists `words`
+    (D-116), as `held_yes` reads one by the lists alone: a yes or a send word among only yes
+    words, send words and fillers ("yes", "yes, book it"); never fillers alone, with a question
+    mark or a change marker, or when the words are the agent's own lines `played` (those heard
+    as the speech began) heard back (`echoes`), so the echo of "Shall I book it?" is none."""
+    said = SaidLines(read_back=tuple(played), asked_again=(), over_asked_again=False)
+    return held_yes(None, text, words, said=said)

@@ -1,7 +1,9 @@
 """Run F's outcome mode's own reads (flight_voice/evals/lean_checks.py, lean_call.py): a booking
 claimed in the agent's words, in English and Arabic, and never a negation, a question, or one put
 ahead or under a condition ("It will be booked once you say yes"); the
-read-back's moments said right after the lean agent's reply; and the measures' means."""
+read-back's moments made the lean agent's (the summary's said right after its reply, the
+closing question's kept for the play to say over its question, a stop over the reply); and the
+measures' means."""
 
 from __future__ import annotations
 
@@ -49,7 +51,7 @@ def test_a_negation_a_question_or_a_condition_claims_nothing(text: str) -> None:
     assert not claims_booking(text)
 
 
-def test_the_read_backs_moments_are_said_after_the_reply_and_a_stop_over_it() -> None:
+def test_the_read_backs_moments_are_the_lean_agents_and_a_stop_is_over_the_reply() -> None:
     scenario = Scenario.model_validate(
         {
             "id": "x02_lean_moments",
@@ -68,7 +70,7 @@ def test_the_read_backs_moments_are_said_after_the_reply_and_a_stop_over_it() ->
     )
     turns = lean_turns(scenario).turns
     assert turns[1].at == "agent_speaking"
-    assert [t.when for t in turns[2:]] == [None, None, "agent_speaking"]
+    assert [t.when for t in turns[2:]] == ["closing_question", None, "agent_speaking"]
     assert turns[3].after_s == 2.0 and scenario.turns[2].when == "closing_question"
 
 

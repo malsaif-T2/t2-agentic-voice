@@ -179,6 +179,40 @@ own lines heard back, and never a yes held on a read-back that a new one replace
 closing question free of yes words, as above: the rule asks again a bare yes that is the
 question's own words heard back, and a question with no yes word leaves nothing to mistake.
 
+### A yes over any reply's question: `interruptions.answer_yes_over_question`
+
+An agent with no read-back may ask a yes/no question at the end of a reply ("Riyadh to
+Jeddah, 1,240 riyals in all. Shall I book it?"). Under the two-step interruption, a short yes
+said over that question, «إيه», «نعم», "yes", "sure", lets the reply play on, and the turn is
+not answered: the call goes quiet until the caller speaks again. An app may turn on
+`interruptions.answer_yes_over_question` (off by default; D-116, the owner's "Any yes books");
+the flight app does for its lean agent. Then such a turn is held, and once the reply ends it
+is answered as the caller's next turn, its words handed to the talker like any turn's, when:
+
+- its words are a yes by the yes rule's lists, in the language they were heard in: a yes or a
+  send word among only yes words, send words and fillers ("yes", "go ahead", «إي احجزها»),
+  with no question mark. Fillers alone ("okay", «تمام») never are, and nor are the agent's own
+  words heard back: "book it" over "Shall I book it?" is the question's echo. Your question's
+  own verb counts once it is a send word (`words.send`: the flight app adds «احجزها» and "book
+  it" for its lean agent);
+- its speech began over the reply's last clause, every clause before it played, or in the
+  0.3 s after the reply ended; a yes said over an earlier clause is not answered;
+- that last clause is a question (its text ends with a question mark), it played, and the
+  reply was not stopped. One yes is answered a reply, the first said;
+- no other words were said after it. A no, or any words but fillers and listening sounds,
+  begun after the yes, over the question, in its tail or once the agent was silent, takes it
+  back: "Yes." then "No." books nothing. Words count in the order they were said, never the
+  order their transcripts came. So the yes waits, after the reply ends, for its tail and the
+  speech detector's lag (`turns.vad_start_ms` and 0.2 s: about 0.7 s by default) and until no
+  turn is open or awaiting its words, since a turn begun in the tail is reported that late.
+
+It confirms nothing itself: the talker reads the words, as it reads any turn, and an action is
+still sent only on a read-back's yes, whose own rule (above) keeps every turn over a
+read-back. The turn's `UserTurnEnded` comes before the reply's `AgentSpeechEnded`, since its
+words are heard while the reply plays; its `reply_played` says what of the reply had played
+when the caller began, so an app that checks what the caller had heard before a step (the
+lean flight agent's booking check, that the total had played) reads it there.
+
 ### What follows each answer
 
 - **A yes**: the action's `sending` line is said ("Sending it now, just a few seconds.", unless

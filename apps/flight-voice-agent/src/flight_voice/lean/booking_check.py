@@ -6,15 +6,20 @@ matches what was said"), and what each call keeps for it.
 - since the trip was last completed or changed, a reply of the agent states the trip's total;
 - that reply played at least up to the total: where the total ends in its text, over the text's
   length, is at most the reply's `played_fraction`;
-- the caller spoke after that reply: a turn heard after it ended, or, for a reply cut short, a
-  turn later than the one it answered, heard before it ended (`cut_by`). A turn that cuts a
+- the caller spoke after that reply: a turn heard after it ended; or, for a reply cut short, a
+  turn later than the one it answered, heard before it ended (`cut_by`); or a turn later than
+  the one it answered, heard before it ended, whose speech began once the part of the reply
+  that states the total had played (`heard_over`: what of the reply had played then, the
+  event's `reply_played`, begins the reply's text and states the total). A turn that cuts a
   reply can end before the reply's end is told: its transcript comes first, then the overlap's
-  verdict stops the reply, so its `UserTurnEnded` comes before the reply's `AgentSpeechEnded`.
+  verdict stops the reply, so its `UserTurnEnded` comes before the reply's `AgentSpeechEnded`;
+  so does a yes said over the closing question, which the library answers only once the reply
+  has ended (`interruptions.answer_yes_over_question`, D-116).
 
 **The events.** The check reads the call's events, which the app observes (`runtime.on`, for
 each of `OBSERVED`): each `AgentSpeechEnded` (the reply's text, how much of it played, the turn
-it answered) and `UserTurnEnded` with words heard (and its turn), kept per call in order and
-dropped at `CallEnded`, as the trip
+it answered) and `UserTurnEnded` with words heard (its turn, and what of a reply it began over
+had played), kept per call in order and dropped at `CallEnded`, as the trip
 book drops the call's trip, at most `MAX_CALLS` calls kept (the oldest dropped past it). A call
 held in text reads them from the call itself instead (`read_from`, the `TextCall`'s `emitted`).
 The tools mark the trip each time they write it (`mark`): a trip that differs from the one last
@@ -68,10 +73,12 @@ class Said:
 
 @dataclass(frozen=True)
 class Heard:
-    """A turn of the caller's that was heard, and its number."""
+    """A turn of the caller's that was heard, its number, and what of the reply its speech
+    began over had played by then (None for a turn begun while the agent was silent)."""
 
     words: str
     turn: int | None = None
+    played: str | None = None
 
 
 Seen = Said | Heard
@@ -140,7 +147,7 @@ def _seen(events: Sequence[Event], call_id: str) -> list[Seen]:
         if isinstance(event, AgentSpeechEnded):
             found.append(Said(event.text, event.played_fraction, event.turn_id))
         elif isinstance(event, UserTurnEnded) and event.heard.strip():
-            found.append(Heard(event.heard, event.turn_id))
+            found.append(Heard(event.heard, event.turn_id, event.reply_played))
     return found
 
 
@@ -152,6 +159,23 @@ def cut_by(said: Said, before: Sequence[Seen]) -> bool:
         return False
     answered = said.turn
     return any(isinstance(e, Heard) and e.turn is not None and e.turn > answered for e in before)
+
+
+def heard_over(said: Said, before: Sequence[Seen], total: int) -> bool:
+    """Whether a turn of the caller's later than the one `said` answered, heard among `before`
+    (the events seen before `said` ended), began once the part of `said` that states `total`
+    had played: what had played then (`Heard.played`) begins its text and states the total (the
+    module's docstring)."""
+    if said.turn is None:
+        return False
+    answered = said.turn
+    for each in before:
+        if not isinstance(each, Heard) or each.turn is None or each.turn <= answered:
+            continue
+        played = each.played
+        if played and said.text.startswith(played) and stated_at(played, total) is not None:
+            return True
+    return False
 
 
 class BookingCheck:
@@ -216,5 +240,5 @@ class BookingCheck:
             at = stated_at(each.text, total)
             if at is not None and at <= each.played:
                 after = any(isinstance(later, Heard) for later in seen[n + 1 :])
-                return after or cut_by(each, seen[:n])
+                return after or cut_by(each, seen[:n]) or heard_over(each, seen[:n], total)
         return False

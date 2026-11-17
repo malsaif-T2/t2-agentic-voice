@@ -1,9 +1,10 @@
 """The agent the flight app serves, chosen by its setting (`FLIGHT_VOICE_AGENT`, settings.py;
 server.py's `make_app`): the scripted agent by default, the lean one (D-113) when it says so,
 the lean agent's settings path (the guard's rules and four requests a turn on, no yes held over
-a read-back it has none of), and its booking check observing each call's events beside the
-trip book's end of call; its airline keeping the day its calendar was written for, and a call on
-a stale calendar logged. The runtime is a fake that keeps what it was given."""
+a read-back it has none of, a bare yes over its closing question answered once the reply ends:
+D-116, unless the environment sets it), and its booking check observing each call's events
+beside the trip book's end of call; its airline keeping the day its calendar was written for,
+and a call on a stale calendar logged. The runtime is a fake that keeps what it was given."""
 
 from __future__ import annotations
 
@@ -16,6 +17,7 @@ from fastapi import APIRouter
 from flight_voice import server, settings
 from flight_voice.agent import NAME
 from flight_voice.airline.system import Airline
+from flight_voice.booking.lines import SEND_WORDS
 from flight_voice.lean.agent import NAME as LEAN
 from flight_voice.lean.agent import calendar_watch
 from flight_voice.settings import AGENTS, for_the_app, load
@@ -111,19 +113,38 @@ def test_a_call_on_a_stale_calendar_logs_it(caplog: pytest.LogCaptureFixture) ->
     assert vars(record)["fields"] == {"calendar": "2026-11-17", "riyadh": "2026-11-18"}
 
 
-def test_the_lean_settings_path_holds_no_yes_over_a_read_back(
+def test_the_lean_settings_path_answers_a_yes_over_the_question_not_over_a_read_back(
     environment: pytest.MonkeyPatch,
 ) -> None:
+    assert settings.YES_OVER_QUESTION == "answer_yes_over_question"
+    assert not VoiceSettings(env="test").interruptions.answer_yes_over_question
     environment.setenv("FLIGHT_VOICE_AGENT", "lean")
     voice = load().voice
     guard = voice.guard
     assert guard.plain_speech and guard.drop_stage_notes and guard.question_stop_drops_calls
     assert voice.llm.max_requests_per_turn == 4
     assert not voice.interruptions.yes_over_read_back
+    assert voice.interruptions.answer_yes_over_question
+    environment.setenv("T2V_INTERRUPTIONS__ANSWER_YES_OVER_QUESTION", "false")
+    assert not load().voice.interruptions.answer_yes_over_question
     scripted = for_the_app(VoiceSettings(env="test"))
     assert scripted.interruptions.yes_over_read_back
+    assert not scripted.interruptions.answer_yes_over_question  # the scripted agent's as it was
     lean = for_the_app(VoiceSettings(env="test"), agent="lean")
     assert not lean.interruptions.yes_over_read_back and lean.guard.plain_speech
+    assert lean.interruptions.answer_yes_over_question
+
+
+def test_the_lean_agent_reads_the_bookings_send_words_unless_the_environment_sets_them(
+    environment: pytest.MonkeyPatch,
+) -> None:
+    assert VoiceSettings(env="test").words.send == {}
+    assert for_the_app(VoiceSettings(env="test")).words.send == {}  # the scripted agent's own
+    lean = for_the_app(VoiceSettings(env="test"), agent="lean").words.send
+    assert {code: list(words) for code, words in lean.items()} == SEND_WORDS
+    environment.setenv("FLIGHT_VOICE_AGENT", "lean")
+    environment.setenv("T2V_WORDS__SEND", '{"en": ["go on then"]}')
+    assert load().voice.words.send == {"en": ("go on then",)}
 
 
 def test_another_agent_is_refused_naming_its_setting(environment: pytest.MonkeyPatch) -> None:
