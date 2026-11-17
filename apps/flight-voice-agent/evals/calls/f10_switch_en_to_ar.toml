@@ -25,13 +25,13 @@ language = "ar-SA"
 [[turns]]
 says = "إي هذي الرحلة"
 calls = ["choose_flight"]
-args = { leg = "outbound", pick = "number", n = 1 }
+args = { leg = "outbound" }
 language = "ar-SA"
 
 [[turns]]
 says = "والرجعة نفس الشي، هذي"
 calls = ["choose_flight", "book_trip"]
-args = { leg = "return", pick = "number", n = 1 }
+args = { leg = "return" }
 outcome = "read_back"
 read_back = { outbound = "T2 601@2026-11-25", return = "T2 602@2026-12-02", one_way = false, travelers = 1, cabin = "economy" }
 language = "ar-SA"

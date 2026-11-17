@@ -13,4 +13,4 @@ calls = ["search_flights"]
 args = { destination = "IST", depart = "2026-11-22", return_date = "2026-11-26" }
 forms = { depart = { kind = "weekday", weekday = "sun" }, return_date = { kind = "weekday_after", weekday = "thu" } }
 hears_progress = true
-said_any = [["للشخص", "للفرد", "per person"]]
+said_any = [["للشخص", "لكل شخص", "للفرد", "لكل فرد", "per person"]]

@@ -11,7 +11,7 @@ says = "أريد السفر إلى القاهرة في العاشر من ديس�
 calls = ["search_flights"]
 args = { destination = "CAI", depart = "2026-12-10", return_date = "2026-12-17" }
 forms = { depart = { kind = "on", day = 10, month = 12 }, return_date = { kind = "nights", nights = 7 } }
-said_any = [["للشخص", "للفرد", "per person"]]
+said_any = [["للشخص", "لكل شخص", "للفرد", "لكل فرد", "per person"]]
 
 [[turns]]
 says = "الرحلة الأولى من فضلك"

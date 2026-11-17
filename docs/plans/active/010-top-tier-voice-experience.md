@@ -802,7 +802,7 @@ and F, each once, the kept arm and its baseline; none for TTS (the panel's lines
 | Rule | For | Data and arms | Kept when | Expected |
 | --- | --- | --- | --- | --- |
 | A · Ticket calls | 1.2-1.4, 1.17-1.20, the talker arms | run A dev, every scenario, three plays | zero violations in every play; the action targets (right action, type, faithful summary, language) no worse than `a5-dev` | unchanged |
-| F · Flight calls | Phase F, and from then on every row that can move a measured outcome (rows 1.x and 2.x, with Ole5's A and L as the check that it is general, D-101) | run F (the flight spec's 7.1): the flight app's scripted calls in text through `TextCall`, the real talker on the mock airline, each scenario three times against a new airline per play, today pinned to 2026-11-16, every fact checked in code (no judge); dev f01-f28, the held-out set written by a builder who has seen no dev result; a scenario's `needs` skipped and reported until its capability lands (`language_switch`: row 2.5, landed with D-103) | a scenario passes when every check holds in at least 2 of 3 plays; a change is kept when no dev scenario that passed before fails, the targeted ones pass and violations are zero in every play; for a target among L's checks (f25-f28), L's rule, all three plays; held-out read once at M9, `--split held-out` named | the first dev pass is the baseline |
+| F · Flight calls | Phase F, and from then on every row that can move a measured outcome (rows 1.x and 2.x, with Ole5's A and L as the check that it is general, D-101) | run F (the flight spec's 7.1): the flight app's scripted calls in text through `TextCall`, the real talker on the mock airline, each scenario three times against a new airline per play, today pinned to 2026-11-16, every fact checked in code (no judge); dev f01-f28, the held-out set written by a builder who has seen no dev result; a scenario's `needs` skipped and reported until its capability lands (`language_switch`: row 2.5, landed with D-103) | a scenario passes when at least 2 of its 3 plays hold every check; a change is kept when no dev scenario that passed before fails, the targeted ones pass and violations are zero in every play; for a target among L's checks (f25-f28), L's rule, all three plays; held-out read once at M9, `--split held-out` named | the first dev pass is the baseline |
 | K0 · Search | 1.1 | no model: the talker's own stored queries from `k1-dev-spoken` (87 with "Ole5", each with its expected points) and the 31 live ones, with and without 1.1; the header share counts exactly the passages 1.1 skips | the share under 1 in 20, and no item loses its expected point at k = 7 unless another gains one (deterministic, so no sign test) | 81 of 217 → near 0 |
 | E · End of turn | 1.11, 2.1, 2.3 | `poe eot` (GP-18): E0 3,000 ms, E1 1,800 ms; later E2 (2.1) and E3 (2.3), each against the last kept; the paused requests, 0.6's long-pause items, and its "yes, [pause] but" items as their own stratum; 0.7's resumed-silence field read first on the owner's calls | on the long-pause items, no more cut turns than the last kept arm plus D-067's noise (1 verdict), per language; zero sends on the "yes, but" items; then the tester day's live turns that resumed after 1.8 s counted | E1: timeout turns at about 2.0 s; E2: under 2% of turns |
 | O · Overlap | 1.5's words, 1.12 | `poe overlap` on dev | no verdict goes from right to wrong (D-068's noise: 0 of 163) | FSMRkwf t2's kind answered |
@@ -1205,6 +1205,23 @@ Block 0.
   booking's reference. Its scorecard is in the scratchpad's runs/f-dev-4 (not the owner's var/),
   its history line committed. Next: a diagnosis of each failed scenario, each cause challenged,
   then the fixes by scenarios fixed an hour, each measured against this pass.
+- 2026-11-17: rule F's scenarios amended by the lead after f-dev-4 was read and before any later
+  result, each from a diagnosis a skeptic upheld (a workflow: an analyst for each failed scenario,
+  a skeptic for each cause, the fixes grouped by scenarios fixed an hour): (M1) f01, f03 and f24's
+  per-person variants gain «لكل شخص» and «لكل فرد», ordinary MSA (f03's MSA replies said them in
+  plays 1 and 3); (M2) f01's return «الأخيرة» and f19's «الأخيرة» check the leg alone, not the pick
+  kind `latest`: «الأخيرة», "the last one", is the last listed as much as the latest, the set codes
+  «الأولى» as a number (f03, f06, f28), the model sent the last number in 6 of 6 plays, the same
+  flight, and each turn's read-back pins it; (M3) f10's «هذي» with one flight listed checks the leg
+  alone, every pick kind naming that flight; (M4) f15's Jeddah to Dubai checks no call: the
+  instructions decline a route between two other cities ("Every flight starts or ends in Riyadh"),
+  so a correct reply need not search, and «Riyadh» is still said; (M6) the pass rule's wording in
+  whole plays ("at least 2 of its 3 plays hold every check"), as `score.py` counts and
+  evaluation.md says, the stricter reading: only f26 reads otherwise on f-dev-4 (a different check
+  fails in each of two plays), and it stays failed. f-dev-4 re-scored under M1-M4 from its records:
+  13 of 28 (f01, f03, f10, f15 added; f19 still fails on play 3's register and play 2's stuck
+  call), the baseline later passes compare to. The held-out files were not opened; whether they
+  code «الأخيرة» or a lone option's pick by kind is read when held-out is, at M9.
 
 ## Decision log
 

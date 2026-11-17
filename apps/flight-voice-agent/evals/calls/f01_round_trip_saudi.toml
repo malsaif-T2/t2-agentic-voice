@@ -11,7 +11,7 @@ says = "أبي أروح لندن الخميس الجاي وأرجع الأحد �
 calls = ["search_flights"]
 args = { destination = "LHR", depart = "2026-11-19", return_date = "2026-11-22" }
 forms = { depart = { kind = "weekday", weekday = "thu" }, return_date = { kind = "weekday_after", weekday = "sun" } }
-said_any = [["للشخص", "للفرد", "per person"]]
+said_any = [["للشخص", "لكل شخص", "للفرد", "لكل فرد", "per person"]]
 
 [[turns]]
 says = "حقت الصبح"
@@ -21,7 +21,7 @@ args = { leg = "outbound", pick = "part_of_day", part = "morning" }
 [[turns]]
 says = "الأخيرة"
 calls = ["choose_flight", "book_trip"]
-args = { leg = "return", pick = "latest" }
+args = { leg = "return" }
 outcome = "read_back"
 read_back = { outbound = "T2 401@2026-11-19", return = "T2 404@2026-11-22", one_way = false, travelers = 1, cabin = "economy" }
 said_any = [["رايح جاي"]]

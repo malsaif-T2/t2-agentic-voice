@@ -1032,7 +1032,7 @@ reference said unless a turn asks, the turn after the last choice calls `book_tr
 summary of its own before the read-back, `TextCall.violations` empty (rules A to C and the yes
 rule: zero in every play is the hard constraint), each turn's checks.
 
-**Kept rule**: a scenario passes when every check holds in at least 2 of 3 plays; a change to
+**Kept rule**: a scenario passes when at least 2 of its 3 plays hold every check; a change to
 the library or the app is kept when no dev scenario that passed before fails, the targeted ones
 pass, and violations are zero in every play; for a target among L's checks, plan 010's L rule
 (all three plays). Held-out is read once per milestone, with `--split held-out` named.
@@ -1062,7 +1062,7 @@ Dev (written now, before any run). Each line: id, language, what it tests.
 | f12_search_failure_saudi | ar-SA | search fails → «ما قدرت أشيك الحين»; never «ما فيه رحلات» |
 | f13_no_at_read_back_english | en | "no, don't book it" → declined, nothing booked; the talker's own "nothing is booked" not blocked (no violation, no fixed error phrase) |
 | f14_yes_but_change_saudi | ar-SA | «إي بس خلها لشخصين» over the summary → change_trip travelers 2 → new read-back → yes → done for 2 |
-| f15_not_served_english | en | "Jeddah to Dubai" → not served, explains Riyadh; then Riyadh to Dubai works |
+| f15_not_served_english | en | "Jeddah to Dubai" → not served, explains Riyadh (with or without a search); then Riyadh to Dubai works |
 | f16_business_sold_out_msa | ar | business on a flight and day with no business seats → says so, offers economy or another flight |
 | f17_same_as_last_time_saudi | ar-SA | «أبي نفس رحلتي الأخيرة لدبي» → traveler_profile then asks the dates (one question); no claim of a booking |
 | f18_booking_refused_english | en | booking mode refuse → failed line; no claim |

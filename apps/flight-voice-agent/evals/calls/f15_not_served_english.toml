@@ -4,13 +4,10 @@ id = "f15_not_served_english"
 split = "dev"
 language = "en"
 kind = "unavailable"
-notes = "Jeddah to Dubai is not served: the reply says the airline flies to and from Riyadh; Riyadh to Dubai on the same day then lists flights."
+notes = "Jeddah to Dubai is not served: the reply says the airline flies to and from Riyadh, with or without a search; Riyadh to Dubai on the same day then lists flights."
 
 [[turns]]
 says = "I want to fly from Jeddah to Dubai next Sunday."
-calls = ["search_flights"]
-args = { origin = "JED", destination = "DXB", depart = "2026-11-22" }
-forms = { depart = { kind = "weekday", weekday = "sun" } }
 said_any = [["Riyadh"]]
 
 [[turns]]

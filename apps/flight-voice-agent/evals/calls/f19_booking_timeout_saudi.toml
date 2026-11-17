@@ -16,7 +16,7 @@ forms = { depart = { kind = "relative", when = "tomorrow" } }
 [[turns]]
 says = "الأخيرة"
 calls = ["choose_flight", "book_trip"]
-args = { leg = "outbound", pick = "latest" }
+args = { leg = "outbound" }
 outcome = "read_back"
 read_back = { outbound = "T2 255@2026-11-17", one_way = true, travelers = 1, cabin = "economy" }
 

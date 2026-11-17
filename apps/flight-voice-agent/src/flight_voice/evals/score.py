@@ -6,7 +6,7 @@ scorecard, and the session's line in the app's run history.
   on, the call's violations, and each turn as heard (its words and tools) for reading a failure
   by hand. A smoke play's record is marked `smoke` and never scored.
 - **The scorecard** (`Scorecard`, `scorecard.json` and `scorecard.md`): the run, each scenario's
-  plays and passes (passed when every check holds in at least two of three plays, `PASS_SHARE`;
+  plays and passes (passed when at least two of its three plays hold every check, `PASS_SHARE`;
   `all_plays` says whether it held in every play, the rule for a target among the long-call
   checks), the plays failing each check, its violations counted per play, the scenarios skipped
   for a capability that does not play yet, and the totals; `held` is the hard constraint, no
