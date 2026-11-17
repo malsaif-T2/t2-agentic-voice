@@ -1393,6 +1393,7 @@ The prototype's scorer is ported to the library as functions, as D-010 allows:
 - `sign_test`: the paired sign test by item from evaluation.md;
 - `turn_languages` and `chosen` (plan 007's Block H, D-086): each turn's language in a file-fed call through a classifier, and the language the rule would send it in for a call held in any of the agent's languages; under `stt.live_language = "detected"`, whether each turn's request also went naming no language (`LanguageTurn.detects`);
 - `switch_to` (D-038's amendment): the library's rule for when a turn moves the call to the language Whisper detected, so a measurement with Whisper applies it exactly.
+- `HintRule`, `hinted_switch` and `hinted_move` (D-115): the rule by which, under `stt.live_language = "hinted"`, one answer's own language and probability move the call (`hinted_move` without the threshold), so run H's Scribe arms apply the live rule exactly.
 
 Ole5's golden-set machinery stays in the app, under `apps/ole5-voice-agent/evals` with its poe tasks, exactly as evaluation.md defines it: `poe golden`, `poe eval`, `poe eval-compare`, item validation, frozen answers, splits, held-out aggregates and `history.jsonl`. A `t2v eval` CLI comes when a second team records a golden set.
 

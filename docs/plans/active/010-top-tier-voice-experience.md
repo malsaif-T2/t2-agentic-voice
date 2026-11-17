@@ -1350,6 +1350,17 @@ Block 0.
   months", over the 14 days first built): up to 14 days the span is given day by day, longer week
   by week (the Saudi week, each week's days with a flight and its cheapest day) with the two
   cheapest days, so the tool result stays short; its card shows only days the result holds.
+- 2026-11-17: round 3's 14 review fixes and a checker's one finding merged (af72c7c, 011c9d3).
+- 2026-11-17: the owner's one-request language switch built (D-115): `stt.live_language =
+  "hinted"`, one Scribe request a turn naming the call's language with the agent's others as
+  secondary languages, the call moved by the answer's own language at or above
+  `stt.switch_min_probability`; off by default. Its keep rule registered by the lead before any
+  run, read against `detected` gated as a live call sends it (D-115's text): keep `hinted` at the
+  lowest threshold of 0.50 to 0.95 with no false move on a short reply, no more wrong moves than
+  `detected`, right moves at least `detected`'s minus 2, and no worse WER in either item language
+  beyond the run's noise; that threshold becomes the default of `stt.switch_min_probability`,
+  otherwise `detected` stands. Dev only, arms (a) hinted, (b) secondary alone, (c) none, and
+  `detected`.
 
 ## Decision log
 

@@ -2,7 +2,9 @@
 default since the registered rule F held on plan 002's runs R1 and R3 (GP-18); the Whisper
 prompt each request sends, on by default since run W kept its arm W1 (plan 006, Q23); and the
 spoken-language classifier of `live_language = "classified"`, off by default, since run H kept
-no arm (D-086, as amended on 2026-11-12)."""
+no arm (D-086, as amended on 2026-11-12); and `live_language = "hinted"`, one request a turn
+whose answer's language and probability move the call (D-115), off by default until run H's
+Scribe arms are measured (GP-18)."""
 
 from __future__ import annotations
 
@@ -24,15 +26,21 @@ SttProvider = Literal["groq", "elevenlabs", "speechmatics", "cohere", "soniox", 
 HEARS_NO_LANGUAGE: frozenset[SttProvider] = frozenset(
     {"speechmatics", "cohere", "telnyx", "nabrah"}
 )
+# The providers whose answer gives the language heard with its probability (ElevenLabs'
+# `language_code` and `language_probability`): only on them does `live_language = "hinted"`
+# move a call; on any other it runs as `session` (D-115).
+REPORTS_PROBABILITY: frozenset[SttProvider] = frozenset({"elevenlabs"})
 SttModel = Literal["whisper-large-v3", "whisper-large-v3-turbo"]
 # The least Groq bills a transcription request, in seconds, however short its audio (its
 # pricing, read 2026-11-01; the design's 10.4): the adapter's billed seconds, the session's
 # usage and the echo timings count it so.
 WHISPER_MIN_BILLED_S = 10.0
 # The language a live call sends Whisper: the session's, none (for Whisper to detect), each
-# turn's from a spoken-language classifier, or the call's current one with a second request of a
-# long turn naming none, whose language moves the call (D-038's amendment).
-LiveLanguage = Literal["session", "auto", "classified", "detected"]
+# turn's from a spoken-language classifier, the call's current one with a second request of a
+# long turn naming none, whose language moves the call (D-038's amendment), or the call's current
+# one as a hint with the agent's other languages beside it, the answer's language and probability
+# moving the call (D-115).
+LiveLanguage = Literal["session", "auto", "classified", "detected", "hinted"]
 # The spoken-language classifier: Silero's 95 languages on onnxruntime, or ECAPA on VoxLingua107,
 # which runs on torch through SpeechBrain, the library's `ecapa` extra.
 Classifier = Literal["silero", "ecapa"]
@@ -81,10 +89,16 @@ class SttSettings(Group):
             "names the call's current language, and a turn with `stt.detect_from_s` seconds of "
             "voiced speech or more is also sent naming none, at the same time: when Whisper "
             "hears the agent's other language in a question or request, never a short reply, "
-            "that transcript is the turn's and the call moves to that language; on speechmatics "
-            "or cohere, which report no language heard, no second request goes, and only a "
-            "switch request or the talker moves the call). A registered measurement sets the "
-            "default (GP-18)."
+            "that transcript is the turn's and the call moves to that language; on speechmatics, "
+            "cohere, telnyx or nabrah, which report no language heard, no second request goes, "
+            "and only a switch request or the talker moves the call) or hinted (each turn's one "
+            "request names the call's current language as a hint and the agent's other "
+            "languages beside it, which Scribe v3 takes as secondary languages; when the answer "
+            "gives one of the agent's other languages with a probability of at least "
+            "`stt.switch_min_probability`, in a question or request, never a short reply, the "
+            "call moves to it, and a switch request or the talker moves it too; on a provider "
+            "that gives no language probability, every one but elevenlabs, it runs as session, "
+            "which the runtime's start logs). A registered measurement sets the default (GP-18)."
         ),
     )
     detect_from_s: float = Field(
@@ -97,6 +111,18 @@ class SttSettings(Group):
             "where the speech detector heard it begin to where it last heard it stop (never "
             "the silence after), for its second request naming no language; a shorter turn "
             "keeps the call's current language. 1.2, registered for run H (D-038's amendment)."
+        ),
+    )
+    switch_min_probability: float = Field(
+        default=0.8,
+        gt=0,
+        le=1,
+        allow_inf_nan=False,
+        description=(
+            "Under live_language hinted, the least probability the provider must give the "
+            "language it heard, one of the agent's other languages, for the turn to move the "
+            "call (with a question or request, never a short reply); under it the call keeps "
+            "its language. 0.8, a placeholder until run H's Scribe arms are measured (GP-18)."
         ),
     )
     classifier: Classifier = Field(
@@ -181,3 +207,14 @@ class SttSettings(Group):
             "measurement (GP-18)."
         ),
     )
+
+    def hints(self) -> bool:
+        """Whether `live_language = "hinted"` holds on this provider: it gives the language it
+        heard with its probability (`REPORTS_PROBABILITY`); on any other, hinted runs as
+        `session` (D-115)."""
+        return self.live_language == "hinted" and self.provider in REPORTS_PROBABILITY
+
+    def language_moves(self) -> bool:
+        """Whether a call's language may move within the call (D-103): under `detected`, and
+        under `hinted` where it holds (`hints`); never under any other setting."""
+        return self.live_language == "detected" or self.hints()

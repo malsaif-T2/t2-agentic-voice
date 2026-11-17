@@ -63,7 +63,6 @@ from pipecat.services.settings import STTSettings
 from pipecat.services.stt_service import STTService
 
 from t2_agentic_voice.core.logging import get_logger
-from t2_agentic_voice.domain.language_switch import DetectRule
 from t2_agentic_voice.domain.ports.speech_to_text import SpeechToText
 from t2_agentic_voice.voice.pipecat_events import FailureReport
 from t2_agentic_voice.voice.session.session_events import (
@@ -75,7 +74,7 @@ from t2_agentic_voice.voice.session.session_events import (
 )
 from t2_agentic_voice.voice.session_bridge import EventStream
 from t2_agentic_voice.voice.stt_language import TurnLanguages
-from t2_agentic_voice.voice.stt_requests import SttRequests
+from t2_agentic_voice.voice.stt_requests import SttRequests, SwitchRule
 from t2_agentic_voice.voice.stt_turn import HeldOverlap, HeldTurn
 from t2_agentic_voice.voice.turn_hold import HoldResumedFrame, TurnHeldFrame
 
@@ -104,7 +103,8 @@ class TurnSTTBridge(STTService):
     overlap's parts, its events to `events`, its failures to `report`; `start_s` is the speech
     detector's start delay; `early`, a turn's `held` request at its hold; `prompts`, the call's
     Whisper prompt of each language (`call_prompts`; none by default); `languages`, each turn's
-    language (no classifier by default); `detect`, a long turn's second request (the module's)."""
+    language (no classifier by default); `detect`, a long turn's second request or each
+    turn's answer read for a move (the module's)."""
 
     def __init__(
         self,
@@ -116,7 +116,7 @@ class TurnSTTBridge(STTService):
         early: bool = False,
         prompts: Mapping[str, str] | None = None,
         languages: TurnLanguages | None = None,
-        detect: DetectRule | None = None,
+        detect: SwitchRule | None = None,
     ) -> None:
         super().__init__(
             audio_passthrough=False,

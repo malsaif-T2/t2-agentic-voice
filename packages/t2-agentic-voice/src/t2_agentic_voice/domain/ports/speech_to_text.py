@@ -45,12 +45,18 @@ def pcm16_seconds(pcm16: bytes, sample_rate: int) -> float:
 
 
 class AudioClip(BaseModel):
-    """One stretch of speech: mono, 16-bit little-endian PCM, `sample_rate` samples a second."""
+    """One stretch of speech: mono, 16-bit little-endian PCM, `sample_rate` samples a second;
+    with `other_languages`, the languages it may be in besides the one its request names."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     pcm16: Pcm16
     sample_rate: int = Field(default=16_000, gt=0)
+    # The other languages the speech may be in, besides the one the request names (`language`;
+    # all of them for a request naming none), in the provider's codes: a hint an adapter may
+    # send (ElevenLabs' `secondary_language_codes` on Scribe v3) or ignore. Empty, the default:
+    # none given, as every request but `stt.live_language = "hinted"`'s (D-115).
+    other_languages: tuple[str, ...] = ()
 
     @property
     def seconds(self) -> float:
@@ -100,8 +106,9 @@ class SpeechToText(Protocol):
         self, clip: AudioClip, *, language: str | None, prompt: str | None
     ) -> Transcript:
         """What was said in `clip`. `language` is a hint in the provider's code (`None`: let
-        it detect the language); `prompt` is text the provider may take as context (`None`:
-        none). Raises `ProviderError` on the provider's failure; a cancel stops it at once."""
+        it detect the language), and `clip.other_languages` the others it may be in, which an
+        adapter may ignore; `prompt` is text the provider may take as context (`None`: none).
+        Raises `ProviderError` on the provider's failure; a cancel stops it at once."""
 
     async def aclose(self) -> None:
         """Close what the adapter holds open, its connections; an adapter that holds none

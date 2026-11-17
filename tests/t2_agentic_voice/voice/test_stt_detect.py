@@ -258,7 +258,7 @@ def test_by_default_a_long_turn_goes_once_in_the_calls_language() -> None:
     assert detect_rule(AGENT, VoiceSettings(env="test")) is None
     detected = VoiceSettings(env="test", stt=SttSettings(live_language="detected"))
     rule = detect_rule(AGENT, detected)
-    assert rule is not None and (rule.from_s, set(rule.codes)) == (1.2, {"ar", "en"})
+    assert isinstance(rule, DetectRule) and (rule.from_s, set(rule.codes)) == (1.2, {"ar", "en"})
     port = Whisper(told=[TRANSLATED])
 
     async def body(session: Recorder, worker: PipelineWorker) -> None:

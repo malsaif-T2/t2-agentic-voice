@@ -41,6 +41,8 @@ from tests.t2_agentic_voice.voice.session.talker_support import (
 )
 
 DETECTED = VoiceSettings(env="test", stt=SttSettings(live_language="detected"))
+# Under hinted (D-115) on Scribe, the default provider, a turn its one answer moved is the same.
+HINTED = VoiceSettings(env="test", stt=SttSettings(live_language="hinted"))
 QUESTION = "what time does my flight to Riyadh leave"
 ASK_ENGLISH = "بالانجليزي لو سمحت"  # bil-ingleezi law samaht, in English please
 ASK_OTHER = "ممكن نتكلم بلغة ثانية"  # mumkin nitkallam bi-lugha thanya, can we use another language
@@ -64,8 +66,9 @@ async def _turn(
     await settle()
 
 
-def test_a_detected_turn_moves_the_call_and_the_notices_follow() -> None:
-    io, _, _ = talker_call(DETECTED, language="ar-SA")
+@pytest.mark.parametrize("settings", [DETECTED, HINTED], ids=["detected", "hinted"])
+def test_a_detected_turn_moves_the_call_and_the_notices_follow(settings: VoiceSettings) -> None:
+    io, _, _ = talker_call(settings, language="ar-SA")
 
     async def drive() -> None:
         await greeted(io)
@@ -170,9 +173,16 @@ def test_under_session_the_switch_tool_moves_nothing() -> None:
     assert io.commands.of(ListenIn) == [ListenIn(language="ar")]
 
 
-def test_under_session_nothing_moves() -> None:
-    """The library's default: a switch request is a turn like any other (GP-18)."""
-    io, _, talker = talker_call(VoiceSettings(env="test"), language="ar-SA")
+AS_SESSION = VoiceSettings(env="test", stt=SttSettings(live_language="hinted", provider="groq"))
+
+
+@pytest.mark.parametrize(
+    "settings", [VoiceSettings(env="test"), AS_SESSION], ids=["session", "hinted on groq"]
+)
+def test_under_session_nothing_moves(settings: VoiceSettings) -> None:
+    """The library's default: a switch request is a turn like any other (GP-18); and hinted on a
+    provider that gives no language probability runs as session (D-115)."""
+    io, _, talker = talker_call(settings, language="ar-SA")
 
     async def drive() -> None:
         await greeted(io)
