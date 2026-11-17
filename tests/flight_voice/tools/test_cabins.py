@@ -1,10 +1,11 @@
 """`compare_cabins`, run after a search in the same call: each cabin of the picked flight with
-its fare and seats, first class marked not offered where the aircraft has none, the pick read as
-`choose_flight` reads it, the draft left as it was, a read that does not answer said as a
+its fare and seats, first class marked not offered where the aircraft has none, the pick shown
+and read as `choose_flight`'s, the draft left as it was, a read that does not answer said as a
 failure, and the card passing the output guard's ID rule in every language."""
 
 from __future__ import annotations
 
+import json
 from datetime import date
 from typing import Any
 
@@ -13,6 +14,7 @@ from flight_voice.airline.fares import fare
 from flight_voice.airline.schedule import departure, find_flight
 from flight_voice.said import Tag
 from flight_voice.tools.cabins import COMPARE_CABINS, compare_cabins
+from flight_voice.tools.choose import CHOOSE_DESCRIPTION, choose_flight
 from flight_voice.tools.results import SAY, SEARCH_FAILED
 from t2_agentic_voice import CardRow
 
@@ -102,7 +104,15 @@ def test_a_read_that_does_not_answer_is_said_as_a_failure() -> None:
     assert not failed.ok and failed.data == {"error": SEARCH_FAILED}
 
 
-def test_the_talker_sees_the_leg_and_the_pick() -> None:
+def test_the_talker_sees_the_leg_and_the_pick_as_choose_flight_shows_it() -> None:
+    """f28 and f25: «الرحلة الصباحية» passed as the morning one, as `choose_flight` is told,
+    never a number or a time worked out from the listing."""
     schema = compare_cabins(Call().airline, Call().trips).tool_schema()
     assert schema.name == COMPARE_CABINS
     assert dict(schema.parameters)["required"] == ["leg", "choice"]
+    kinds = CHOOSE_DESCRIPTION.split("Pass their choice as they said it: ")[1]
+    assert schema.description.endswith(f"Pass the caller's pick as they said it: {kinds}")
+    chooses = choose_flight(Call().airline, Call().trips).tool_schema()
+    choice = json.loads(json.dumps(dict(schema.parameters)))["properties"]["choice"]
+    assert choice == json.loads(json.dumps(dict(chooses.parameters)))["properties"]["choice"]
+    assert choice["description"].startswith("The caller's pick, as they said it; never a flight")

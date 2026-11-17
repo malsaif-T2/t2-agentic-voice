@@ -1,11 +1,12 @@
 """`compare_cabins`: economy, business and first class side by side for one listed flight.
 
-The talker names the flight as `choose_flight` does, by the caller's pick, read in code against
-the options last listed for the leg (`nothing_listed` and `unclear_choice` as there). Each cabin
-comes with its fare on that flight, one way, per person, and whether it has a seat for every
-traveler; first class is marked not offered on an aircraft that has none. It changes nothing:
-the cabin is changed with `change_trip`. A read that does not answer is a `ToolError` that says
-it failed, never "no seats".
+The talker names the flight as `choose_flight` does, by the caller's pick as they said it, never
+a flight it worked out, read in code against the options last listed for the leg
+(`nothing_listed` and `unclear_choice` as there). Each cabin comes with its fare on that flight,
+one way, per person, and whether it has a seat for every traveler; first class is marked not
+offered on an aircraft that has none. It changes nothing: the cabin is changed with
+`change_trip`. A read that does not answer is a `ToolError` that says it failed, never "no
+seats".
 """
 
 from __future__ import annotations
@@ -39,9 +40,13 @@ from flight_voice.tools.results import (
 from flight_voice.trip import LegKind, TripBook
 
 COMPARE_CABINS: Final = "compare_cabins"
-DESCRIPTION: Final = "Compare economy, business and first class for one listed flight."
+DESCRIPTION: Final = (
+    "Compare economy, business and first class for one listed flight. Pass the caller's pick as "
+    "they said it: its number in the list, the cheapest, the earliest, the latest, the morning, "
+    "afternoon or evening one, or its departure time."
+)
 _LEG: Final = "The leg of the flight: outbound, or return."
-_CHOICE: Final = "The flight, as the caller picked it from those listed."
+_CHOICE: Final = "The caller's pick, as they said it; never a flight you worked out."
 
 
 class CabinFare(_Result):

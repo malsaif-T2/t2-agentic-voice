@@ -1,7 +1,9 @@
 """The flight agent's read tools as one set: seven, each named once, each a read tool with the
 library's five-second timeout, the search and the cabins under the search's progress line and the
 calendar under its own; none backs up a booking claim; and every `say` the tools give is one of
-the app's fixed strings, listed here, none built from words a caller could say."""
+the app's fixed strings, listed here, none built from words a caller could say: a listing's asks
+for three times aloud and a fourth by its part of the day, and one on a new day for that day
+first, the fare's basis not said again."""
 
 from __future__ import annotations
 
@@ -16,6 +18,10 @@ SAYS = {
     "listed_more",
     "listed_full",
     "listed_more_full",
+    "relisted",
+    "relisted_more",
+    "relisted_full",
+    "relisted_more_full",
     "not_served_city",
     "not_served_route",
     "past",
@@ -72,3 +78,21 @@ def test_every_say_is_one_of_the_fixed_strings_listed() -> None:
     assert set(SAY) == SAYS
     assert all(text and "{" not in text and text.endswith(".") for text in SAY.values())
     assert "book_trip" in SAY["complete"] and "say nothing yourself" in SAY["complete"]
+
+
+def test_a_listing_says_three_times_and_the_one_more_by_its_part_of_the_day() -> None:
+    """Spec 3.2: three aloud, then "and one more in the evening"; never the fourth's time."""
+    for key in ("listed_more", "listed_more_full", "relisted_more", "relisted_more_full"):
+        assert "options 1 to 3 in order" in SAY[key]
+        assert "one more and its part of the day (part_of_day_said)" in SAY[key]
+        assert "never its time or its fare" in SAY[key] and "when it leaves" not in SAY[key]
+    for key in ("listed", "listed_full", "relisted", "relisted_full"):
+        assert "at most three" in SAY[key] and "one more" not in SAY[key]
+
+
+def test_a_listing_on_a_new_day_says_the_day_first_and_not_the_basis_again() -> None:
+    for key in ("relisted", "relisted_more", "relisted_full", "relisted_more_full"):
+        assert SAY[key].startswith("Say the new day with its weekday first, then ")
+        assert "Do not say again that fares are one way, per person." in SAY[key]
+        assert "Then ask which one they want." in SAY[key]
+        assert "Say once that fares" in SAY[key.replace("relisted", "listed")]

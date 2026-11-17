@@ -19,18 +19,18 @@ there. A write or a last reply still running after `limit_s` on the wall clock, 
 call waits for in vain, or the play's whole limit passed leave the play `stuck` (a provider's
 error: `provider`); what it did is still read, as it stands, for the turns said before.
 
-**What a turn did** (`TurnRead`): its reply's clauses, those heard, its tool calls and cards;
-as it stood when the caller next spoke, whether the read-back the scenario expects (its values,
-the total priced from the airline) was said whole, or any read-back when it expects none, and
-whether the caller was asked again; once the call settled, whether its words confirmed the
-booking and how its write ended, its sending line and then its outcome's said.
+**What a turn did** (`TurnRead`): its reply's clauses, those heard and those the guard blocked,
+its tool calls and cards; as it stood when the caller next spoke, whether the read-back the
+scenario expects (its values, the total priced from the airline) was said whole, or any read-back
+when it expects none, and whether the caller was asked again; once the call settled, whether its
+words confirmed the booking and how its write ended, its sending line and then its outcome's said.
 """
 
 from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from typing import Any, Final, Literal, get_args
 
@@ -112,6 +112,7 @@ class TurnRead:
     confirmed: bool = False
     ended: OutcomeKind | None = None
     blocked: int = 0  # the reply's clauses the output guard blocked
+    blocked_texts: tuple[str, ...] = ()  # their texts, in order, never said
 
 
 @dataclass(frozen=True)
@@ -186,6 +187,7 @@ class _Saying:
             confirmed=_holds(turn.expect.confirmed, BOOK_TRIP),
             ended=_ended(turn),
             blocked=len(turn.blocked),
+            blocked_texts=tuple(c.text for c in turn.blocked),
         )
 
 
@@ -295,6 +297,4 @@ async def play(
     except AssertionError:  # the talker's, raised as the call ends
         if read is None:
             raise
-        return PlayRead(
-            read.turns, read.violations, read.failure or "stuck", read.made, read.writes
-        )
+        return replace(read, failure=read.failure or "stuck")

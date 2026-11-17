@@ -4,7 +4,8 @@ own agent over a new mock airline, the model a fake (`FunctionLLM`): no key and 
 caller asks for a one-way trip to Dubai tomorrow, picks the earliest, and says yes over the
 closing question; the play's reads hold the tools, the read-back with the airline's total, the
 booking done, and every check holds. A stop cuts a reply, a play with no booking expected
-books nothing, and a model that never answers leaves the play stuck, its turns read."""
+books nothing, a clause the guard blocked is read with its text, and a model that never answers
+leaves the play stuck, its turns read."""
 
 from __future__ import annotations
 
@@ -105,6 +106,7 @@ def test_the_earliest_flight_is_read_back_and_booked_and_every_check_holds() -> 
     first, second, third = read.turns
     assert first is not None and second is not None and third is not None
     assert [c.tool for c in first.tools] == [SEARCH_FLIGHTS] and first.cards == 1
+    assert first.tools[0].arguments["destination"] == "Dubai" and first.blocked_texts == ()
     assert [c.tool for c in second.tools] == [CHOOSE_FLIGHT, BOOK_TRIP]
     assert second.read_back and not second.confirmed
     assert third.confirmed and third.ended == "done"
@@ -176,6 +178,18 @@ def test_a_stop_cuts_the_reply_and_the_turn_after_it_is_read() -> None:
     assert read.made == () and read.writes == 0
     # "Sure." holds none of the cut reply's words: the cut repeat fails, nothing else.
     assert [(f.check, f.turn) for f in failures(scenario, read)] == [("cut_repeat", 3)]
+
+
+def test_a_clause_the_guard_blocked_is_read_with_its_text() -> None:
+    claimed = "Your booking reference is 482913."
+
+    def talker(request: ChatRequest) -> Sequence[ScriptStep]:
+        return ScriptedLLM.reply(f"Sure. {claimed}")
+
+    read = _played(_scenario(turns=[{"says": "What's my booking reference?"}]), FunctionLLM(talker))
+    (turn,) = read.turns
+    assert turn is not None and turn.blocked == 1 and turn.blocked_texts == (claimed,)
+    assert all("482913" not in c.text for c in turn.heard)
 
 
 def test_a_model_that_never_answers_leaves_the_play_stuck_with_its_turns_read() -> None:

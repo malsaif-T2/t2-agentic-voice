@@ -1222,6 +1222,25 @@ Block 0.
   13 of 28 (f01, f03, f10, f15 added; f19 still fails on play 3's register and play 2's stuck
   call), the baseline later passes compare to. The held-out files were not opened; whether they
   code «الأخيرة» or a lone option's pick by kind is read when held-out is, at M9.
+- 2026-11-17: run F's first round of fixes (the flight app only, measured by run F's kept rule
+  against f-dev-4 re-scored, 13 of 28; no setting, as D-089's tool texts; the prompt's version
+  2026-11-17.2), each from a cause a skeptic upheld, built by two builders and reviewed: the
+  instructions (both files) search only once the caller said the day they leave (and the return's),
+  never a day they did not say, a pick named by any of its six kinds, a bare number after a listing
+  a new day, change_trip for a cabin, travelers or one way once flights are listed and no search
+  for that or a pick; a date said with its weekday and its month's full name; the same trip as last
+  time from traveler_profile, its city, travelers and cabin kept and its past dates never offered;
+  the booking's reference from traveler_profile when asked; no second booking offered after an
+  unconfirmed one; in Saudi «الحين» never «الآن» and the whole retry line, to an MSA caller MSA
+  forms and the tools' MSA words. The tools: a fourth option said by its part of the day, never its
+  time or fare (its time still in the data, so a caller who asks hears it); a new day's listing
+  said with its weekday first and without per person again; search_flights' description and
+  `depart` say a day the caller said, never again after a listing for a pick or a cabin; a
+  departure in days and a return in days after leaving told apart in the date forms;
+  compare_cabins' pick as choose_flight's; fare_calendar's cabin the trip's when left out. Every
+  new example is off the dev items (D-011: another date, another number; a test holds that no
+  quoted example is a dev line). Run F's records now keep each tool call's arguments and the
+  clauses the guard blocked (no verdict moves).
 
 ## Decision log
 

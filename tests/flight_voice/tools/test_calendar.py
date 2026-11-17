@@ -1,11 +1,13 @@
 """`fare_calendar`, run as the talker's call would run it: the span a month, a date form or
 neither names, kept to the booking window, the year chosen in code; the seven cheapest days in
-date order, every one in the data, the three cheapest marked, the span's highest fare; a day with
-no flight left out and counted, never given a fare; each refusal with its status; a calendar that
-does not answer said as a failure; and its card passing the output guard's ID rule."""
+date order, every one in the data, the three cheapest marked, the span's highest fare; the cabin
+asked for, or else the trip's; a day with no flight left out and counted, never given a fare;
+each refusal with its status; a calendar that does not answer said as a failure; and its card
+passing the output guard's ID rule."""
 
 from __future__ import annotations
 
+import json
 from datetime import date, timedelta
 from typing import Any
 
@@ -16,13 +18,23 @@ from flight_voice.airline.system import Airline
 from flight_voice.said import Tag
 from flight_voice.tools.calendar import BOTH, FARE_CALENDAR, fare_calendar
 from flight_voice.tools.results import SAY, SEARCH_FAILED
+from flight_voice.trip import TripBook
 
 from tests.flight_voice.scenario_dates import TODAY
-from tests.flight_voice.tools.tool_support import TAGS, airline, card_passes, data, run
+from tests.flight_voice.tools.tool_support import (
+    DEC_17,
+    TAGS,
+    Call,
+    airline,
+    card_passes,
+    data,
+    run,
+)
 
 
 def _calendar(tag: Tag = "en", flights: Airline | None = None, **arguments: Any) -> Any:
-    return run(fare_calendar(flights if flights is not None else airline()), tag, **arguments)
+    tool = fare_calendar(flights if flights is not None else airline(), TripBook())
+    return run(tool, tag, **arguments)
 
 
 def _found(tag: Tag = "en", **arguments: Any) -> dict[str, Any]:
@@ -98,10 +110,25 @@ def test_singapore_tuesdays_are_left_out_and_counted_never_given_a_fare() -> Non
 def test_a_cabin_gives_that_cabins_fares() -> None:
     economy = _found(destination="London", month=1)
     business = _found(destination="London", month=1, cabin="business")
-    assert business["cabin_said"] == "business class"
+    assert business["cabin_said"] == "business class" and economy["cabin"] == "economy"
     assert min(d["fare_sar"] for d in business["days"]) > min(
         d["fare_sar"] for d in economy["days"]
     )
+
+
+def test_a_cabin_left_out_is_the_trips() -> None:
+    """f27: «أنا وزوجتي نبي نسافر على البزنس», then a search in business, then the cheapest
+    days: left out, the cabin is the call's draft's, never economy by default."""
+    call = Call("ar-SA")
+    tool = fare_calendar(call.airline, call.trips)
+    assert data(run(tool, "ar-SA", destination="دبي", month=12))["cabin"] == "economy"
+    call.search(destination="دبي", depart=DEC_17, one_way=True, cabin="business")
+    found = data(run(tool, "ar-SA", destination="دبي", month=12))
+    assert (found["status"], found["cabin"]) == ("ok", "business")
+    asked = data(run(tool, "ar-SA", destination="دبي", month=12, cabin="business"))
+    assert found["days"] == asked["days"]
+    economy = data(run(tool, destination="Dubai", cabin="economy"))
+    assert economy["cabin"] == "economy" and call.draft.cabin == "business"
 
 
 def test_a_month_and_a_date_together_are_told_back_as_a_failure() -> None:
@@ -147,9 +174,14 @@ def test_the_card_shows_the_seven_days_and_passes_the_id_rule(tag: Tag) -> None:
 
 
 def test_the_talker_sees_its_arguments_and_the_calendars_progress_line() -> None:
-    tool = fare_calendar(airline())
+    tool = fare_calendar(airline(), TripBook())
     schema = tool.tool_schema()
     assert schema.name == FARE_CALENDAR and tool.progress == "fares"
     assert dict(schema.parameters)["required"] == ["destination"]
+    cabin = json.loads(json.dumps(dict(schema.parameters)))["properties"]["cabin"]
+    assert cabin["default"] is None and "economy" not in cabin["description"]
+    assert cabin["description"] == (
+        "The cabin the caller asked for at any point in this call; else leave it out."
+    )
     assert len(str(data(_calendar(destination="Istanbul", month=1)))) < 1700
     assert TODAY.isoformat() == "2026-11-16"

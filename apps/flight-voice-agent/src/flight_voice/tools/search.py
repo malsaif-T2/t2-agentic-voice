@@ -8,8 +8,9 @@ has a return date (`needs_return_date`, nothing searched) that resolves, not bef
 departure (`date_problem`); the cabin is sold on the route (`cabin_not_offered`); each leg's day
 has a flight (`no_flights_that_day`, with the two nearest days that have one); a flight that day
 has a seat for every traveler in the cabin (`no_seats`, with the cabins that do). Then the
-outbound flights are listed, and the call's draft takes the search's route, dates, travelers and
-cabin and the options in the order said, in one assignment, its last step.
+outbound flights are listed (said from their day when the caller heard another day's,
+`relisted`), and the call's draft takes the search's route, dates, travelers and cabin and the
+options in the order said, in one assignment, its last step.
 
 A search that does not answer is a `ToolError` that says it failed (`SEARCH_FAILED`), never "no
 flights".
@@ -62,14 +63,15 @@ from flight_voice.trip import LegKind, Shown, TripBook, TripDraft
 
 SEARCH_FLIGHTS: Final = "search_flights"
 DESCRIPTION: Final = (
-    "Find flights for the caller's trip and list them. Call it as soon as you know where they "
-    "go and when they leave, and, for a round trip, when they come back. Pass the city as the "
-    "caller said it and dates as date forms; never work out a date yourself. Fares are one way, "
-    "per person, in Saudi riyals."
+    "Find flights for the caller's trip and list them. Call it only once the caller has said "
+    "where they go and when they leave, and, for a round trip, when they come back; after a "
+    "listing, never again for a pick or a cabin change. Pass the city as the caller said it and "
+    "dates as date forms; never work out a date yourself. Fares are one way, per person, in "
+    "Saudi riyals."
 )
 _CITY: Final = "The city as the caller said it, in their words."
 _ORIGIN: Final = "The city they leave from, only when it is not Riyadh."
-_DEPART: Final = "The day they leave, as a date form."
+_DEPART: Final = "The day they leave, as the caller said it; never a day they did not say."
 _RETURN: Final = "The day they come back, as a date form; leave it out for a one-way trip."
 _ONE_WAY: Final = "True only when the caller wants a one-way trip."
 _TRAVELERS: Final = "How many people travel, when the caller said; else leave it out."
@@ -177,6 +179,7 @@ def search_flights(airline: Airline, trips: TripBook) -> Tool:
             tag=tag,
             assumed=out.assumed,
             return_date=None if back is None else date_said(back.day, tag, assumed=back.assumed),
+            again=any(s.day != out.day for s in draft.shown_outbound),
         )
         shown = tuple(
             Shown(n=o.n, flight=d.flight.number, day=out.day)

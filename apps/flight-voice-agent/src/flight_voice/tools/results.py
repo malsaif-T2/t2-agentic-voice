@@ -6,9 +6,11 @@ number in them in the reply's language (`*_said`, and `*_said_msa` beside a Saud
 from the caller's words or any free text.
 
 A listing (`listing.py`) holds at most four options, numbered in the order said, the cheapest
-with seats marked, and the fare's basis ("per person, one way") said once. A read of the airline
-that fails is never a result: it is a `ToolError` whose message names the failure and forbids
-reading it as nothing found (`SEARCH_FAILED`, `PROFILE_FAILED`).
+with seats marked, and the fare's basis ("per person, one way") said once; a fourth is said by
+its part of the day. A listing after one of another day in the call is said from its day,
+without the basis again (`relisted`). A read of the airline that fails is never a result: it is
+a `ToolError` whose message names the failure and forbids reading it as nothing found
+(`SEARCH_FAILED`, `PROFILE_FAILED`).
 """
 
 from __future__ import annotations
@@ -34,22 +36,27 @@ PROFILE_FAILED: Final = (
     "The travel profile did not load. Tell the caller you could not open their travel history "
     "just now. Do not say they have no trips or no bookings."
 )
-_LISTED: Final = (
-    "Say these flights, at most three, each by its departure time and fare, the cheapest "
-    "marked. Say once that fares are one way, per person. Then ask which one they want. Do not "
-    "say flight numbers."
+_THREE: Final = (
+    "these flights, at most three, each by its departure time and fare, the cheapest marked."
 )
-_MORE: Final = (
-    "Say options 1 to 3 in order, each by its departure time and fare, the cheapest marked, then "
-    "that there is one more and when it leaves. Say once that fares are one way, per "
-    "person. Then ask which one they want. Do not say flight numbers."
+_FOUR: Final = (
+    "options 1 to 3 in order, each by its departure time and fare, the cheapest marked, then that "
+    "there is one more and its part of the day (part_of_day_said), never its time or its fare."
 )
+_ONCE: Final = " Say once that fares are one way, per person."
+_NOT_AGAIN: Final = " Do not say again that fares are one way, per person."
+_ASK: Final = " Then ask which one they want. Do not say flight numbers."
+_NEW_DAY: Final = "Say the new day with its weekday first, then "
 _FULL: Final = " A flight with seats_ok false is full in this cabin: if you name it, say so."
 SAY: Final[dict[str, str]] = {
-    "listed": _LISTED,
-    "listed_more": _MORE,
-    "listed_full": _LISTED + _FULL,
-    "listed_more_full": _MORE + _FULL,
+    "listed": "Say " + _THREE + _ONCE + _ASK,
+    "listed_more": "Say " + _FOUR + _ONCE + _ASK,
+    "listed_full": "Say " + _THREE + _ONCE + _ASK + _FULL,
+    "listed_more_full": "Say " + _FOUR + _ONCE + _ASK + _FULL,
+    "relisted": _NEW_DAY + _THREE + _NOT_AGAIN + _ASK,
+    "relisted_more": _NEW_DAY + _FOUR + _NOT_AGAIN + _ASK,
+    "relisted_full": _NEW_DAY + _THREE + _NOT_AGAIN + _ASK + _FULL,
+    "relisted_more_full": _NEW_DAY + _FOUR + _NOT_AGAIN + _ASK + _FULL,
     "not_served_city": "Say we do not fly there, name the cities we fly to, and ask where they "
     "would like to go.",
     "not_served_route": "Say we fly only to and from Riyadh, with no connections, so each part "

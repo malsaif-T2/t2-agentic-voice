@@ -1,8 +1,9 @@
 """`search_flights`, run as the talker's call would run it: every status in its order of checks,
 each with its fixed `say`; a listing of at most four options with the cheapest marked, the fare's
-basis and the words in the reply's registers; the draft written only by a search that lists or
-asks for the return; a search that fails said as a failure; a date that is not a date form
-refused with its field named; and the schema the talker sees."""
+basis and the words in the reply's registers (`test_listing.py`: the fourth and a new day); the
+draft written only by a search that lists or asks for the return; a search that fails said as a
+failure; a date that is not a date form refused with its field named; and the schema the talker
+sees."""
 
 from __future__ import annotations
 
@@ -174,6 +175,17 @@ def test_only_a_search_that_lists_or_asks_for_the_return_writes_the_draft() -> N
     assert draft.missing() == ("return_date", "outbound", "return")
 
 
+def test_a_cabin_not_offered_writes_nothing_so_the_new_cabin_is_a_new_search() -> None:
+    """f21's "first class to Dubai", then "business then": nothing was listed, so the
+    description's rule against searching again (after a listing) leaves this search open."""
+    trips = TripBook()
+    asked: dict[str, Any] = {"destination": "Dubai", "depart": DEC_17, "one_way": True}
+    assert _search("en", trips, **asked, cabin="first")["status"] == "cabin_not_offered"
+    assert len(trips) == 0
+    assert _search("en", trips, **asked, cabin="business")["status"] == "ok"
+    assert trips.get(CALL_ID).cabin == "business"
+
+
 def test_a_singapore_tuesday_has_no_flight_and_offers_the_nearest_days() -> None:
     found = _search(destination="Singapore", depart=TOMORROW, one_way=True)  # Tuesday 11-17
     assert (found["status"], found["leg"], found["say"]) == (
@@ -278,7 +290,12 @@ def test_the_talker_sees_its_arguments_and_no_bound_one() -> None:
     schema = tool.tool_schema()
     assert schema.name == SEARCH_FLIGHTS and tool.progress == "searching"
     assert tool.timeout_s == 5.0 and "never work out a date yourself" in schema.description
+    assert "Call it only once the caller has said where they go" in schema.description
+    assert "after a listing, never again for a pick or a cabin change" in schema.description
     properties = json.loads(json.dumps(dict(schema.parameters)))["properties"]
+    assert properties["depart"]["description"] == (
+        "The day they leave, as the caller said it; never a day they did not say."
+    )
     assert set(properties) == {
         "destination",
         "origin",

@@ -24,7 +24,7 @@ def flight_tools(airline: Airline, trips: TripBook) -> tuple[Tool, ...]:
         choose_flight(airline, trips),
         change_trip(airline, trips),
         get_trip(airline, trips),
-        fare_calendar(airline),
+        fare_calendar(airline, trips),
         compare_cabins(airline, trips),
         traveler_profile(airline),
     )

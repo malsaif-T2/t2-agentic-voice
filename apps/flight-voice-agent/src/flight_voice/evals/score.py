@@ -3,8 +3,10 @@ scorecard, and the session's line in the app's run history.
 
 - **A play's record** (`PlayRecord`): its scenario and repeat, whether every check held, the
   checks it failed by name and turn (checks.py's `Failed`, as `outcome@3`), why it could not go
-  on, the call's violations, and each turn as heard (its words and tools) for reading a failure
-  by hand. A smoke play's record is marked `smoke` and never scored.
+  on, the call's violations, and each turn as heard (its words, its tools and each call's
+  arguments as sent, the clauses the guard blocked) for reading a failure by hand, with no
+  replay. A smoke play's record is marked `smoke` and never scored; a record kept before the
+  calls and the blocked clauses were kept still loads, with them empty.
 - **The scorecard** (`Scorecard`, `scorecard.json` and `scorecard.md`): the run, each scenario's
   plays and passes (passed when at least two of its three plays hold every check, `PASS_SHARE`;
   `all_plays` says whether it held in every play, the rule for a target among the long-call
@@ -24,7 +26,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Final, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, JsonValue
 from t2_agentic_voice.evals import ModelSpend
 
 from flight_voice.evals.call import PlayRead, Stuck
@@ -41,14 +43,24 @@ class _Model(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
 
+class CallKept(_Model):
+    """A tool call as the talker sent it: the tool's name and the arguments it wrote."""
+
+    tool: str
+    arguments: dict[str, JsonValue] = Field(default_factory=dict)
+
+
 class TurnKept(_Model):
     """One turn as the caller heard it: its words (the runtime's lines among them), the
-    talker's own words, the tools its reply called, and its fate; a stop's is empty."""
+    talker's own words, the tools its reply called (and each call as sent, `calls`), its fate,
+    and the texts of the clauses the guard blocked, never said; a stop's is empty."""
 
     heard: str = ""
     own: str = ""
     tools: tuple[str, ...] = ()
     fate: str = ""
+    calls: tuple[CallKept, ...] = ()
+    blocked_texts: tuple[str, ...] = ()
 
 
 class PlayRecord(_Model):
@@ -82,6 +94,8 @@ def record_of(
             own=said(own(t.heard)),
             tools=tuple(c.tool for c in t.tools),
             fate=t.fate,
+            calls=tuple(CallKept(tool=c.tool, arguments=dict(c.arguments)) for c in t.tools),
+            blocked_texts=t.blocked_texts,
         )
         for t in read.turns
     )

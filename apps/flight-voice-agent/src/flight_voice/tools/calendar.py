@@ -2,13 +2,14 @@
 
 The talker passes the city as the caller said it, and a month (1 to 12) or a date form; with
 neither, the span is the 30 days from today. The code picks the year: a month before this one is
-next year's. The span keeps to the booking window, and a span wholly past it is a date problem.
-The result holds the span's seven cheapest days in date order, each with its fare (so every
-number the card shows is in the data), the three cheapest of them marked for speech, the span's
-highest fare (so the talker can say "from ... to ... riyals"), and how many days have no flight;
-a day with no flight is left out, never given a fare. A span with no flight at all is
-`no_flights_that_day`, with the nearest days that have one. A calendar that does not answer is a
-`ToolError` that says it failed, never "no flights".
+next year's. The cabin is the one the caller asked for, or else the call's draft's (economy
+until one is named); the draft is read, never written. The span keeps to the booking window,
+and a span wholly past it is a date problem. The result holds the span's seven cheapest days in
+date order, each with its fare (so every number the card shows is in the data), the three
+cheapest of them marked for speech, the span's highest fare (so the talker can say "from ... to
+... riyals"), and how many days have no flight; a day with no flight is left out, never given a
+fare. A span with no flight at all is `no_flights_that_day`, with the nearest days that have
+one. A calendar that does not answer is a `ToolError` that says it failed, never "no flights".
 """
 
 from __future__ import annotations
@@ -39,6 +40,7 @@ from flight_voice.tools.results import (
     said,
 )
 from flight_voice.tools.search import nearest_days, not_served
+from flight_voice.trip import TripBook
 
 FARE_CALENDAR: Final = "fare_calendar"
 DESCRIPTION: Final = (
@@ -50,7 +52,7 @@ _CITY: Final = "The city as the caller said it, in their words."
 _ORIGIN: Final = "The city they leave from, only when it is not Riyadh."
 _MONTH: Final = "The month the caller asked about, 1 to 12; the year is worked out for you."
 _FROM: Final = "The first day of the 30 days, as a date form, when the caller gave a day."
-_CABIN: Final = "The cabin, when the caller named one; else leave it out."
+_CABIN: Final = "The cabin the caller asked for at any point in this call; else leave it out."
 SPAN_DAYS: Final = 30
 SHOWN: Final = 7
 SAID: Final = 3
@@ -127,8 +129,9 @@ def span(
     return first, min(last, last_day)
 
 
-def fare_calendar(airline: Airline) -> Tool:
-    """The fare calendar over `airline` (the module's docstring)."""
+def fare_calendar(airline: Airline, trips: TripBook) -> Tool:
+    """The fare calendar over `airline`, in the cabin of the call's draft in `trips` when the
+    talker names none (the module's docstring)."""
 
     @tool(name=FARE_CALENDAR, description=DESCRIPTION, progress="fares")
     async def find(
@@ -137,11 +140,12 @@ def fare_calendar(airline: Airline) -> Tool:
         origin: Annotated[str | None, Field(max_length=40, description=_ORIGIN)] = None,
         month: Annotated[int | None, Field(ge=1, le=12, description=_MONTH)] = None,
         from_date: Annotated[DateSpec | None, Field(description=_FROM)] = None,
-        cabin: Annotated[Cabin, Field(description=_CABIN)] = "economy",
+        cabin: Annotated[Cabin | None, Field(description=_CABIN)] = None,
     ) -> ToolResult:
         tag: Tag = ctx.language
         if month is not None and from_date is not None:
             raise ToolError(BOTH)
+        kept: Cabin = cabin if cabin is not None else trips.get(ctx.call_id).cabin
         today = airline.today()
         end = find_airport(destination)
         start = airport(HOME) if origin is None else find_airport(origin)
@@ -160,12 +164,12 @@ def fare_calendar(airline: Airline) -> Tool:
             return result(issue)
         first, last = days_asked
         sold = flights(start.code, end.code)[0].cabins
-        if cabin not in sold:
+        if kept not in sold:
             return result(
-                CabinNotOffered(cabin=cabin, offered=tuple(c for c in CABINS if c in sold))
+                CabinNotOffered(cabin=kept, offered=tuple(c for c in CABINS if c in sold))
             )
         try:
-            found = await airline.calendar(start.code, end.code, first, last, cabin)
+            found = await airline.calendar(start.code, end.code, first, last, kept)
         except AirlineUnavailableError:
             raise ToolError(SEARCH_FAILED) from None
         days = cheapest(found, tag)
@@ -179,7 +183,7 @@ def fare_calendar(airline: Airline) -> Tool:
                 )
             )
         route, route_msa = said(lambda r: words.route(start.code, end.code, r), tag)
-        cabin_said, cabin_msa = said(lambda r: words.cabin(cabin, r), tag)
+        cabin_said, cabin_msa = said(lambda r: words.cabin(kept, r), tag)
         basis, basis_msa = said(words.FARE_BASIS.__getitem__, tag)
         empty = sum(1 for d in found if d.fare is None)
         answer = Calendar(
@@ -188,7 +192,7 @@ def fare_calendar(airline: Airline) -> Tool:
             month_said=None if month is None else words.month(month, register(tag)),
             first=date_said(first, tag),
             last=date_said(last, tag),
-            cabin=cabin,
+            cabin=kept,
             cabin_said=cabin_said,
             cabin_said_msa=cabin_msa,
             days=days,

@@ -70,14 +70,16 @@ class OnDay(_Spec):
 
 
 class InDays(_Spec):
-    """A number of days from today: "in three days", «بعد ثلاث أيام»."""
+    """A departure a number of days from today: "leave in four days", «أسافر بعد أربع أيام»;
+    never a return said after the departure."""
 
     kind: Literal["in_days"] = "in_days"
     days: int = Field(ge=1, le=120)
 
 
 class Nights(_Spec):
-    """A return a number of nights after the departure: "a week later", «أرجع بعد أسبوع»."""
+    """A return a number of nights after the departure: "a week later", «أرجع بعد أسبوع»,
+    "back four days later", «أرجع بعد أربع أيام»."""
 
     kind: Literal["nights"] = "nights"
     nights: int = Field(ge=1, le=60)

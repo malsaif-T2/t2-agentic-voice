@@ -1,8 +1,9 @@
 """A leg's flights as the talker is given them: the flights a listing holds (`listable`: those
 that sell the cabin, at most four, in the order said), each as an option with its fare, the
 cheapest of those with seats marked (`options`), and the listing with the fare's basis said once
-and the fixed `say` for it (`listing`), which asks for options 1 to 3 aloud and when the one
-more leaves.
+and the fixed `say` for it (`listing`), which asks for options 1 to 3 aloud and the one more by
+its part of the day, never its time or its fare. A listing after one of another day (`again`)
+asks for its day first and the basis not said again.
 
 The order said is the numbers' order, so "the third one" is the third the caller heard: the
 three said, in departure order, then the one left out. They are the first three to leave, unless
@@ -102,9 +103,11 @@ def listing(
     tag: Tag,
     assumed: bool = False,
     return_date: DateSaid | None = None,
+    again: bool = False,
 ) -> Listing:
-    """A leg's options on `day` as the talker is given them, with the fixed `say` for them;
-    an outbound listing gives the trip's return date too, said back with the departure's."""
+    """A leg's options on `day` as the talker is given them, with the fixed `say` for them (a
+    `relisted` one when `again`, the caller having heard another day's); an outbound listing
+    gives the trip's return date too, said back with the departure's."""
     route_en, route_msa = said(lambda r: words.route(*route, r), tag)
     cabin_en, cabin_msa = said(lambda r: words.cabin(cabin, r), tag)
     basis, basis_msa = said(words.FARE_BASIS.__getitem__, tag)
@@ -123,7 +126,7 @@ def listing(
         cabin_said_msa=cabin_msa,
         fare_basis_said=basis,
         fare_basis_said_msa=basis_msa,
-        say=SAY[("listed_more" if more else "listed") + _full(listed)],
+        say=SAY[("relisted" if again else "listed") + ("_more" if more else "") + _full(listed)],
     )
 
 

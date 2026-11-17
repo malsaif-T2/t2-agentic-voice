@@ -2,14 +2,16 @@
 passes when every check holds in at least two of its three plays, `all_plays` says whether every
 play held, violations are counted per play and break the hard constraint whatever passed, a
 scenario that needs a capability that does not play yet is skipped, a smoke play is never
-scored, and the session's history line is one the library's day counter reads."""
+scored, a record keeps each turn's tool calls as sent and the clauses the guard blocked (an older
+record, kept without them, still loads), and the session's history line is one the library's day
+counter reads."""
 
 from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
 
-from flight_voice.evals.call import PlayRead
+from flight_voice.evals.call import PlayRead, TurnRead
 from flight_voice.evals.folder import append_line, card_md
 from flight_voice.evals.scenarios import load
 from flight_voice.evals.score import (
@@ -21,7 +23,8 @@ from flight_voice.evals.score import (
     record_of,
     scorecard,
 )
-from t2_agentic_voice.evals import ModelSpend, requests_today
+from pydantic import JsonValue
+from t2_agentic_voice.evals import ModelSpend, TextToolCall, requests_today
 
 BEGAN = datetime(2026, 11, 16, 9, 0, tzinfo=UTC)
 SCENARIOS = {s.id: s for s in load()}
@@ -95,6 +98,40 @@ def test_a_record_names_each_failed_check_with_its_turn_and_never_a_text() -> No
     record = record_of(F01, 1, read, 2.5)
     assert not record.passed and record.failed[:2] == ("booked", "said@1")
     assert all(turn.heard == "" for turn in record.turns)
+
+
+def test_a_record_keeps_each_call_as_sent_and_the_clauses_the_guard_blocked() -> None:
+    depart: dict[str, JsonValue] = {"kind": "relative", "when": "tomorrow"}
+    sent: dict[str, JsonValue] = {"destination": "Doha", "depart": depart}
+    call = TextToolCall(call_id="c1", tool="search_flights", arguments=sent, outcome="ok", ms=4.0)
+    blocked = ("Your booking reference is 482913.",)
+    turn = TurnRead(
+        index=0,
+        fate="answered",
+        clauses=(),
+        heard=(),
+        tools=(call,),
+        cards=0,
+        blocked=1,
+        blocked_texts=blocked,
+    )
+    read = PlayRead(turns=(turn, *(None,) * (len(F01.turns) - 1)), violations=())
+    record = record_of(F01, 1, read, 2.5)
+    kept = record.turns[0]
+    assert kept.tools == ("search_flights",)
+    assert [(c.tool, c.arguments) for c in kept.calls] == [("search_flights", sent)]
+    assert kept.blocked_texts == blocked
+    assert PlayRecord.model_validate_json(record.model_dump_json()) == record
+
+
+def test_a_record_kept_without_the_calls_and_the_blocked_clauses_still_loads() -> None:
+    old = (
+        '{"scenario": "f01_round_trip_saudi", "repeat": 1, "passed": false, "failed": '
+        '["args@3"], "seconds": 2.0, "turns": [{"heard": "Okay.", "own": "Okay.", "tools": '
+        '["search_flights"], "fate": "answered"}]}'
+    )
+    (turn,) = PlayRecord.model_validate_json(old).turns
+    assert turn.tools == ("search_flights",) and turn.calls == () and turn.blocked_texts == ()
 
 
 def test_the_history_line_is_one_the_days_counter_reads(tmp_path: Path) -> None:

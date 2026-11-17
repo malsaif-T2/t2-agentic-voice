@@ -148,8 +148,8 @@ def test_every_card_of_every_tool_holds_rows_and_passes_the_id_rule(tag: Tag) ->
         call.choose("return", CHEAPEST),
         run(change_trip(call.airline, call.trips), tag, travelers=2),
         run(change_trip(call.airline, call.trips), tag, cabin="business"),
-        run(fare_calendar(call.airline), tag, destination=city, month=1),
-        run(fare_calendar(call.airline), tag, destination=city, from_date=DEC_17),
+        run(fare_calendar(call.airline, call.trips), tag, destination=city, month=1),
+        run(fare_calendar(call.airline, call.trips), tag, destination=city, from_date=DEC_17),
     ]
     for result in made:
         card = _card(result)

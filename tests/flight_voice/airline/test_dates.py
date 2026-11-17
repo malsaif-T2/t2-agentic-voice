@@ -1,6 +1,7 @@
 """The dates a caller says, resolved by the code: every form against Monday 2026-11-16, a
 Saturday and a month's end; the days that do not exist, have passed or fall past the window, a
-return before its departure, and a form the schema refuses."""
+return before its departure, a form the schema refuses, and the forms' words that keep a return
+said after the departure from being counted from today."""
 
 from __future__ import annotations
 
@@ -159,6 +160,19 @@ def test_a_return_without_its_month_counts_from_the_departure(
     code marks the month it chose."""
     resolved = resolve_return(spec, date(2026, 12, 17), MONDAY)
     assert resolved == Resolved(expected, assumed=True)
+
+
+def test_a_return_days_after_the_departure_is_nights_never_days_from_today() -> None:
+    """f08's «بعد بكرة للدوحة وأرجع بعد ثلاث أيام» is back on the 21st, three nights after the
+    18th, not on the 19th: the forms' descriptions, which the talker reads, give that phrase to
+    `nights` and keep `in_days` for a departure, with another number than the scenario's (D-011)."""
+    nights = Nights.model_json_schema()["description"]
+    in_days = InDays.model_json_schema()["description"]
+    assert "«أرجع بعد أربع أيام»" in nights and "back four days later" in nights
+    assert "«أسافر بعد أربع أيام»" in in_days and "أرجع" not in in_days
+    assert "never a return said after the departure" in in_days
+    back = resolve_return(Nights(nights=3), date(2026, 11, 18), MONDAY)
+    assert back == Resolved(date(2026, 11, 21))
 
 
 def test_a_return_before_its_departure_is_a_problem() -> None:
