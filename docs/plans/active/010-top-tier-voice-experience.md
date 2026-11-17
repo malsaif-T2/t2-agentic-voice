@@ -1361,6 +1361,16 @@ Block 0.
   beyond the run's noise; that threshold becomes the default of `stt.switch_min_probability`,
   otherwise `detected` stands. Dev only, arms (a) hinted, (b) secondary alone, (c) none, and
   `detected`.
+- 2026-11-17: the owner's test of the lean Saad: "it is good"; asked for a Najdi accent (the lean
+  Arabic instructions now name Riyadh's Najdi dialect with a few of its words); "do not be too
+  strict on edge cases that it would restrict the agent too much and make it feels deterministic
+  or robotic"; and for streaming, "the goal is to optimize the call and make it responsive not only
+  TTFA (although I think mean TTFA is a very good indicator)".
+- 2026-11-17: run H's Scribe arms, dev (D-115's keep rule): (a) the hint with secondary languages
+  moved the call on 0 of 194 due turns at every threshold (Scribe echoes the hint), so `hinted`
+  is not kept and `detected` stands; (b) secondary languages without a hint are refused by Scribe
+  (both smoke requests failed); (c) no hint moved 179 of 194 at 0.8 with 20 false moves on short
+  replies.
 - 2026-11-17: the text-to-speech candidates for the owner's pick by ear (D-114, branch
   `plan-010-tts`): `tts.provider` takes `elevenlabs`, `groq` and `telnyx`, each speaking the
   provider's default voices with `tts.languages` unset. The owner picked ElevenLabs v4 Turbo in
