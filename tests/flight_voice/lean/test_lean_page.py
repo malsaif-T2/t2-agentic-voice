@@ -40,7 +40,7 @@ def test_the_lean_cards_fill_the_three_segments_then_the_booking(tmp_path: Path)
     lean.said(f"Riyadh to Jeddah and back, economy, one traveler, {lean.total()} riyals in all.")
     lean.heard("yes")
     booked = lean.book()
-    reference = data(booked)["reference"]
+    reference = data(booked)["reference_if_asked"]
     shown = page(
         tmp_path,
         [

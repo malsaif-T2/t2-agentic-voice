@@ -16,8 +16,8 @@ reason; and a trip whose total was not said, played and answered is `not_confirm
 the one fixed text the lean tools hold (`NOT_CONFIRMED`). Then the store books it, priced again,
 under a request ID of the call's own: a refusal is `refused`; a write that does not answer
 within `WRITE_S` is looked up by its request ID (when the store can find one), and `unknown`
-when nothing is found. A booking made returns its reference, its total and its route, and the
-review card marked booked with its reference.
+when nothing is found. A booking made returns its reference (`reference_if_asked`), its total
+and its route, and the review card marked booked with its reference.
 
 The tool finishes when a barge-in comes (`on_interrupt="finish"`), so a write is never cut in
 half; a write begun is counted before it is sent, so a call cut off mid-write is `unknown`.
@@ -80,7 +80,9 @@ def _booked(
     said, msa = route_said((booking.origin, booking.destination), tag)
     answer: dict[str, JsonValue] = {
         "status": status,
-        "reference": booking.reference,
+        # Named for when it is said (the owner, 2026-11-17: "it should only say the reference
+        # when asked"): the model reads a key's name as closely as its value.
+        "reference_if_asked": booking.reference,
         "total": booking.total_sar,
         "route": said,
         "route_msa": msa,
