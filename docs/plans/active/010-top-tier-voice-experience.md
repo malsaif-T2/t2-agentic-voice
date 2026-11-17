@@ -1198,6 +1198,13 @@ Block 0.
   on the agent's turn reaches (a booking's timeout and a slow search take about 20 s), so no
   verdict moves. The amended checks (`evals/spoken.py`: the register; `notice`) and the speed land
   together; the baseline is the next pass, f-dev-4.
+- 2026-11-17: run F's baseline, f-dev-4 (2ee9d27, `openai/gpt-oss-120b` at medium, three plays
+  each, $0.446): 9 of 28 dev scenarios pass (f02, f05, f11, f13, f16, f21, f22, f23, f24),
+  violations zero in every play of 84; the failed checks most often `args` and `calls` (the tools
+  called and what they held), `max_options`, `register`, `repeat` and `notice`; f20 never says the
+  booking's reference. Its scorecard is in the scratchpad's runs/f-dev-4 (not the owner's var/),
+  its history line committed. Next: a diagnosis of each failed scenario, each cause challenged,
+  then the fixes by scenarios fixed an hour, each measured against this pass.
 
 ## Decision log
 
