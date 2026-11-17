@@ -1409,6 +1409,10 @@ Block 0.
   low is kept for the flight app if no dev scenario that passed at medium fails at low, its
   violations are zero in every play, and its mean seconds to a booking are no more than medium's;
   otherwise medium stands (D-074).
+- 2026-11-17: D-117 built and merged (`stt.live_language = "single"`, off by default); a checker
+  corrected the lead's exploratory figure (at 0.8, 165 right against `detected`'s 174; at 0.50 to
+  0.65, 174 with none wrong). Its arm is read by the keep rule registered above, at the merge
+  commit, with its own gate pass.
 - 2026-11-17: the text-to-speech candidates for the owner's pick by ear (D-114, branch
   `plan-010-tts`): `tts.provider` takes `elevenlabs`, `groq` and `telnyx`, each speaking the
   provider's default voices with `tts.languages` unset. The owner picked ElevenLabs v4 Turbo in

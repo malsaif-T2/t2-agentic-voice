@@ -18,6 +18,13 @@ heard with its probability. `hinted_switch` moves the call when all three hold:
 
 `hinted_move` is the rule without its third condition, which a measurement reads at every
 threshold (run H's Scribe arms).
+
+Under `stt.live_language = "single"` (D-117; the owner's request of 2026-11-17: "a one request
+language change without hurting the transcription"), a `SingleRule`, each turn also goes once:
+a turn its `gate` passes (`detected`'s, domain/language_switch.py's `DetectRule`: `from_s` of
+voiced speech or more) names no language, and its answer is read by the same three conditions
+(`hint`, the call's current language standing for the one named); a shorter turn names the
+call's current language and never moves the call.
 """
 
 from __future__ import annotations
@@ -26,7 +33,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from t2_agentic_voice.core.settings.words import LanguageCode
-from t2_agentic_voice.domain.language_switch import short_reply
+from t2_agentic_voice.domain.language_switch import DetectRule, short_reply
 from t2_agentic_voice.domain.words import heard_code
 
 
@@ -49,6 +56,19 @@ class HintRule:
         a request naming `named` gives beside it."""
         code = heard_code(named)
         return tuple(dict.fromkeys(each for each in self.codes if each != code))
+
+
+@dataclass(frozen=True, kw_only=True)
+class SingleRule:
+    """When a turn's one request names no language, by `gate`, and when its answer then moves
+    the call, by `hint`: both of one agent's codes (the module's docstring)."""
+
+    gate: DetectRule
+    hint: HintRule
+
+    def __post_init__(self) -> None:
+        if set(self.gate.codes) != set(self.hint.codes):
+            raise ValueError("the gate and the hint are of one agent's languages")
 
 
 def hinted_move(

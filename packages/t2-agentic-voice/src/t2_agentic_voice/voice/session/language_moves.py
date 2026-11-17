@@ -1,9 +1,9 @@
 """How the session follows the caller into another of the agent's languages, under
-`stt.live_language = "detected"` (D-038's amendment), or `hinted` where it holds (D-115; a turn
-its one request's answer moved is `switched` as a detected one is, and is logged so; the call's
-current language is call_language.py's): `follow`, at each turn's own transcript, an overlap's
-included, unless the turn was dropped (call.py), and `tool_moved`, as the talker's
-`LanguageMoved` plays (talker_play.py)."""
+`stt.live_language = "detected"` (D-038's amendment), or `hinted` or `single` where it holds
+(D-115, D-117; a turn its one request's answer moved is `switched` as a detected one is, and is
+logged so; the call's current language is call_language.py's): `follow`, at each turn's own
+transcript, an overlap's included, unless the turn was dropped (call.py), and `tool_moved`, as
+the talker's `LanguageMoved` plays (talker_play.py)."""
 
 from __future__ import annotations
 

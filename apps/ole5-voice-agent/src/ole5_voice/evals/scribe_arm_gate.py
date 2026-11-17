@@ -1,6 +1,7 @@
-"""The gate of run H's Scribe `detected` arm (D-115; scribe_arm_run.py): which variants also send
-the request naming no language, as a live call under `stt.live_language = "detected"` sends it
-only for a turn of `stt.detect_from_s` seconds of voiced speech or more.
+"""The gate of run H's Scribe `detected` and `single` arms (D-115, D-117; scribe_arm_run.py):
+which variants send the request naming no language, as a live call under `stt.live_language =
+"detected"` sends it beside the named one, and one under `"single"` in its place, only for a turn
+of `stt.detect_from_s` seconds of voiced speech or more.
 
 The gate is an offline `poe eval-languages --classifier detected` pass (`--language-from`): free,
 complete, at the arm's commit, on its split and data (language_arms.py's `language_pass`), each of

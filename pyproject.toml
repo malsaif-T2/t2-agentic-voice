@@ -139,7 +139,7 @@ help = "Time each step of an echo call on the golden set's dev paused requests (
 cmd = "python -m ole5_voice.evals.timing"
 
 [tool.poe.tasks.eval-languages]
-help = "Run H's H1: each turn's language from a classifier on the golden set, offline and with no spend (`--classifier off`, `silero` or `ecapa`), or a speech-to-text provider's own language, which spends (`groq`, `elevenlabs` or `soniox`, with `--price-per-hour`, `--cap-usd`, `--estimate-only`), or a Scribe arm, which spends (`--scribe-arm hinted`, `secondary`, `none` or `detected`, dev only; `detected` gated by `--language-from` an offline detected pass); `--read` gives condition 4 across the passes"
+help = "Run H's H1: each turn's language from a classifier on the golden set, offline and with no spend (`--classifier off`, `silero` or `ecapa`), or a speech-to-text provider's own language, which spends (`groq`, `elevenlabs` or `soniox`, with `--price-per-hour`, `--cap-usd`, `--estimate-only`), or a Scribe arm, which spends (`--scribe-arm hinted`, `secondary`, `none`, `detected` or `single`, dev only; `detected` and `single` gated by `--language-from` an offline detected pass); `--read` gives condition 4 across the passes"
 cmd = "python -m ole5_voice.evals.languages_run"
 
 # Runs K and S (plan 006's registration): the talker's model, retrieval and answers, and the

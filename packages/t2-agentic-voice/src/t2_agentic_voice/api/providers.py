@@ -14,9 +14,9 @@ part, since only api may build an adapter (harness.toml [layers]).
   theirs with `Providers.text_to_speech`.
 - `opened`: the runtime's start of them: each one's close pushed on its stack, and the
   classifier loaded, off the event loop, with the agent's codes, when the calls hear each
-  turn's language (an agent of one code runs none); under `stt.live_language = "hinted"` on a
-  provider that gives no language probability, a warning, once, that the calls run as
-  `session` (D-115).
+  turn's language (an agent of one code runs none); under `stt.live_language = "hinted"` or
+  `"single"` on a provider that gives no language probability, a warning, once, that the calls
+  run as `session` (D-115, D-117).
 
 Each call's talker is built by agent/talker.py's `chat_talkers`, on the chat model here.
 """
@@ -210,6 +210,8 @@ async def opened(
     stt = settings.stt
     if stt.live_language == "hinted" and not stt.hints():
         log.warning("hinted_as_session", provider=stt.provider, reason="no_language_probability")
+    if stt.live_language == "single" and not stt.single_holds():
+        log.warning("single_as_session", provider=stt.provider, reason="no_language_probability")
     codes, classifier = spoken_codes(agent), providers.classifier
     if settings.stt.live_language != "classified" or classifier is None or len(codes) < 2:
         return None

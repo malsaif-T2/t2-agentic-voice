@@ -32,6 +32,15 @@ answer of a turn's `held` or `turn` request, no overlap's, moves the call (the l
 its probability, its words), that answer, its language the code moved to, is the turn's
 `Transcribed` (`switched`), and the call's current language moves as above.
 
+Under `stt.live_language = "single"` (D-117; its `SingleRule` where the provider gives a language
+probability, `SttSettings.single_holds`), every request goes once too: a turn's `held` or `turn`
+request whose turn passes `detected`'s gate (the rule's `gate`; never an overlap's) names no
+language, with the current language's prompt (Scribe's keyterms, as run H's arm (c) sent it), its
+`Transcribing` naming the current language its answer is read in. When `hinted_switch` (the rule's
+`hint`) says that answer moves the call, it is the turn's `Transcribed` (`switched`) and the call
+moves as above; else its words stand, in the current language. Every other request names the
+current language and never moves the call.
+
 `drop` cancels every request in flight at the call's end, its `Transcribing` already handed.
 """
 
@@ -49,7 +58,7 @@ from t2_agentic_voice.core.errors import ProviderError, ProviderErrorKind
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.settings.stt import HEARS_NO_LANGUAGE
 from t2_agentic_voice.domain.declaration import VoiceAgent
-from t2_agentic_voice.domain.language_hint import HintRule, hinted_switch
+from t2_agentic_voice.domain.language_hint import HintRule, SingleRule, hinted_switch
 from t2_agentic_voice.domain.language_switch import DetectRule, switch_to
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, SpeechToText, Transcript
 from t2_agentic_voice.domain.turn_language import spoken_codes
@@ -65,8 +74,9 @@ log = get_logger(__name__)
 # What a detecting request's `Transcribing` names: no language, by Whisper's own detection.
 DETECTING = Named(language=None, by="detected")
 # How a call follows the caller into another of the agent's languages from its answers: a long
-# turn's second request naming none (`detected`), or each turn's one request (`hinted`).
-type SwitchRule = DetectRule | HintRule
+# turn's second request naming none (`detected`), each turn's one request (`hinted`), or a long
+# turn's one request naming none (`single`).
+type SwitchRule = DetectRule | HintRule | SingleRule
 type _Asked = tuple[Transcript | None, ProviderErrorKind | None, bool]
 
 
@@ -87,24 +97,29 @@ def detect_rule(agent: VoiceAgent, settings: VoiceSettings) -> SwitchRule | None
     `stt.live_language = "detected"` a long turn's second request naming none, from
     `stt.detect_from_s`, never on a provider that reports no language it heard
     (`HEARS_NO_LANGUAGE`); under `hinted` where it holds (`SttSettings.hints`), each turn's one
-    request, from `stt.switch_min_probability`; else never (None)."""
+    request, from `stt.switch_min_probability`; under `single` where it holds
+    (`SttSettings.single_holds`), a long turn's one request naming none, from both; else never
+    (None)."""
     codes = tuple(code for code in map(heard_code, spoken_codes(agent)) if code is not None)
     stt = settings.stt
     if len(set(codes)) < 2:
         return None
+    gate = DetectRule(from_s=stt.detect_from_s, codes=codes)
+    hint = HintRule(min_probability=stt.switch_min_probability, codes=codes)
     if stt.live_language == "detected" and stt.provider not in HEARS_NO_LANGUAGE:
-        return DetectRule(from_s=stt.detect_from_s, codes=codes)
+        return gate
     if stt.hints():
-        return HintRule(min_probability=stt.switch_min_probability, codes=codes)
-    return None
+        return hint
+    return SingleRule(gate=gate, hint=hint) if stt.single_holds() else None
 
 
 class SttRequests:
     """The requests of the bridge `processor` (its tasks, its sample rate, whether it is
     usable): each to `stt`, its events to `events`, its failures to `report`, each naming the
     language `languages` gives it with that language's prompt of `prompts`, and a long turn's
-    also naming none under a `DetectRule`, or each with the agent's other languages under a
-    `HintRule` (`detect`; the module's)."""
+    also naming none under a `DetectRule`, each with the agent's other languages under a
+    `HintRule`, or a long turn's naming none instead under a `SingleRule` (`detect`; the
+    module's)."""
 
     def __init__(
         self,
@@ -131,12 +146,17 @@ class SttRequests:
     ) -> asyncio.Task[Transcribed]:
         """One request of the turn's `part`, on a task of its own (`transcribe`), also sent
         naming no language when its turn held `voiced_s` seconds of voiced speech enough to
-        detect (None: an overlap's part, never), or, under a `HintRule`, its answer read for a
-        move when it is a turn's own or held one and no overlap's."""
+        detect (None: an overlap's part, never); under a `HintRule`, its answer read for a
+        move when it is a turn's own or held one and no overlap's; under a `SingleRule`, sent
+        naming none instead, its answer read so, when such a turn passes the gate."""
         rule, own = self._detect, part in ("held", "turn")
+        if isinstance(rule, SingleRule):
+            alone = own and rule.gate.detects(voiced_s)
+            read = rule.hint if alone else None
+            return self._track(self.transcribe(turn_id, audio, part, read=read, alone=alone))
         detect = isinstance(rule, DetectRule) and own and rule.detects(voiced_s)
-        hint = isinstance(rule, HintRule) and own and voiced_s is not None
-        return self._track(self.transcribe(turn_id, audio, part, detect=detect, hint=hint))
+        read = rule if isinstance(rule, HintRule) and own and voiced_s is not None else None
+        return self._track(self.transcribe(turn_id, audio, part, detect=detect, read=read))
 
     def reuse(
         self, source: asyncio.Task[Transcribed], part: TranscriptPart
@@ -161,12 +181,13 @@ class SttRequests:
         part: TranscriptPart,
         *,
         detect: bool = False,
-        hint: bool = False,
+        read: HintRule | None = None,
+        alone: bool = False,
     ) -> Transcribed:
         """One request of the turn's `part`, its `Transcribing` handed as it goes, and its one
         `Transcribed`, handed and returned; none goes for no audio or an unusable bridge. With
-        `detect`, a second naming no language, at the same time; with `hint`, its answer read
-        for a move (the module's)."""
+        `detect`, a second naming no language, at the same time; with `read`, its answer read
+        by that rule for a move; `alone`, it names no language (the module's)."""
         events, clock, rule = self._events, self._events.clock, self._detect
         heard = Transcribed(
             turn_id=turn_id, at=0.0, audio_s=0.0, sent_at=None, transcript=None, part=part
@@ -182,7 +203,7 @@ class SttRequests:
         clip = AudioClip(pcm16=audio, sample_rate=rate, other_languages=others)
         events.hand(named.transcribing(turn_id, at=sent_at, audio_s=clip.seconds, part=part))
         prompt = None if language is None else self._prompts.get(language)
-        asked = self._ask(turn_id, clip, language, prompt)
+        asked = self._ask(turn_id, clip, None if alone else language, prompt)
         moved = None
         if detect and isinstance(rule, DetectRule):
             detecting = DETECTING.transcribing(turn_id, at=sent_at, audio_s=clip.seconds, part=part)
@@ -204,16 +225,16 @@ class SttRequests:
                 failure, retryable = None, False
         else:
             transcript, failure, retryable = await asked
-            if hint and isinstance(rule, HintRule) and transcript is not None:
+            if read is not None and transcript is not None:
                 moved = hinted_switch(
                     language,
                     transcript.heard_language,
                     transcript.language_probability,
                     text=transcript.text,
-                    rule=rule,
+                    rule=read,
                 )
-            if moved is not None and transcript is not None:
-                transcript = transcript.model_copy(update={"language": moved})
+            if transcript is not None and (moved is not None or alone):
+                transcript = transcript.model_copy(update={"language": moved or language})
         if failure is not None:
             self._report.provider_failed("speech_to_text", failure, retryable, turn_id=turn_id)
         heard = replace(

@@ -4145,3 +4145,49 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   Arabic send words, a total and question in one clause), each reproduced before its fix; the
   tests in `tests/t2_agentic_voice/voice/session/test_yes_over_question*.py` and
   `tests/flight_voice/lean/test_lean_yes_over_question.py`.
+
+## D-117 · One request a turn, naming no language for a long turn: Scribe's answer is the turn's words and moves the call (`stt.live_language = "single"`) · 2026-11-17 · Accepted (the owner's request of 2026-11-17, "Yes please, try it"; a library setting, off by default until its run H arm is read, GP-18)
+
+- **Context:** run H's Scribe arms on dev showed three things (D-115's amendment):
+  - Scribe echoes a named language, so `hinted` moved the call on 0 of 194 due turns.
+  - Told no language (arm (c)), Scribe reports the language spoken, but it moved the call wrongly on 20 short replies in 584 turns.
+  - `detected`, gated as live, moved 174 with none wrong, at p50 0.80 s and p95 1.46 s, the slower of its two requests.
+
+  The lead's exploratory reading of those passes used (c)'s answer alone on the gated turns and the named answer on the rest. At 0.8 it moved 165 right against `detected`'s 174, with 0 wrong and 0 on short replies; at 0.50 to 0.65, 174 right with none wrong; with one request a turn, p50 0.73 s and p95 1.15 s. It was found after the results, so it is not a kept result. On 2026-11-17 the owner asked: "Yes please, try it. I would like a one request language change without hurting the transcription."
+- **Decision:** a sixth value of `stt.live_language`, `single`, keeps the call's current language as `detected` does, and sends one request a turn:
+  1. **A long turn.** A turn's own or held request, when the turn holds `stt.detect_from_s` (1.2) seconds of voiced speech or more (`detected`'s gate), names no language. It carries the current language's prompt (Scribe's keyterms, as arm (c) sent it) and no secondary language. Its answer is the turn's words. The call moves when `hinted_switch`'s three conditions (D-115) hold on that answer:
+     - the language is another of the agent's languages;
+     - its probability is `stt.switch_min_probability` or more;
+     - the turn is a question or request by D-103's text rule.
+
+     The turn is then `switched` and later requests name the new language. Otherwise its words stand, in the current language.
+  2. **A shorter turn** names the current language with its prompt, and never moves the call.
+  3. **An overlap's parts.** Its window and overlap requests, and an overlap turn's own, name the current language, and their answers never move the call. A switch request said over a reply still does.
+
+  Never two requests for one turn's audio. A spoken switch request and the talker's `switch_language` tool move the call too, and a read-back waiting when the call moves is read again (invariant 1). The rule is `domain/language_hint.py`'s `SingleRule`: `detected`'s `DetectRule` as its gate, `hinted`'s `HintRule` as its rule. `voice/stt_requests.py` sends it, through `detected`'s held-to-turn path. The speech-to-text port is unchanged. On a provider that gives no language probability (every one but `elevenlabs`), `single` runs as `session`, and the runtime's start logs `single_as_session` once.
+- **Consequences:**
+  - A long turn costs one Scribe request instead of two, and waits for one answer instead of the slower of two.
+  - A long turn's `Transcribing` names the current language, the one its answer is read in, so the call report and the trace read as for a named request.
+  - `session` stays the library's default, and no app turns `single` on until the keep rule holds. The dev console offers it per call (D-104).
+  - Run H gains a fifth dev arm, `poe eval-languages --scribe-arm single --language-from <a --classifier detected pass>`, which spends:
+    - a variant the gate passed sends arm (c)'s request (naming none, with the call language's prompt) as a turn of each call language. Its answer is the turn's words, read with `evals.hinted_switch`.
+    - any other variant sends `detected`'s named request alone, which never moves the call.
+
+    It is scored as the other arms are: right, wrong and missed moves, the false moves on short replies, WER and CER by item language, seconds p50 and p95, the moves at each threshold from 0.50 to 0.95, and each turn's record with `detects`. Under `single` a turn's words do not depend on the threshold, so its WER is read once.
+  - **The keep rule, registered by the lead before any run.** Read `single` against `detected` gated as live (its own rule, `both.moves`). Both passes run at the same commit with the same gate pass, on dev. Keep `single` at the lowest threshold of 0.50 to 0.95 where all of these hold:
+    - no false move on a short reply;
+    - no more wrong moves than `detected`;
+    - right moves at least `detected`'s minus 2;
+    - the owner's condition, "without hurting the transcription", in each item language (English, Saudi, MSA, mixed):
+      - the corpus WER is no worse than `detected`'s by more than 0.5 points;
+      - and the item language is not worse than `detected`'s on more items than it is better, by the paired sign test by item at p < 0.05 (`evals.sign_test`). Each turn is paired by item, variant and call language. An item's net is the count of its turns with a lower WER, less those with a higher one.
+
+    That threshold becomes the value of `stt.switch_min_probability` the flight app sets with `stt.live_language = "single"`. Otherwise `detected` stands. `session` stays the library's default.
+- **Evidence:** the owner's words above; D-115's amendment. Tests:
+  - `tests/t2_agentic_voice/voice/test_stt_single.py`;
+  - `tests/t2_agentic_voice/domain/test_language_hint.py`;
+  - `tests/t2_agentic_voice/voice/session/test_call_language.py`;
+  - `tests/ole5_voice/evals/test_scribe_arm_single.py`;
+  - `tests/ole5_voice/evals/test_scribe_arm_run.py`.
+
+  The arm's numbers are added when it is read.

@@ -87,17 +87,17 @@ def _hinted(
 
 
 def test_each_arm_shapes_its_requests_and_sends_a_shared_one_once() -> None:
-    assert ARM_NAMES == ("hinted", "secondary", "none", "detected")
+    assert ARM_NAMES == ("hinted", "secondary", "none", "detected", "single")
     assert asks("hinted", "ar") == (AR_HINT,) and asks("hinted", "en") == (EN_HINT,)
     assert asks("secondary", "en") == (Ask(named=None, others=("ar", "en"), prompt="en"),)
     assert asks("none", "ar") == (Ask(named=None, prompt="ar"),)
     assert asks("detected", "ar") == (Ask(named="ar", prompt="ar"), DETECTING)
     assert Ask(named=None) == DETECTING and DETECTING not in asks("none", "ar")
     counts = {arm: len(distinct_asks(arm)) for arm in ARM_NAMES}
-    assert counts == {"hinted": 2, "secondary": 2, "none": 2, "detected": 3}
+    assert counts == {"hinted": 2, "secondary": 2, "none": 2, "detected": 3, "single": 2}
     assert asks("detected", "en", detects=False) == (Ask(named="en", prompt="en"),)
     gated = {arm: len(distinct_asks(arm, detects=False)) for arm in ARM_NAMES}
-    assert gated == {"hinted": 2, "secondary": 2, "none": 2, "detected": 2}  # the gate's alone
+    assert gated == {"hinted": 2, "secondary": 2, "none": 2, "detected": 2, "single": 2}
 
 
 def test_the_truth_covers_every_language_and_every_kind_of_the_strata_once() -> None:

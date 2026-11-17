@@ -1,5 +1,5 @@
-"""What a pass of one Scribe arm records, and its scorer (D-115; the arms and the rule read over
-each answer are scribe_arms.py's, the pass scribe_arm_run.py's): the pass (`ArmRun`), its
+"""What a pass of one Scribe arm records, and its scorer (D-115, D-117; the arms and the rule read
+over each answer are scribe_arms.py's, the pass scribe_arm_run.py's): the pass (`ArmRun`), its
 numbers by call language and together (`ArmNumbers`), the moves at each threshold of the table
 (`ThresholdRow`, `THRESHOLDS`, 0.5 to 0.95), and its scorecard (`ArmScorecard`), which holds
 every variant's answers, since an arm's pass is a dev pass.
@@ -23,8 +23,9 @@ the error of each turn's transcript against its reference by item language (WER 
 the transcript, its median and 95th percentile. And each turn at the pass's threshold
 (`TurnRecord`): the language the answer the rule read gave, its probability, whether the turn
 was due to move the call and where the rule moved it, its transcript's WER against its
-reference (none for no speech or a failed request), its seconds, and, under `detected`, whether
-its gate sent the request naming no language (`detects`; a turn it did not send never moves).
+reference (none for no speech or a failed request), its seconds, and, under `detected` or
+`single`, whether its gate sent the request naming no language (`detects`; a turn it did not
+send never moves).
 """
 
 from __future__ import annotations

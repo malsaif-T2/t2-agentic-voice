@@ -1,12 +1,14 @@
 """The rule `stt.live_language = "hinted"` moves a call by (domain/language_hint.py, D-115): a
 turn's one answer moves it when its language is one of the agent's other languages, heard with
 a probability at or above the threshold, in a question or request; each condition alone
-refuses, and an answer with no probability never moves it."""
+refuses, and an answer with no probability never moves it; and `single`'s rule (D-117) holds a
+gate and a hint of one agent's languages."""
 
 from __future__ import annotations
 
 import pytest
-from t2_agentic_voice.domain.language_hint import HintRule, hinted_move, hinted_switch
+from t2_agentic_voice.domain.language_hint import HintRule, SingleRule, hinted_move, hinted_switch
+from t2_agentic_voice.domain.language_switch import DetectRule
 
 RULE = HintRule(min_probability=0.8, codes=("ar", "en"))
 QUESTION = "Which flights go to Dubai tomorrow?"
@@ -64,3 +66,11 @@ def test_a_rule_out_of_range_or_of_one_language_is_refused(
 ) -> None:
     with pytest.raises(ValueError, match=r"probability|two of the agent"):
         HintRule(min_probability=probability, codes=codes)  # type: ignore[arg-type]
+
+
+def test_singles_rule_holds_a_gate_and_a_hint_of_one_agents_languages() -> None:
+    gate = DetectRule(from_s=1.2, codes=("ar", "en"))
+    rule = SingleRule(gate=gate, hint=RULE)
+    assert rule.gate.detects(1.2) and not rule.gate.detects(1.1) and not rule.gate.detects(None)
+    with pytest.raises(ValueError, match="one agent's languages"):
+        SingleRule(gate=DetectRule(from_s=1.2, codes=("ar", "fr")), hint=RULE)  # type: ignore[arg-type]
