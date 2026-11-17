@@ -7,6 +7,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+from t2_agentic_voice import TtsSettings, VoiceSettings
 
 from tests.ole5_voice.evals.recorder_support import Tree, make_tree
 from tests.ole5_voice.evals.run_support import World, make_world
@@ -40,3 +41,10 @@ def tree(tmp_path: Path) -> Tree:
 def world(tmp_path: Path) -> World:
     """A run's checkout, worktree and audio root (`run_support.make_world`)."""
     return make_world(tmp_path)
+
+
+@pytest.fixture
+def settings(settings: VoiceSettings) -> VoiceSettings:
+    """The suite's settings with Groq's Orpheus speaking, as Ole5's registered runs do whatever
+    `tts.provider` names (run_settings.load_settings; D-114 made ElevenLabs the default)."""
+    return settings.model_copy(update={"tts": TtsSettings(provider="groq")})

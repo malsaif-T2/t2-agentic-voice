@@ -1,6 +1,8 @@
 """The settings of a `poe eval` run (`run.py`): loaded from the environment and `--env-file`,
 or the working folder's `.env` when it names none, the command line's on top, so a `groq` run's
-model, timeout and base URL are its own whatever a `T2V_` variable holds; shown by their dotted
+model, timeout and base URL are its own whatever a `T2V_` variable holds, and its voice Groq's
+Orpheus, the registered runs' voice, whatever `tts.provider` names (D-114: ElevenLabs the
+library's default since 2026-11-17, Groq the fallback); shown by their dotted
 names, a secret only as set or not set, as the scorecard and the history record them; and
 `--show-settings`, which logs each of them, the worktree and each path, and sends nothing.
 
@@ -88,6 +90,9 @@ def load_settings(args: argparse.Namespace) -> VoiceSettings:
     data["stt"]["model"] = args.model or data["stt"]["model"]
     data["stt"]["timeout_s"] = args.timeout_s or data["stt"]["timeout_s"]
     data["storage"]["var_dir"] = args.var_dir or data["storage"]["var_dir"]
+    if data["tts"]["provider"] != "groq":  # the registered runs speak Orpheus's own voices
+        data["tts"] = {k: v for k, v in data["tts"].items() if k != "languages"}
+        data["tts"]["provider"] = "groq"
     try:
         checked = VoiceSettings.model_validate(data, context={"prefix": loaded.prefix})
     except ConfigurationError as error:  # a URL, or a choice the library's settings no longer take

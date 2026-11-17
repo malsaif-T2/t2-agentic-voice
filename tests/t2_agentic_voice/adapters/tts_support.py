@@ -74,7 +74,9 @@ def pieces(data: bytes, size: int) -> list[bytes]:
 def tts_settings(timeout_s: float = 6.0, **tts: Any) -> VoiceSettings:
     """Settings holding the made-up `KEY`, with `tts` giving the group's values."""
     groq = GroqSettings(api_key=SecretStr(KEY))
-    return VoiceSettings(env="test", groq=groq, tts=TtsSettings(timeout_s=timeout_s, **tts))
+    return VoiceSettings(
+        env="test", groq=groq, tts=TtsSettings(provider="groq", timeout_s=timeout_s, **tts)
+    )
 
 
 def answer(

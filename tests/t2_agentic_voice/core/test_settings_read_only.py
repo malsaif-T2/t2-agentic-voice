@@ -126,12 +126,12 @@ def test_a_group_copied_with_a_change_is_checked_again_as_the_settings_load(
 def test_a_group_object_given_to_the_settings_holds_read_only_maps() -> None:
     """A tts group copied with a plain map loads with a read-only one, which no call can change,
     and one copied with a tag the settings refuse does not load."""
-    copied = TtsSettings().model_copy(update={"languages": {"en": ENGLISH}})
+    copied = TtsSettings(provider="groq").model_copy(update={"languages": {"en": ENGLISH}})
     languages: Any = VoiceSettings(env="test", tts=copied).tts.languages
     with pytest.raises(TypeError):
         languages["ar"] = ENGLISH
     assert type(languages) is ReadOnlyMap and dict(languages) == {"en": ENGLISH}
-    unlisted = TtsSettings().model_copy(update={"languages": {"xx": ENGLISH}})
+    unlisted = TtsSettings(provider="groq").model_copy(update={"languages": {"xx": ENGLISH}})
     with pytest.raises(ConfigurationError, match=f"cannot load: {PREFIX}TTS__LANGUAGES "):
         VoiceSettings(env="test", tts=unlisted)
 

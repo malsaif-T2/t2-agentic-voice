@@ -49,6 +49,7 @@ UNMEASURED = "its skew was not measured: "
 
 def _settings(tmp_path: Path, **groups: Any) -> VoiceSettings:
     groq = groups.pop("groq", GroqSettings(api_key=SecretStr(KEY)))
+    groups.setdefault("tts", TtsSettings(provider="groq"))  # Orpheus, on the Groq key (D-114)
     return VoiceSettings(env="dev", groq=groq, **groups)
 
 
@@ -108,6 +109,7 @@ def test_a_model_whose_terms_are_not_accepted_fails_with_its_fix_line(
     monkeypatch.setattr(Providers, "from_settings", classmethod(fakes))
     monkeypatch.setenv("T2V_ENV", "dev")
     monkeypatch.setenv("T2V_GROQ__API_KEY", KEY)
+    monkeypatch.setenv("T2V_TTS__PROVIDER", "groq")  # Orpheus, the fallback (D-114)
     monkeypatch.setenv("T2V_TTS__LANGUAGES", LANGUAGES)
     assert main(["doctor", "--synthesize"]) == 1
     lines = capsys.readouterr().out.splitlines()
@@ -222,6 +224,7 @@ def test_t2v_doctor_prints_each_check_and_fails_when_one_does(
     assert KEY not in out
     [providers] = built
     assert providers.tts.closed and providers.stt.closed  # type: ignore[attr-defined]
+    monkeypatch.setenv("T2V_TTS__PROVIDER", "groq")  # Orpheus, the fallback (D-114)
     monkeypatch.setenv(
         "T2V_TTS__LANGUAGES", '{"en": {"model": "canopylabs/orpheus-v1-english", "voice": "troy"}}'
     )
@@ -298,7 +301,7 @@ LISTED = {
     "object": "list",
     "data": [
         {"object": "model", "created": 0, "owned_by": "made-up", "id": voice.model}
-        for voice in TtsSettings().languages.values()
+        for voice in TtsSettings(provider="groq").languages.values()
     ],
 }
 

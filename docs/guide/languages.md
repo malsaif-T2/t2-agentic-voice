@@ -13,11 +13,19 @@ Each language an agent speaks is built from its preset, which gives its tag, the
 caller is told, the echo's frame and the word lists the interruption rule reads
 ([concepts.md](concepts.md), "The words"):
 
-| Preset | Tag | The register of its notices | Its voice by default (`tts.languages`) |
-| --- | --- | --- | --- |
-| `Language.saudi_arabic(greeting=...)` | `ar-SA` | Saudi Arabic | `canopylabs/orpheus-arabic-saudi`, voice `abdullah` |
-| `Language.arabic(greeting=...)` | `ar` | MSA | the same Saudi model and voice |
-| `Language.english(greeting=...)` | `en` | English | `canopylabs/orpheus-v1-english`, voice `troy` |
+| Preset | Tag | The register of its notices | Its voice by default (`tts.languages`) | Its voice under the Groq fallback |
+| --- | --- | --- | --- | --- |
+| `Language.saudi_arabic(greeting=...)` | `ar-SA` | Saudi Arabic | `eleven_v4_turbo`, voice `nhJWWCFdNdusuVUT3x19` | `canopylabs/orpheus-arabic-saudi`, voice `abdullah` |
+| `Language.arabic(greeting=...)` | `ar` | MSA | the same model and voice | the same Saudi model and voice |
+| `Language.english(greeting=...)` | `en` | English | the same model and voice | `canopylabs/orpheus-v1-english`, voice `troy` |
+
+ElevenLabs is the default `tts.provider` by the owner's ruling (D-114): v4 Turbo in the one
+voice they picked by ear for the flight agent's Saad, on the `elevenlabs` key that Scribe needs
+too. Groq's Orpheus is the fallback, `tts.provider = "groq"`, on the Groq key alone; Telnyx's
+Bayan, measured beside them, is `"telnyx"` (`Fahd` for Saudi, `Michael` for English). With
+`tts.languages` unset each preset is spoken in the chosen provider's default voice. A map given names the provider's own models and voices
+(`{"en": {"model": "eleven_v4", "voice": "<voice ID>"}}`, or `{"model": "Telnyx.Bayan", "voice":
+"Jasem"}`), and the settings refuse one of another provider.
 
 The echo's frame is «سمعتك تقول:» in both Arabic presets. Both share the primary code `ar`: the
 word lists, the pronunciation map and the speech-to-text request are keyed by it. An agent lists

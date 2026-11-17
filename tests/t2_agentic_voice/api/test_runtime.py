@@ -108,7 +108,10 @@ def test_the_providers_from_the_settings_are_groqs(
 ) -> None:
     monkeypatch.setattr(groq_tts, "GroqTTS", _Tts)
     settings = dev_settings(
-        tmp_path, groq=GroqSettings(api_key=SecretStr(KEY)), stt=SttSettings(provider="groq")
+        tmp_path,
+        groq=GroqSettings(api_key=SecretStr(KEY)),
+        stt=SttSettings(provider="groq"),
+        tts=TtsSettings(provider="groq"),
     )
     providers = Providers.from_settings(settings)
     assert isinstance(providers.stt, GroqSTT) and isinstance(providers.tts, _Tts)

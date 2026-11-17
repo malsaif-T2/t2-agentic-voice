@@ -1312,6 +1312,14 @@ Block 0.
   fare_calendar, is for prices. (5) English nonsense: two degenerate gpt-oss replies (markdown
   around zero-width spaces and "[cut ...", and two questions joined by a run of dots that the
   question limit read as one clause), which no filter caught.
+- 2026-11-17: the text-to-speech candidates for the owner's pick by ear (D-114, branch
+  `plan-010-tts`): `tts.provider` takes `elevenlabs`, `groq` and `telnyx`, each speaking the
+  provider's default voices with `tts.languages` unset. The owner picked ElevenLabs v4 Turbo in
+  the voice `nhJWWCFdNdusuVUT3x19` for Saad, and ruled it the default with Groq the fallback. A listening
+  sheet of the flight agent's own lines (greeting, listing, read-back, sending, done, a mixed
+  line; Saudi, MSA, English) in seven Arabic and six English voices, with latency, cost and
+  Scribe's hearing of each take, is in the session notes (`tts/tts_pick.md`). ElevenLabs' key hit
+  its own 10,000-credit cap during the timing, which stops Scribe too until it is raised.
 
 ## Decision log
 

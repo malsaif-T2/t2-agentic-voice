@@ -28,6 +28,7 @@ from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.settings.groq import GroqSettings
 from t2_agentic_voice.core.settings.session import SessionSettings
 from t2_agentic_voice.core.settings.stt import SttSettings
+from t2_agentic_voice.core.settings.tts import TtsSettings
 from t2_agentic_voice.core.tracing import Tracing
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.testing.llm_fakes import FAKE_DATA_FLOW
@@ -47,6 +48,9 @@ from tests.t2_agentic_voice.session_fakes import AGENT as ECHO
 
 pytestmark = pytest.mark.usefixtures("patched_stores")
 KEY = "gsk_made-up-key-0123456789abcdefghijklmnop"
+
+# Groq's Orpheus, the fallback (D-114), so a test with the Groq key alone builds every provider.
+GROQ_TTS = TtsSettings(provider="groq")
 
 
 class _Query(BaseModel):
@@ -91,7 +95,10 @@ def test_the_providers_from_the_settings_hold_groqs_chat_model(
 ) -> None:
     monkeypatch.setattr(groq_tts, "GroqTTS", _Tts)
     settings = dev_settings(
-        tmp_path, groq=GroqSettings(api_key=SecretStr(KEY)), stt=SttSettings(provider="groq")
+        tmp_path,
+        groq=GroqSettings(api_key=SecretStr(KEY)),
+        stt=SttSettings(provider="groq"),
+        tts=GROQ_TTS,
     )
     providers = Providers.from_settings(settings)
     assert isinstance(providers.chat, GroqChat)
@@ -205,7 +212,7 @@ def test_the_providers_build_a_classifier_only_under_classified(
     monkeypatch.setattr(groq_tts, "GroqTTS", _Tts)
     groq = GroqSettings(api_key=SecretStr(KEY))
     plain = Providers.from_settings(
-        dev_settings(tmp_path, groq=groq, stt=SttSettings(provider="groq"))
+        dev_settings(tmp_path, groq=groq, stt=SttSettings(provider="groq"), tts=GROQ_TTS)
     )
     assert plain.classifier is None
     folder = tmp_path / "models"
@@ -217,7 +224,9 @@ def test_the_providers_build_a_classifier_only_under_classified(
             classifier_dir=folder,
             classifier_threads=3,
         )
-        providers = Providers.from_settings(dev_settings(tmp_path, groq=groq, stt=stt))
+        providers = Providers.from_settings(
+            dev_settings(tmp_path, groq=groq, stt=stt, tts=GROQ_TTS)
+        )
         built = providers.classifier
         assert isinstance(built, kind) and (built.folder, built.threads) == (folder, 3)
         assert providers.replace().classifier is built

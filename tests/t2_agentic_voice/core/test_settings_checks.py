@@ -312,11 +312,10 @@ def test_the_turn_tts_and_limit_defaults_are_the_plans() -> None:
         "max_silence_ms": 3000,
     }
     voices = {tag: (v.model, v.voice) for tag, v in settings.tts.languages.items()}
-    assert voices == {
-        "ar-SA": ("canopylabs/orpheus-arabic-saudi", "abdullah"),
-        "ar": ("canopylabs/orpheus-arabic-saudi", "abdullah"),
-        "en": ("canopylabs/orpheus-v1-english", "troy"),
-    }
+    assert settings.tts.provider == "elevenlabs"  # the owner's pick (D-114); Groq the fallback
+    assert voices == dict.fromkeys(
+        ("ar-SA", "ar", "en"), ("eleven_v4_turbo", "nhJWWCFdNdusuVUT3x19")
+    )
     assert (settings.tts.cache_phrases, settings.tts.trim_silence) == (True, False)
     assert (settings.limits.max_call_s, settings.limits.idle_s) == (600.0, 120.0)
     assert (settings.session.mode, settings.logging.pipecat) == (None, "off")  # the declaration's

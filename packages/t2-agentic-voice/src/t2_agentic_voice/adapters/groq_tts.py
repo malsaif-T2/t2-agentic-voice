@@ -67,6 +67,7 @@ from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
 from t2_agentic_voice.core.settings.base import setting_name
 from t2_agentic_voice.core.settings.tts import LanguageTag, TtsModel, TtsSettings, TtsVoice
+from t2_agentic_voice.core.settings.tts_voices import default_voices
 from t2_agentic_voice.core.settings.words import primary_code
 from t2_agentic_voice.domain.ports.speech_to_text import DataFlow
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
@@ -113,7 +114,10 @@ class GroqTTS:
             (
                 "tts",
                 lambda: TtsSettings(
-                    languages=languages, timeout_s=timeout_s, trim_silence=trim_silence
+                    provider="groq",
+                    languages=languages,
+                    timeout_s=timeout_s,
+                    trim_silence=trim_silence,
                 ),
             ),
         )
@@ -141,12 +145,15 @@ class GroqTTS:
         cls, settings: VoiceSettings, *, transport: httpx.AsyncBaseTransport | None = None
     ) -> GroqTTS:
         """The adapter the settings describe: `groq.resolved_api_key()`, `groq.base_url`,
-        `tts.languages`, `tts.timeout_s` and `tts.trim_silence`. ConfigurationError naming
-        `T2V_GROQ__API_KEY` (under the settings' prefix) when no key is set, as `GroqSTT`'s."""
+        `tts.languages` (Orpheus's own default voices when `tts.provider` names another
+        provider, whose voices Orpheus has not: D-114), `tts.timeout_s` and `tts.trim_silence`.
+        ConfigurationError naming `T2V_GROQ__API_KEY` (under the settings' prefix) when no key
+        is set, as `GroqSTT`'s."""
         key = settings_key(settings)
+        tts = settings.tts
         return cls(
             api_key=key,
-            languages=settings.tts.languages,
+            languages=tts.languages if tts.provider == "groq" else default_voices("groq"),
             base_url=settings.groq.base_url,
             timeout_s=settings.tts.timeout_s,
             trim_silence=settings.tts.trim_silence,
