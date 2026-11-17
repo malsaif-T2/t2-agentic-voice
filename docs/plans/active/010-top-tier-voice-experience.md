@@ -1399,6 +1399,16 @@ Block 0.
   each item language (English, Saudi, MSA, mixed) the corpus WER no worse than `detected`'s by
   more than 0.5 points, and no item language worse on more items than better by the paired sign
   test by item at p < 0.05; that threshold becomes the flight app's, otherwise `detected` stands.
+- 2026-11-17: the owner's go on the whole-call study's quick wins ("Yes, start them"): the search
+  line said as the search starts (row 1.15), the warm-up on for the flight app (row 1.13), the
+  end-of-turn fallback at 1.8 s (row 1.11), Smart Turn's live time logged, and row 2.2 brought
+  forward; and on the streaming ones: "Do both the streaming ones. Leave the faster barge-in"
+  (Scribe v3 Live behind a probe first, row 5.1; ElevenLabs' socket for v4 Turbo, design 6.1).
+  The low-reasoning arm for the lean agent, registered before its run: `--effort low` against the
+  `medium` run at the same commit (9067b0b, f-dev-lean-3), both run F's lean outcome mode on dev;
+  low is kept for the flight app if no dev scenario that passed at medium fails at low, its
+  violations are zero in every play, and its mean seconds to a booking are no more than medium's;
+  otherwise medium stands (D-074).
 - 2026-11-17: the text-to-speech candidates for the owner's pick by ear (D-114, branch
   `plan-010-tts`): `tts.provider` takes `elevenlabs`, `groq` and `telnyx`, each speaking the
   provider's default voices with `tts.languages` unset. The owner picked ElevenLabs v4 Turbo in
