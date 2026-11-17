@@ -118,7 +118,7 @@ def instructions_for(
 
 
 def tools_for(
-    tools: Sequence[DeclaredTool], progress: Mapping[LanguageTag, Mapping[str, str]]
+    tools: Sequence[DeclaredTool], progress: Mapping[LanguageTag, Mapping[str, object]]
 ) -> tuple[DeclaredTool, ...]:
     """`tools` as a tuple, checked against the progress lines each of the agent's languages
     gives (`progress`, by tag): each tool's name once; its progress line, if any, in every

@@ -11,6 +11,8 @@
 - **The finish**, once the call's stream has ended: its timers and its recording finish first,
   then its traces end, its `CallReport` is written with no text of the call (report.py), and
   `CallEnded` goes out.
+- **A read-back's wait** (`waits`, read_back_wait.py): what the Pipecat side was told of a
+  read-back awaiting its answer, which call.py brings up to date after each step.
 """
 
 from __future__ import annotations
@@ -28,6 +30,7 @@ from t2_agentic_voice.voice.session.interrupter import Interrupter
 from t2_agentic_voice.voice.session.io import CallSetup, Commands
 from t2_agentic_voice.voice.session.limits import CallLimits, Limit
 from t2_agentic_voice.voice.session.read_back import Confirming
+from t2_agentic_voice.voice.session.read_back_wait import ReadBackWaits
 from t2_agentic_voice.voice.session.report import call_report, file_report
 from t2_agentic_voice.voice.session.speaker import Speaker
 from t2_agentic_voice.voice.session.talking import Talking
@@ -61,6 +64,7 @@ class CallLife:
         self._interrupter, self._talking = interrupter, talking
         self._guarded, self._sync = guarded, sync
         self.limits = CallLimits(setup, over=self.over, reached=self._reached)
+        self.waits = ReadBackWaits(setup, commands)  # a read-back's longer wait
         self.started_at: datetime = setup.clock.wall()
         self.ended_at: datetime = self.started_at
         self.ended: EndReason | None = None

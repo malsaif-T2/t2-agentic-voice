@@ -31,6 +31,7 @@ from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.conversation import TalkerTurn
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
+from t2_agentic_voice.domain.declared_phrases import wordings
 from t2_agentic_voice.domain.ports.chat_model import Usage
 from t2_agentic_voice.voice.session.call import CallSession
 
@@ -134,7 +135,12 @@ async def talked(
 def phrases(agent: VoiceAgent = AGENT) -> FakePhrases:
     """The phrase audio of `agent`'s calls: its fixed phrases and its progress lines."""
     found = FakePhrases.of(agent)
-    lines = {(text, each.tag) for each in agent.languages for text in each.progress.values()}
+    lines = {
+        (text, each.tag)
+        for each in agent.languages
+        for line in each.progress.values()
+        for text in wordings(line)
+    }
     found.declared |= lines
     return found
 

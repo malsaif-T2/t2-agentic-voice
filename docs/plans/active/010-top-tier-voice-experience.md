@@ -1425,6 +1425,13 @@ Block 0.
   counts only when the reply adds no new fact, a first clause alone under the near overlap is no
   repeat, and max_words counts the reply as written. Rescored offline, the same plays pass 18 of
   32 under the amended checks (the checks' change alone, not the agent's).
+- 2026-11-18: the whole-call quick wins built, checked and merged (D-118, D-119, D-120): the search
+  line said as the search starts in short rotating Najdi and English wordings, the warm-up on, the
+  fallback at 1.8 s for the scripted agent (the lean agent keeps 3 s until the owner rules on its
+  closing question), Smart Turn's time logged and on two threads (offline about 60 ms, so the live
+  232 ms was most likely a busy laptop), the held request at the detector's stop, and the early
+  start over a reply in progress. The wordings were rendered in the owner's voice for the owner to
+  pick; most run 0.8 to 1.4 s of speech.
 - 2026-11-17: the text-to-speech candidates for the owner's pick by ear (D-114, branch
   `plan-010-tts`): `tts.provider` takes `elevenlabs`, `groq` and `telnyx`, each speaking the
   provider's default voices with `tts.languages` unset. The owner picked ElevenLabs v4 Turbo in

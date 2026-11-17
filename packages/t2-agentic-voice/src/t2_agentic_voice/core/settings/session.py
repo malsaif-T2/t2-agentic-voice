@@ -6,6 +6,14 @@ agent did before the talker (plan 003, Q3). So no setting changes its meaning: u
 an echo agent's echo, and `echo` still runs the echo, now for any agent, an agent with
 instructions included (a team's first audio check). `talker` runs the talker, and is refused for
 an agent that declares no instructions (`mode_for`).
+
+`progress_beat_ms` is the silence after a tool's progress line, before the answer, counted from
+the end of the line's speech, its take's own silence after it cut. Unset by default: the take as
+it is, then the 400 ms beat around every fixed line said next to other speech (D-077), so a call
+sounds as it did until a measurement keeps a shorter one (GP-18; plan 010's 1.15 asks for 100).
+
+`early_over_reply` is off by default: a turn held while a reply to an earlier turn is still in
+progress starts no talker early (TD-117), as before, until a measurement keeps it (plan 010's 2.2).
 """
 
 from __future__ import annotations
@@ -31,6 +39,27 @@ class SessionSettings(Group):
             "What answers each turn: echo, which says back what it heard, or talker, which "
             "answers with the chat model and the agent's tools. Unset: the declaration's, "
             "talker for an agent that declares instructions and echo for one that does not."
+        ),
+    )
+    progress_beat_ms: int | None = Field(
+        default=None,
+        ge=0,
+        le=2000,
+        description=(
+            "The silence after a tool's progress line before the answer, in ms, counted from "
+            "the end of the line's speech: the take's own silence after it is cut first. "
+            "Unset: the take as it is, then 400 ms, the beat around every fixed line said next "
+            "to other speech."
+        ),
+    )
+
+    early_over_reply: bool = Field(
+        default=False,
+        description=(
+            "Whether a turn held while a reply to an earlier turn is still in progress (nothing "
+            "of it playing as the turn began) starts the talker early too: that reply is "
+            "stopped as the turn's held words come, as the turn's answer would stop it, so the "
+            "talker reads it as cut. Off: such a turn starts the talker once it has ended."
         ),
     )
 

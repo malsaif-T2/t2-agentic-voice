@@ -48,6 +48,7 @@ from flight_voice.airline.schedule import (
     window,
 )
 from flight_voice.airline.system import Airline, AirlineUnavailableError
+from flight_voice.persona import PROGRESS_AT_S
 from flight_voice.said import Tag
 from flight_voice.tools import cards
 from flight_voice.tools.listing import listable, listing, options
@@ -126,7 +127,12 @@ def search_flights(airline: Airline, trips: TripBook) -> Tool:
     """The search over `airline`, writing each call's draft in `trips` (the module's
     docstring)."""
 
-    @tool(name=SEARCH_FLIGHTS, description=DESCRIPTION, progress="searching")
+    @tool(
+        name=SEARCH_FLIGHTS,
+        description=DESCRIPTION,
+        progress="searching",
+        progress_after_s=PROGRESS_AT_S,
+    )
     async def search(
         ctx: CallContext,
         destination: Annotated[str, Field(min_length=1, max_length=40, description=_CITY)],

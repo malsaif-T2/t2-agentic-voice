@@ -100,5 +100,23 @@ class HangUp:
     reason: EndReason
 
 
-Command = ListenIn | HearOverlap | Speak | StopSpeaking | Send | HangUp
-COMMANDS: tuple[type[Command], ...] = (ListenIn, HearOverlap, Speak, StopSpeaking, Send, HangUp)
+@dataclass(frozen=True, kw_only=True)
+class ReadBackWait:
+    """Whether an action's read-back awaits the caller's answer (`waiting`), so a turn said from
+    now on ends at the fallback of `turns.read_back_silence_ms`, not `turns.max_silence_ms`
+    (voice/turn_hold.py), or no longer; given only when that setting is set, as the call starts
+    and ends confirming (read_back_wait.py)."""
+
+    waiting: bool
+
+
+Command = ListenIn | HearOverlap | Speak | StopSpeaking | Send | HangUp | ReadBackWait
+COMMANDS: tuple[type[Command], ...] = (
+    ListenIn,
+    HearOverlap,
+    Speak,
+    StopSpeaking,
+    Send,
+    HangUp,
+    ReadBackWait,
+)

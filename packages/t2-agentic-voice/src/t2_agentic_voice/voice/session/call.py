@@ -296,5 +296,5 @@ class CallSession:
             if self._talking is not None:  # a yes over a closing question first (D-116)
                 await self._interrupter.flush(now := self._setup.clock.now())
                 await self._talking.yes.flush(now)
-            confirming = self._confirming.active
+            confirming = await self._close.waits.tell(self._confirming.active)  # read_back_wait.py
             await self._speaker.show_state(awaited=self._turns.awaited, confirming=confirming)

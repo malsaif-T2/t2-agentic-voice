@@ -40,6 +40,7 @@ from typing import Literal
 from t2_agentic_voice.core.events import EndReason
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.domain.declaration import VoiceAgent
+from t2_agentic_voice.domain.declared_phrases import wordings
 from t2_agentic_voice.domain.fixed_phrases import fixed_phrases
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk
 from t2_agentic_voice.voice.protocol import SessionMessage
@@ -135,7 +136,8 @@ class TextPhrases:
 
     def __init__(self, agent: VoiceAgent) -> None:
         declared = {(phrase.text, phrase.language) for phrase in fixed_phrases(agent)}
-        declared |= {(t, each.tag) for each in agent.languages for t in each.progress.values()}
+        for each in agent.languages:  # each wording of each progress line
+            declared |= {(t, each.tag) for line in each.progress.values() for t in wordings(line)}
         self.declared = declared
 
     def audio(self, text: str, *, language: LanguageTag) -> AudioChunk:

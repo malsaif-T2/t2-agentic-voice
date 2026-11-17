@@ -141,7 +141,8 @@ def test_no_fixed_line_of_the_talker_holds_a_word_the_caller_commands_with() -> 
     lines = [
         (language, text)
         for language in talker.languages
-        for text in (language.greeting, *language.progress.values())
+        for line in (language.greeting, *language.progress.values())
+        for text in ((line,) if isinstance(line, str) else line)  # one text, or its wordings
     ]
     assert len(lines) == 4
     for language, text in lines:

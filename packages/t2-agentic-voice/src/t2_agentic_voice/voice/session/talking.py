@@ -39,24 +39,18 @@ voice/session/call.py.
   answering. Once the call has ended or is ending (its `ended` notice) nothing kept plays: the
   work is cancelled. A client's `stop` in the hold cancels the work too (`stopped`), and the
   turn is answered by nothing (`rolled_back`: the reply it began was stopped before any
-  played). While a reply to an earlier turn is in progress there is no early start: the talker
-  would read the call before that reply is stopped, and `answer` stops it first (TD-117).
-- **The kept reply** (plan 006, Q19). While a newer turn of the caller's is open, from its
-  `TurnOpened` until it is taken (`taken`: its own transcript answered, a command, or heard as
-  nothing), and is no overlap of a reply of the talker's (its speech began before any of that
-  reply played, or before the reply was opened), nothing more of that reply plays: what its
-  talker gives is kept, in order, as the early start keeps it (a clause asked for before plays
-  on), its Smart Turn hold included. Heard with words, the turn stops it, as above (`answer`, or
-  its early start's `release`); a stop or pause request said whole stops it (interrupter.py);
-  heard as nothing (an empty transcript, or the filter's text from silence) or failed, the turn
-  lets it go on: what was kept plays in order, each event guarded, and the rest as it comes.
-  Once its reply was stopped, or the call has ended or is ending, nothing kept plays. While
-  kept, the reply has no audio, so the client is shown `thinking`.
+  played). While a reply to an earlier turn is in progress there is no early start, since the
+  talker would read the call before `answer` stops that reply (TD-117), unless
+  `session.early_over_reply`: then the held words stop it first, as `answer` would, while the
+  call is not confirming, and the talker starts on the call as it then stands.
+- **The kept reply** (plan 006, Q19). While a newer turn of the caller's is open and not yet
+  taken, nothing more of a reply to an earlier turn plays, what its talker gives kept: kept_reply.py
+  (`KeptReplies`, the base of `Talking`).
 - **The progress line** (plan 006, Q27). A `ProgressDue` with an `after_s` waits, in the reply's
   scope, until that long after the caller stopped speaking, whether the search or the model holds
   the reply up by then, and is said only if no clause has been asked of the voice by then, the reply
   is not kept and no notice took its place; past that time it is said at once, and once a clause was
-  asked for never (talker_progress.py). With no `after_s` it is said as it comes.
+  asked for, or kept behind it, never (talker_progress.py). With no `after_s`, said as it comes.
 - **An answer to an action's read-back** (plan 007; yes_turns.py). While the call is confirming,
   a turn whose speech began once the read-back's summary played its last clause is the yes
   rule's, never the talker's, and starts no talker early (call.py); the talker answers it only
@@ -81,6 +75,7 @@ from t2_agentic_voice.core.events import TurnId
 from t2_agentic_voice.core.yes_inputs import HeardWords
 from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.io import CallSetup, Guarded
+from t2_agentic_voice.voice.session.kept_reply import KeptReplies
 from t2_agentic_voice.voice.session.playback import Reply
 from t2_agentic_voice.voice.session.read_back import Confirming
 from t2_agentic_voice.voice.session.report import TurnLog
@@ -93,7 +88,7 @@ from t2_agentic_voice.voice.session.turn_book import TurnBook
 from t2_agentic_voice.voice.session.yes_turns import Receipt, YesTurns
 
 
-class Talking:
+class Talking(KeptReplies):
     """One call's talker replies, played by `speaker` for the turns `turns` keeps, each event
     played as a step `guarded` runs, the client's state brought up to date by `sync`; `over`
     says whether the call has ended or is ending."""
@@ -116,6 +111,7 @@ class Talking:
         self._events, self._history = books.events, books.history
         self._guarded, self._sync, self._over = guarded, sync, over
         self._clock, self._confirming = setup.clock, confirming
+        self._over_reply = setup.settings.session.early_over_reply  # TD-117's early start
         self._player = TalkPlayer(setup, books.usage, turns, books.trace, confirming)
         self._progress = ProgressLines(setup, turns, self._player, guarded=guarded, sync=sync)
         self._runner = TalkRunner(
@@ -187,13 +183,17 @@ class Talking:
         hold runs: the talker starts on it, its events kept until the hold ends (the module's
         early start), for a turn said while the agent was silent, open, with words heard, that
         answers no read-back (the yes rule's: yes_turns.py), once the call goes on and no reply
-        to an earlier turn is in progress."""
+        to an earlier turn is in progress, or one is, stopped first (`session.early_over_reply`)."""
         if heard is None or self._over() or turn.overlap or turn.dropped or turn.closed:
             return
         if self.yes.takes(heard, turn) or turn.turn_id not in self._holding:
             return
-        if turn.turn_id in self._talks or self._earlier(turn.turn_id) is not None:
+        if turn.turn_id in self._talks:
             return
+        if self._earlier(turn.turn_id) is not None:
+            if not self._over_reply or self._confirming.active:
+                return
+            await self._stop_earlier(turn, self._clock.now())
         scope = CancelScope(name=f"held-{turn.turn_id}", clock=self._clock)
         talk = Talk(turn_id=turn.turn_id, words=heard.text, scope=scope, early=True)
         self._start(talk, self._turn(turn, heard))
@@ -216,39 +216,6 @@ class Talking:
         if not talk.kept_for:
             await self._runner.let_out(talk)
 
-    def opened(self, turn: TurnLog) -> None:
-        """The caller's turn opened, no overlap and not dropped: each reply of the talker's in
-        progress to an earlier turn, none of it played before the turn's speech began, is kept
-        behind it until it is taken (the module's kept reply)."""
-        if turn.overlap or turn.dropped:
-            return
-        self._open.add(turn.turn_id)
-        began, playback = turn.speech_at or 0.0, self._speaker.playback
-        for talk in self._talks.values():
-            reply = None if talk.reply is None else playback.reply(talk.reply.reply_id)
-            if reply is None or reply.ended_at is not None or talk.turn_id >= turn.turn_id:
-                continue
-            if reply.started_at is None or reply.started_at > began:
-                talk.kept_for.add(turn.turn_id)
-
-    async def taken(self, turn: TurnLog) -> None:
-        """`turn` was taken, its own transcript answered, a command or heard as nothing: each
-        reply kept behind it, and no other turn, plays what it kept, in order, and the rest as it
-        comes; nothing once that reply was stopped or the call has ended or is ending, its work
-        then cancelled (the module's kept reply)."""
-        self._open.discard(turn.turn_id)
-        for talk in list(self._talks.values()):
-            if turn.turn_id not in talk.kept_for:
-                continue
-            talk.kept_for.discard(turn.turn_id)
-            if talk.kept_for or talk.reply is None:
-                continue
-            reply = self._speaker.playback.reply(talk.reply.reply_id)
-            if self._over() or reply is None or reply.ended_at is not None:
-                await self._runner.cancel(talk)
-            else:
-                await self._runner.let_out(talk)
-
     async def stopped(self) -> None:
         """The client's `stop`: the work of every early start still held is cancelled, so
         nothing it kept plays, and its turn is answered by nothing (`answer`)."""
@@ -264,11 +231,6 @@ class Talking:
         for talk in [talk for talk in self._talks.values() if talk.held]:
             talk.kept_for.clear()
             await self._dropped(talk)
-
-    def _newer(self, turn_id: TurnId) -> set[TurnId]:
-        """The turns open, no overlap and not yet taken, newer than `turn_id`: a reply to it
-        opened now is kept behind them (the module's kept reply)."""
-        return {each for each in self._open if each > turn_id}
 
     def _turn(self, turn: TurnLog, heard: HeardWords) -> TalkerTurn:
         """The turn as the talker reads it: its words whole, the language they were heard in,

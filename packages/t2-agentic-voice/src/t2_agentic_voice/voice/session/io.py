@@ -111,7 +111,10 @@ items cited are plan 003's appendix, "Changes to the plan's interfaces".
   hold gives `HoldResumed`: the bridge cancels the `held` request (no `Transcribed` of it
   follows the `HoldResumed`), the session cancels what it started, and the turn goes on, its
   own request holding all of it. When no speech followed it, the turn's own `Transcribed`
-  reuses the `held` result, with no request of its own.
+  reuses the `held` result, with no request of its own. Under `turns.early_at_stop` the `held`
+  request goes at the detector's stop, so its `Transcribing` comes before `TurnHeld`; its
+  `Transcribed` still comes only after `TurnHeld`, and never when Smart Turn called the pause
+  unfinished (the bridge drops it, handing nothing more), the next pause sending again.
 
 What else a session needs (the agent and the call's language, the settings, the phrase cache,
 tracing, where its public events go, the call's talker) comes in its `CallSetup`, from voice's

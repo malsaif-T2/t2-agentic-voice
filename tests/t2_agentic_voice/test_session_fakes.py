@@ -25,6 +25,7 @@ from t2_agentic_voice.voice.session.commands import (
     HangUp,
     HearOverlap,
     ListenIn,
+    ReadBackWait,
     Send,
     Speak,
     StopSpeaking,
@@ -64,6 +65,7 @@ ONE_OF_EACH: list[Command] = [
     StopSpeaking(reply_id=1),
     Send(message=State(state="listening")),
     HangUp(reason="hangup"),
+    ReadBackWait(waiting=True),
 ]
 
 

@@ -54,6 +54,7 @@ from t2_agentic_voice.core.identity import Caller, Consent
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.tracing import Tracing
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
+from t2_agentic_voice.domain.declared_phrases import wordings
 from t2_agentic_voice.domain.ports.chat_model import ChatModel
 from t2_agentic_voice.domain.ports.outbox import Outbox
 from t2_agentic_voice.domain.ports.speech_to_text import AudioClip, SpeechToText
@@ -156,7 +157,7 @@ class AudioCall:
         """Start the calls' runtime once, before the first clip: the speech detector's and the
         turn analyzer's models warmed, and the agent's progress lines said, one request each."""
         for language in (self.agent or _AGENT).languages:
-            for line in language.progress.values():
+            for line in (t for each in language.progress.values() for t in wordings(each)):
                 key = (line, language.tag)
                 self._phrases.lines[key] = await self._said(line, language.tag)
         agent = self.agent or _AGENT
@@ -219,7 +220,12 @@ class AudioCall:
             clip, reply=greeting, language=language, lead_s=lead_s, tail_s=tail_s
         )
         agent = self.agent or _AGENT
-        lines = frozenset(t for each in agent.languages for t in each.progress.values())
+        lines = frozenset(
+            text
+            for each in agent.languages
+            for line in each.progress.values()
+            for text in wordings(line)
+        )
         return turn_replay_of(fed, self.emitted, progress=lines, speech_end_ms=speech_end_ms)
 
     async def _fed(

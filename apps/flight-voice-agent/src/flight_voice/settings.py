@@ -35,6 +35,10 @@ default (persona.py's `Names`).
   "by_register"`, `SPOKEN_NUMBERS`, D-107) unless the environment sets it: "14:00" is said
   «ثنتين الظهر» to a Saudi caller and "two in the afternoon" in English, never digit by digit,
   since the lean agent writes times and fares in digits;
+- **turns on plan 010's first changes to how soon a call answers** (turned_on.py), each unless
+  the environment sets it: the warm-up, Smart Turn on two threads, 0.1 s of silence after a
+  progress line's speech, the early start from the detector's stop and over a reply, and for the
+  scripted agent alone a 1.8 s fallback end of a turn (3 s while a read-back awaits its answer);
 - **under `env` dev alone**, names the demo traveler the test console's dev caller, so a call the
   console starts is the traveler's, as a page's call is;
 - **refuses a name that breaks the lines' rule** (persona.py's `breaking`), naming its setting.
@@ -71,6 +75,7 @@ from flight_voice.airline.system import SLOW_S, ProfileMode, SearchMode, live_to
 from flight_voice.booking.lines import SEND_WORDS
 from flight_voice.persona import Names, breaking
 from flight_voice.traveler import demo_caller
+from flight_voice.turned_on import turned_on
 
 # The app's prefix: one the library's settings never use.
 PREFIX: Final = "FLIGHT_VOICE_"
@@ -243,8 +248,9 @@ def for_the_app(voice: VoiceSettings, *, agent: AgentKind = "scripted") -> Voice
     a day `ACTIONS_PER_DAY`, the guard's `GUARD_ON` on, its most requests a turn
     `REQUESTS_PER_TURN`, for the scripted agent `YES_OVER_READ_BACK` on and for the lean one
     (which has no read-back) `YES_OVER_QUESTION`, with the booking's `SEND_WORDS` its `words.send`,
-    numbers said `SPOKEN_NUMBERS`, each unless set, and under `env` dev alone the demo traveler the
-    test console's dev caller; every other setting as it was."""
+    numbers said `SPOKEN_NUMBERS`, turned_on.py's `TURNED_ON` (and its `READ_BACK_TURNS` for the
+    scripted agent), each unless set, and under `env` dev alone the demo traveler the test
+    console's dev caller; every other setting as it was."""
     storage = StorageSettings.model_validate(
         voice.storage.model_dump() | {"var_dir": voice.storage.var_dir / APP_FOLDER}
     )
@@ -270,6 +276,7 @@ def for_the_app(voice: VoiceSettings, *, agent: AgentKind = "scripted") -> Voice
         )
     if "spoken_numbers" not in voice.tts.model_fields_set:
         update["tts"] = voice.tts.model_copy(update={"spoken_numbers": SPOKEN_NUMBERS})
+    update |= turned_on(voice, read_back=agent == "scripted")
     if voice.env == "dev":
         update["server"] = ServerSettings.model_validate(
             voice.server.model_dump() | {"dev_caller": demo_caller()}

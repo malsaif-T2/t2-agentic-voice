@@ -49,6 +49,7 @@ from flight_voice.lean.results import (
     route_said,
 )
 from flight_voice.lean.span import MOST_DAYS, DaySpan, span_search
+from flight_voice.persona import PROGRESS_AT_S
 from flight_voice.said import Tag, register
 from flight_voice.tools import cards
 from flight_voice.tools.results import SEARCH_FAILED
@@ -132,7 +133,12 @@ def find_flights(airline: Airline, trips: TripBook, check: BookingCheck) -> Tool
     """The search over `airline`, writing each call's trip in `trips` and marking it in `check`
     (the module's docstring)."""
 
-    @tool(name=FIND_FLIGHTS, description=DESCRIPTION, progress="searching")
+    @tool(
+        name=FIND_FLIGHTS,
+        description=DESCRIPTION,
+        progress="searching",
+        progress_after_s=PROGRESS_AT_S,
+    )
     async def find(
         ctx: CallContext,
         destination: Annotated[str, Field(min_length=1, max_length=40, description=_CITY)],

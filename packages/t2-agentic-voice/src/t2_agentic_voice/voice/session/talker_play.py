@@ -10,12 +10,14 @@ of the talker's as a `Talk` (each reply's run is talk_runner.py's `TalkRunner`).
   model request's answer (`ModelReplied`'s count and labels) is added to its turn's log, for the
   turn's span, and logged by its count and labels alone. Whether the turn's first model request
   went out on a kept-alive connection (`ModelReplied.warm_connection`) is kept on its turn's log,
-  for its record in the call's report and its span.
+  for its record in the call's report and its span. A progress line with several wordings
+  (`Language.progress`) is said in one of them, never the one the call said last for its key.
 """
 
 from __future__ import annotations
 
 import asyncio
+import secrets
 from dataclasses import dataclass, field
 
 from t2_agentic_voice.agent.talker import (
@@ -36,6 +38,7 @@ from t2_agentic_voice.core.events import GuardBlocked, ToolFinished, ToolStarted
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.tracing_tts import CallTrace
+from t2_agentic_voice.domain.declared_phrases import wordings
 from t2_agentic_voice.domain.text.scripts import MAX_LABELS
 from t2_agentic_voice.voice.session.io import CallSetup
 from t2_agentic_voice.voice.session.language_moves import tool_moved
@@ -97,6 +100,7 @@ class TalkPlayer:
         self._setup, self._usage, self._turns, self._trace = setup, usage, turns, trace
         self._confirming = confirming
         self._arguments: dict[str, str] = {}  # each tool call's under way, for its end's event
+        self._last_line: dict[str, str] = {}  # the wording of each progress line said last
 
     async def tell(self, talk: Talk, reply: OpenReply, at: float) -> None:
         """The caller told the reply failed, once a reply, in its language (its last clause's,
@@ -156,7 +160,8 @@ class TalkPlayer:
             case ProgressDue(key=key, language=tag):
                 progress = language_of(self._setup, tag).progress.get(key)
                 if progress is not None:
-                    await reply.add_phrase(progress, language=tag, at=at, progress=True)
+                    line = self._wording(key, wordings(progress))
+                    await reply.add_phrase(line, language=tag, at=at, progress=True)
             case ClauseBlocked(language=tag, reason=reason):
                 emit(GuardBlocked(call_id=call_id, turn_id=turn_id, at=wall, reason=reason))
                 await self._told(talk, reply, tag, at)
@@ -182,6 +187,13 @@ class TalkPlayer:
                 if not talk.said:  # an empty answer, or one cut before a word: never silence
                     await self.tell(talk, reply, at)
                 await reply.finish(at)
+
+    def _wording(self, key: str, said: tuple[str, ...]) -> str:
+        """One of the wordings `said` of the progress line `key`, at random, but never the one
+        the call said last for it while it has another."""
+        fresh = [each for each in said if each != self._last_line.get(key)] or list(said)
+        line = self._last_line[key] = secrets.choice(fresh)
+        return line
 
     def _stray(self, log: TurnLog, replied: ModelReplied) -> None:
         """What the stray-script filter took out of a model request's answer, added to its
