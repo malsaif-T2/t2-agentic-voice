@@ -1432,6 +1432,12 @@ Block 0.
   232 ms was most likely a busy laptop), the held request at the detector's stop, and the early
   start over a reply in progress. The wordings were rendered in the owner's voice for the owner to
   pick; most run 0.8 to 1.4 s of speech.
+- 2026-11-18: the low-reasoning arm read by its registered rule: f-dev-lean-low-1 (gpt-oss-120b at
+  low, 9067b0b) passed 11 of 32 with 17 violations, against f-dev-lean-3's 13 of 32 with none at
+  medium; violations are not zero, so low is not kept and medium stands (D-074). Scribe v3 Live's
+  probe smoke (10 dev clips, $0.008): commit to final p50 263 / p95 435 ms against batch's 664 /
+  969 ms; English 0 % WER both ways, Arabic 13.3 % against 10.0 % (one word on one two-word MSA
+  reply); the port is built only if the full dev probe, a timing run, clears the bar.
 - 2026-11-17: the text-to-speech candidates for the owner's pick by ear (D-114, branch
   `plan-010-tts`): `tts.provider` takes `elevenlabs`, `groq` and `telnyx`, each speaking the
   provider's default voices with `tts.languages` unset. The owner picked ElevenLabs v4 Turbo in
