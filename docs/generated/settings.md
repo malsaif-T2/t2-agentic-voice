@@ -190,10 +190,13 @@ Turn-taking: the speech detector (Silero VAD) and the end-of-turn model (Smart T
 | `T2V_TURNS__SMART_TURN` | true or false | `true` | — | Whether Smart Turn decides, at each pause, if the caller has finished; off, every pause the detector hears ends the turn. |
 | `T2V_TURNS__SMART_TURN_THRESHOLD` | number | `0.5` | — | How sure Smart Turn must be that the caller has finished, from 0 to 1: a pause ends the turn when its probability is above this. 0.5, Smart Turn's own, leaves a turn's end as it was. |
 | `T2V_TURNS__COMPLETE_HOLD_MS` | integer | `600` | milliseconds | How long a turn Smart Turn judged finished waits before it ends: speech that resumes within it cancels the end, and the turn goes on. 600 by plan 005's registered E (its arm Ec, the owner's ruling), which changes only on another registered measurement (GP-18); 0 ends the turn at Smart Turn's verdict. The speech detector's pause, which an interruption waits on, is never delayed. |
+| `T2V_TURNS__EARLY_AT_STOP` | true or false | `false` | — | Whether, in a call with a talker, a turn's speech so far goes to speech-to-text as the speech detector hears it stop, Smart Turn's time before its verdict: kept only when Smart Turn calls the turn finished, dropped when it calls the pause unfinished or the caller speaks again, the next pause sending again. Needs complete_hold_ms above 0. Off: the request goes at Smart Turn's verdict. |
 | `T2V_TURNS__SMART_TURN_STOP_MS` | integer | `3000` | milliseconds | The silence after which Smart Turn ends the turn whatever it heard. |
 | `T2V_TURNS__SMART_TURN_PRE_SPEECH_MS` | integer | `500` | milliseconds | How much audio before the speech started Smart Turn hears with it. |
+| `T2V_TURNS__SMART_TURN_THREADS` | integer | `1` | — | How many CPU threads Smart Turn's model runs on at each pause: more judge sooner on a laptop with cores to spare, the same verdicts. |
 | `T2V_TURNS__SMART_TURN_MAX_DURATION_S` | number | `8` | seconds | The most audio of a turn Smart Turn hears, its latest part. |
 | `T2V_TURNS__MAX_SILENCE_MS` | integer | `3000` | milliseconds | The fallback end of a turn: a silence this long ends it, whatever decides. |
+| `T2V_TURNS__READ_BACK_SILENCE_MS` | integer, or unset | unset | milliseconds | The fallback end of a turn said while an action's read-back awaits its answer, in place of max_silence_ms, so a pause after a yes ("yes, but change ...") is not taken for its end; Smart Turn's own smart_turn_stop_ms still ends it, and it needs complete_hold_ms above 0. Unset: max_silence_ms for every turn. |
 
 ## `interruptions`
 
@@ -249,6 +252,8 @@ The voice session: what answers the caller.
 | Variable | Type | Default | Unit | Description |
 | --- | --- | --- | --- | --- |
 | `T2V_SESSION__MODE` | one of echo, talker, or unset | unset | — | What answers each turn: echo, which says back what it heard, or talker, which answers with the chat model and the agent's tools. Unset: the declaration's, talker for an agent that declares instructions and echo for one that does not. |
+| `T2V_SESSION__PROGRESS_BEAT_MS` | integer, or unset | unset | milliseconds | The silence after a tool's progress line before the answer, in ms, counted from the end of the line's speech: the take's own silence after it is cut first. Unset: the take as it is, then 400 ms, the beat around every fixed line said next to other speech. |
+| `T2V_SESSION__EARLY_OVER_REPLY` | true or false | `false` | — | Whether a turn held while a reply to an earlier turn is still in progress (nothing of it playing as the turn began) starts the talker early too: that reply is stopped as the turn's held words come, as the turn's answer would stop it, so the talker reads it as cut. Off: such a turn starts the talker once it has ended. |
 
 ## `server`
 

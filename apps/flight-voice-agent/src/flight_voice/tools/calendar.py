@@ -25,6 +25,7 @@ from flight_voice.airline.dates import DateProblem, DateSpec, resolve_departure
 from flight_voice.airline.fares import FareDay
 from flight_voice.airline.schedule import CABINS, Cabin, flights, route_served, window
 from flight_voice.airline.system import Airline, AirlineUnavailableError
+from flight_voice.persona import PROGRESS_AT_S
 from flight_voice.said import Tag, arabic, register, words
 from flight_voice.tools.cards import day_title, money, route_title
 from flight_voice.tools.results import (
@@ -133,7 +134,12 @@ def fare_calendar(airline: Airline, trips: TripBook) -> Tool:
     """The fare calendar over `airline`, in the cabin of the call's draft in `trips` when the
     talker names none (the module's docstring)."""
 
-    @tool(name=FARE_CALENDAR, description=DESCRIPTION, progress="fares")
+    @tool(
+        name=FARE_CALENDAR,
+        description=DESCRIPTION,
+        progress="fares",
+        progress_after_s=PROGRESS_AT_S,
+    )
     async def find(
         ctx: CallContext,
         destination: Annotated[str, Field(min_length=1, max_length=40, description=_CITY)],

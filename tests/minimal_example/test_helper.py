@@ -112,6 +112,9 @@ def test_no_fixed_line_of_the_helper_holds_a_word_the_caller_commands_with() -> 
     """Its echo, coming back through the speakers while the helper says it, could otherwise
     stop the helper or make it repeat."""
     for language in helper.languages:
-        for line in (language.greeting, *language.progress.values()):
+        lines = [language.greeting]
+        for progress in language.progress.values():  # one text, or its wordings
+            lines += [progress] if isinstance(progress, str) else progress
+        for line in lines:
             assert _held(line, language.primary) == [], line
     assert _held("One moment, okay?", "en") == ["one moment", "okay"]  # the check finds them

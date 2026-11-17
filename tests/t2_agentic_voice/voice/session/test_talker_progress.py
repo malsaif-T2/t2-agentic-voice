@@ -1,6 +1,7 @@
 """The progress line in the call (voice/session/talking.py's progress line; plan 006, Q27): said
 `after_s` after the caller stopped speaking if no answer has begun, whatever the reply is waiting
-on by then, and never once one has. The fake talker is the tests' own (talker_support.py)."""
+on by then, and never once one has, nor in front of an answer the early start's hold kept behind
+it (talker_progress.py). The fake talker is the tests' own (talker_support.py)."""
 
 from __future__ import annotations
 
@@ -18,6 +19,7 @@ from t2_agentic_voice.core.conversation import TalkerTurn
 from t2_agentic_voice.voice.session.call import CallSession
 
 from tests.t2_agentic_voice.session_fakes import FakeSessionIO
+from tests.t2_agentic_voice.voice.session.overlap_support import two_step
 from tests.t2_agentic_voice.voice.session.session_support import greeted, play, report, speaks
 from tests.t2_agentic_voice.voice.session.talker_support import (
     AGENT,
@@ -195,6 +197,65 @@ def test_a_reply_kept_behind_a_newer_turn_says_no_line(settings: VoiceSettings) 
         await io.turn_opened(1)
         await _moved(io, due + 0.1)
         assert _said(io) == []
+        await _end(io)
+
+    asyncio.run(drive())
+
+
+# A line said as its search starts (plan 010's 1.15): due almost at once.
+AT_ONCE = ProgressDue(tool="search_help", key="looking", language="en", after_s=0.1)
+
+
+async def _held_then_closed(io: FakeSessionIO) -> None:
+    """Turn 0 said; Smart Turn calls it complete, its `held` transcript starts the talker in the
+    hold, and the hold ends 0.6 s on (its `TurnClosed`), its own transcript reusing that one."""
+    await greeted(io)
+    await io.turn_opened(0)
+    await io.clock.advance(1.0)
+    await io.turn_held(0)
+    await io.transcribing(0, part="held")
+    await _moved(io, 0.3)
+    await io.transcribed(0, ASKED, language="en", part="held")
+    await _moved(io, 0.3)
+    await io.turn_closed(0)
+    await io.transcribed(0, ASKED, language="en")
+    await settle()
+
+
+def test_a_line_the_hold_kept_with_its_answer_behind_it_is_not_said(
+    settings: VoiceSettings,
+) -> None:
+    """The search landed and the answer's first clause was written before the hold ended: the
+    answer plays at once as the hold ends, never behind the line."""
+
+    def script(turn: TalkerTurn) -> list[Step]:
+        return [AT_ONCE, *answer(FOUND)]
+
+    io, _ = _call(two_step(settings), script)
+
+    async def drive() -> None:
+        await _held_then_closed(io)
+        assert _said(io) == [FOUND]
+        await play(io, 1)
+        await _end(io)
+
+    asyncio.run(drive())
+
+
+def test_a_line_the_hold_kept_with_no_answer_yet_is_said_as_the_hold_ends(
+    settings: VoiceSettings,
+) -> None:
+    def script(turn: TalkerTurn) -> list[Step]:
+        return [AT_ONCE, Work(2.0), *answer(FOUND)]
+
+    io, _ = _call(two_step(settings), script)
+
+    async def drive() -> None:
+        await _held_then_closed(io)
+        assert _said(io) == [PROGRESS["en"]]
+        await _moved(io, 2.0)
+        assert _said(io) == [PROGRESS["en"], FOUND]
+        await play(io, 1)
         await _end(io)
 
     asyncio.run(drive())

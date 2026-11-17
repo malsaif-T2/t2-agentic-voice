@@ -4,6 +4,7 @@ turn processors with Pipecat's interruptions off."""
 from __future__ import annotations
 
 import asyncio
+import logging
 import sys
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
@@ -76,6 +77,11 @@ def test_silero_and_smart_turn_load_on_the_cpu_with_no_torch() -> None:
     assert type(analyzer).__mro__[1].__name__ == "LocalSmartTurnAnalyzerV3"
     assert analyzer.params.model_dump()["stop_secs"] == 2.5
     assert "onnxruntime" in sys.modules and "torch" not in sys.modules
+    for threads in (1, 2):  # `turns.smart_turn_threads`, one by default as Pipecat's own
+        made = turn_analyzer(TurnSettings(smart_turn_threads=threads))
+        options = made._session.get_session_options()  # type: ignore[attr-defined]
+        assert options.intra_op_num_threads == threads
+    assert TurnSettings().smart_turn_threads == 1
 
 
 class _Said:
@@ -170,3 +176,31 @@ def test_smart_turn_keeps_the_turns_audio_through_a_hold_and_drops_it_at_the_tur
             await cleanup()
 
     asyncio.run(run())
+
+
+def test_each_judgement_the_model_makes_is_logged_with_its_times_and_numbers_alone(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """smart_turn.py's `smart_turn_judged`: the verdict, the model's own time as Pipecat
+    measures it, and where the rest of the judgement's time went; nothing for a judgement in
+    which no model ran (an empty buffer)."""
+    from t2_agentic_voice.core.logging import FIELDS
+
+    caplog.set_level(logging.INFO, logger="t2_agentic_voice")
+    analyzer = turn_analyzer(TurnSettings(complete_hold_ms=0))
+
+    async def run() -> None:
+        assert await _decide(analyzer, _Model(0.8)) == ("COMPLETE", 0.8)
+        await analyzer.analyze_end_of_turn()  # with no hold the verdict cleared its buffer
+        cleanup: Callable[[], Awaitable[None]] = analyzer.cleanup
+        await cleanup()
+
+    asyncio.run(run())
+    (judged,) = [r for r in caplog.records if r.getMessage() == "smart_turn_judged"]
+    fields = getattr(judged, FIELDS)
+    times = ("model_ms", "wait_ms", "join_ms", "back_ms", "total_ms")
+    assert set(fields) == {"complete", "probability", "audio_s", *times}
+    assert (fields["complete"], fields["probability"], fields["audio_s"]) == (True, 0.8, 1.0)
+    assert all(fields[name] >= 0 for name in ("model_ms", "wait_ms", "back_ms"))
+    parts = sum(fields[name] for name in times[:-1])
+    assert abs(parts - fields["total_ms"]) <= 0.5

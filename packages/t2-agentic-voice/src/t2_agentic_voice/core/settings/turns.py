@@ -5,8 +5,12 @@ The defaults are the starting values of plan 003's decision log: Silero's `VADPa
 (3 s, 500 ms of speech before, 8 s at most, and its 0.5 threshold), with the same 3 s as the
 fallback end of a turn; and one tuned, a hold of 600 ms after Smart Turn's "complete" (plan
 005's E, its arm Ec, kept by the owner's ruling and confirmed on held-out; voice/turn_hold.py).
-Each move of a default is a behaviour change, made only on a registered measurement (the
-design's 5.4; GP-18).
+`read_back_silence_ms` is unset, so every turn's fallback end is `max_silence_ms` (plan 010's
+1.11 asks for 1,800 ms with today's 3 s kept while a read-back awaits its answer, Q9), and Smart
+Turn's model runs on one thread (`smart_turn_threads`), as it always has. `early_at_stop` is off,
+so a talker call's held request goes at Smart Turn's verdict, as it always has (plan 010's 2.2
+sends it at the detector's stop). Each move of a default is a behaviour change, made only on a
+registered measurement (the design's 5.4; GP-18).
 """
 
 from __future__ import annotations
@@ -75,6 +79,16 @@ class TurnSettings(Group):
             "speech detector's pause, which an interruption waits on, is never delayed."
         ),
     )
+    early_at_stop: bool = Field(
+        default=False,
+        description=(
+            "Whether, in a call with a talker, a turn's speech so far goes to speech-to-text as "
+            "the speech detector hears it stop, Smart Turn's time before its verdict: kept only "
+            "when Smart Turn calls the turn finished, dropped when it calls the pause unfinished "
+            "or the caller speaks again, the next pause sending again. Needs complete_hold_ms "
+            "above 0. Off: the request goes at Smart Turn's verdict."
+        ),
+    )
     smart_turn_stop_ms: int = Field(
         default=3000,
         gt=0,
@@ -84,6 +98,15 @@ class TurnSettings(Group):
         default=500,
         ge=0,
         description="How much audio before the speech started Smart Turn hears with it.",
+    )
+    smart_turn_threads: int = Field(
+        default=1,
+        ge=1,
+        le=4,
+        description=(
+            "How many CPU threads Smart Turn's model runs on at each pause: more judge sooner "
+            "on a laptop with cores to spare, the same verdicts."
+        ),
     )
     smart_turn_max_duration_s: float = Field(
         default=8.0,
@@ -95,4 +118,14 @@ class TurnSettings(Group):
         default=3000,
         gt=0,
         description="The fallback end of a turn: a silence this long ends it, whatever decides.",
+    )
+    read_back_silence_ms: int | None = Field(
+        default=None,
+        gt=0,
+        description=(
+            "The fallback end of a turn said while an action's read-back awaits its answer, in "
+            'place of max_silence_ms, so a pause after a yes ("yes, but change ...") is not '
+            "taken for its end; Smart Turn's own smart_turn_stop_ms still ends it, and it needs "
+            "complete_hold_ms above 0. Unset: max_silence_ms for every turn."
+        ),
     )

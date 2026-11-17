@@ -307,10 +307,13 @@ def test_the_turn_tts_and_limit_defaults_are_the_plans() -> None:
         "smart_turn": True,
         "smart_turn_threshold": 0.5,
         "complete_hold_ms": 600,
+        "early_at_stop": False,  # the held request at Smart Turn's verdict (plan 010's 2.2)
         "smart_turn_stop_ms": 3000,
         "smart_turn_pre_speech_ms": 500,
+        "smart_turn_threads": 1,
         "smart_turn_max_duration_s": 8.0,
         "max_silence_ms": 3000,
+        "read_back_silence_ms": None,
     }
     voices = {tag: (v.model, v.voice) for tag, v in settings.tts.languages.items()}
     assert settings.tts.provider == "elevenlabs"  # the owner's pick (D-114); Groq the fallback
@@ -320,6 +323,8 @@ def test_the_turn_tts_and_limit_defaults_are_the_plans() -> None:
     assert (settings.tts.cache_phrases, settings.tts.trim_silence) == (True, False)
     assert (settings.limits.max_call_s, settings.limits.idle_s) == (600.0, 120.0)
     assert (settings.session.mode, settings.logging.pipecat) == (None, "off")  # the declaration's
+    assert settings.session.progress_beat_ms is None  # D-077's 400 ms beat after a progress line
+    assert not settings.session.early_over_reply  # no early start over a reply (TD-117)
     assert (settings.privacy.record_audio, settings.privacy.consent_version) == (False, None)
     assert (settings.server.turn_ttl_s, settings.server.forwarded_allow_ips) == (3600, ())
     assert (settings.join.ttl_s, settings.join.max_clock_skew_s) == (60, 30)

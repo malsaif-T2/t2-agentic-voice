@@ -2,8 +2,10 @@
 voice/session/talking.py: a `ProgressDue` with an `after_s` waits, in the reply's scope, until
 that long after the caller stopped speaking, and is said then only if no clause has been asked of
 the voice by then, the reply is not kept and no notice took its place; past that time it is said
-at once, and once a clause was asked for never. Apart from talking.py so each stays within the
-size a module may have (ARCH-SIZE).
+at once, and once a clause was asked for never, nor when its answer is already given behind it
+(a clause or a read-back the early start's hold or a kept reply kept after it, now let out:
+the answer then plays at once, not behind the line). Apart from talking.py so each stays within
+the size a module may have (ARCH-SIZE).
 """
 
 from __future__ import annotations
@@ -11,7 +13,12 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from functools import partial
 
-from t2_agentic_voice.agent.talker import ProgressDue, TalkerEvent
+from t2_agentic_voice.agent.talker import (
+    ProgressDue,
+    ReadBackRequested,
+    SpokenClause,
+    TalkerEvent,
+)
 from t2_agentic_voice.voice.session.io import CallSetup, Guarded
 from t2_agentic_voice.voice.session.talker_play import Talk, TalkPlayer
 from t2_agentic_voice.voice.session.turn_book import TurnBook
@@ -36,11 +43,11 @@ class ProgressLines:
 
     def now(self, talk: Talk, event: TalkerEvent) -> bool:
         """Whether `event` plays now: any but a progress line with a time set, which is said
-        now only past its time with no answer begun; before its time it waits (the module's
-        docstring)."""
+        now only past its time with no answer begun or given behind it; before its time it
+        waits (the module's docstring)."""
         if not isinstance(event, ProgressDue) or event.after_s <= 0:
             return True
-        if talk.said or talk.told:
+        if talk.said or talk.told or _answer_behind(talk):
             return False
         now = self._clock.now()
         spoken = self._turns.turn(talk.turn_id).spoken_at
@@ -62,3 +69,9 @@ class ProgressLines:
         if not (talk.said or talk.told or talk.held):
             await self._player.play(talk, event, self._clock.now())
             await self._sync()
+
+
+def _answer_behind(talk: Talk) -> bool:
+    """Whether `talk` already holds its answer behind the line: a clause or a read-back kept
+    after it, still to be let out (the line is taken from `pending` before it plays)."""
+    return any(isinstance(event, SpokenClause | ReadBackRequested) for event, _ in talk.pending)

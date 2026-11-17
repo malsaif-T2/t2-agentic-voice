@@ -25,6 +25,12 @@ the turn's audio through the hold (smart_turn.py's `keep_turn`), so its next jud
 whole turn, not only the speech after the pause. An upgrade of Pipecat must check those paths
 (the tests drive the real strategy through the turn processor).
 
+While a read-back awaits its answer (`ReadBackWait`, voice/session/read_back_wait.py), a pause
+Smart Turn judges unfinished ends the turn at `LongerWait.seconds` (`turns.read_back_silence_ms`)
+after the detector's stop rather than at the controller's stop timeout, which waits while that
+end is due (`decision_scheduled`); speech that starts again drops it, as the turn's end does, and
+Smart Turn's own silence fallback still ends the turn. With no `LongerWait`, nothing changes.
+
 The early start (plan 006, Q2) adds two signals, each pushed downstream from the turn processor
 as a frame of its own, behind the detector's frame that caused it: the hold began (`hold_began`,
 a `TurnHeldFrame`), so the speech-to-text bridge sends the turn's speech so far at once and the
@@ -33,12 +39,15 @@ within it (`hold_resumed`, a `HoldResumedFrame`, given only when speech dropped 
 work is cancelled and what follows joins the turn. The bridge hands each to the session as its
 event (session_events.py's `TurnHeld` and `HoldResumed`), in a call with a talker only
 (stt_bridge.py's `early`). A hold the turn's end dropped otherwise (the stop timeout) or the
-cleanup signals nothing.
+cleanup signals nothing. With `tell_unfinished` (`turns.early_at_stop`, plan 010's 2.2, where the
+bridge sends the held request at the detector's stop), a pause Smart Turn judges unfinished is
+signalled too (`TurnUnfinishedFrame`, behind the detector's stop), so that request is dropped.
 """
 
 from __future__ import annotations
 
 import asyncio
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -61,34 +70,75 @@ class HoldResumedFrame(SystemFrame):
     """The caller spoke again within the open turn's hold, which was dropped."""
 
 
+@dataclass
+class TurnUnfinishedFrame(SystemFrame):
+    """Smart Turn called a pause of the open turn unfinished (pushed only with
+    `tell_unfinished`)."""
+
+
+@dataclass
+class LongerWait:
+    """The fallback end of a turn while a read-back awaits its answer: `seconds` after the
+    detector's stop, while `on` (the session's `ReadBackWait`)."""
+
+    seconds: float
+    on: bool = False
+
+
 # Pipecat 1.15.0 leaves the base's `__init_subclass__`, `handle_user_turn_stopped` and `cleanup`
 # unannotated, so subclassing it and calling them are untyped calls to mypy (the ignores below).
 class HeldTurnStop(TurnAnalyzerUserTurnStopStrategy):  # type: ignore[no-untyped-call]
     """Pipecat's stop strategy on a turn analyzer, its verdict that a pause ends the turn held
-    `hold_s` seconds (above 0) and dropped when the caller speaks again within them; the other
-    arguments are Pipecat's."""
+    `hold_s` seconds (above 0) and dropped when the caller speaks again within them, an
+    unfinished pause ended at `longer`'s seconds while it is on, and signalled with
+    `tell_unfinished` (the module's docstring); the other arguments are Pipecat's."""
 
-    def __init__(self, *, hold_s: float, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *,
+        hold_s: float,
+        longer: LongerWait | None = None,
+        tell_unfinished: bool = False,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(**kwargs)
-        self.hold_s = hold_s
+        self.hold_s, self.longer, self.tell_unfinished = hold_s, longer, tell_unfinished
         self._at_stop = False  # handling the detector's stop, where the verdict is reported
         self._hold: asyncio.Task[None] | None = None
+        self._late: asyncio.Task[None] | None = None  # a read-back's answer's longer end
 
     @property
     def decision_scheduled(self) -> bool:
-        """Whether a held end is due, which the controller's stop timeout waits for."""
-        return self._hold is not None
+        """Whether a held or a longer end is due, which the controller's stop timeout waits
+        for."""
+        return self._hold is not None or self._late is not None
 
     async def process_frame(self, frame: Frame) -> None:
-        """Pipecat's handling of `frame`; speech that starts again drops a held end first."""
-        if isinstance(frame, VADUserStartedSpeakingFrame) and self._hold is not None:
-            await self._drop_hold()
-            await self.hold_resumed()
+        """Pipecat's handling of `frame`; speech that starts again drops a held end and a
+        longer one first; a pause judged unfinished is signalled with `tell_unfinished`, and
+        while `longer` is on ends at its time."""
+        if isinstance(frame, VADUserStartedSpeakingFrame):
+            await self._drop_late()
+            if self._hold is not None:
+                await self._drop_hold()
+                await self.hold_resumed()
+        stopped_at = time.monotonic()
         self._at_stop = isinstance(frame, VADUserStoppedSpeakingFrame)
         try:
             await super().process_frame(frame)
         finally:
             self._at_stop = False
+        if not isinstance(frame, VADUserStoppedSpeakingFrame):
+            return
+        longer = self.longer
+        unfinished = self._hold is None and self._late is None
+        if self.tell_unfinished and self._hold is None:
+            await self.push_frame(TurnUnfinishedFrame())
+        if longer and longer.on and unfinished:
+            left = longer.seconds - (time.monotonic() - stopped_at)
+            self._late = self.task_manager.create_task(
+                self._end_late(left), f"{self}::read_back_wait"
+            )
 
     async def report_user_turn_stopped(
         self, *, enable_user_speaking_frames: bool | None = None, confirms_speculation: bool = False
@@ -121,11 +171,13 @@ class HeldTurnStop(TurnAnalyzerUserTurnStopStrategy):  # type: ignore[no-untyped
     async def handle_user_turn_stopped(self) -> None:
         """A turn ended otherwise (the stop timeout, say) holds no end of its own any more."""
         await self._drop_hold()
+        await self._drop_late()
         await super().handle_user_turn_stopped()  # type: ignore[no-untyped-call]
 
     async def cleanup(self) -> None:
-        """Pipecat's cleanup, a held end dropped first."""
+        """Pipecat's cleanup, a held end and a longer one dropped first."""
         await self._drop_hold()
+        await self._drop_late()
         await super().cleanup()  # type: ignore[no-untyped-call]
 
     async def _end_after_hold(
@@ -142,3 +194,14 @@ class HeldTurnStop(TurnAnalyzerUserTurnStopStrategy):  # type: ignore[no-untyped
         hold, self._hold = self._hold, None
         if hold is not None:
             await self.task_manager.cancel_task(hold)
+
+    async def _end_late(self, left: float) -> None:
+        """End the turn `left` seconds from now, whatever Smart Turn said (the longer wait)."""
+        await asyncio.sleep(max(0.0, left))
+        self._late = None  # before the report, whose turn end comes back to `_drop_late`
+        await super().report_user_turn_stopped()
+
+    async def _drop_late(self) -> None:
+        late, self._late = self._late, None
+        if late is not None:
+            await self.task_manager.cancel_task(late)

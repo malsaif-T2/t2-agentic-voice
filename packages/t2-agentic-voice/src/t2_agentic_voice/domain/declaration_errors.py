@@ -51,7 +51,8 @@ _FIXES: dict[str, str] = {
     ),
     "progress": (
         f"map each progress line's key, a lowercase word, to its text {_PLAIN}, as "
-        'progress={"searching": "..."}.'
+        'progress={"searching": "..."}, or to a list of up to 8 different wordings, as '
+        'progress={"searching": ["...", "..."]}.'
     ),
     "instructions": (
         "give `instructions` one text, or a text for each language the agent speaks, keyed by "

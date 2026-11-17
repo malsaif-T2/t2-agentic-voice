@@ -174,8 +174,15 @@ agent's languages gives that line's text (`progress={"checking": ...}` in its pr
 speaking and no clause of the answer has gone to the voice, whether the tool or the model holds
 it up, the line is spoken from the phrase cache, so the caller knows the agent is at work: one line a reply,
 however many tools run. An answer that begins first goes without it, and an answer ready while
-the line plays waits for its end. Each line is synthesized once, at the runtime's start, with the
-greetings. The guide's sample agent, from
+the line plays waits for its end, then a beat of silence (400 ms by default;
+`session.progress_beat_ms` counts it from the end of the line's speech instead). Each line is
+synthesized once, at the runtime's start, with the greetings. A line may have a few wordings, a
+list in place of its text (`progress={"checking": ["Let me check.", "Checking now."]}`, up to
+8), each synthesized at the start; each time it is due one is said, never the one the call said
+last, so a caller who searches twice does not hear the same line twice running. A tool whose
+answer almost always takes longer than its line (a search) can say it as it starts: give it a
+small `progress_after_s` (`@tool(..., progress_after_s=0.1)`), kept short so the answer is not
+held up behind it. The guide's sample agent, from
 [test_guide_samples.py](../../tests/minimal_example/test_guide_samples.py):
 
 ```python
@@ -708,8 +715,10 @@ It is 600 ms by default. On those recordings the 600 ms hold left 9 of 51 dev pa
 off instead of 50 or 51, and 5 of 28 held-out ones instead of 27, with no turn end missed, a turn
 then ending a median of 0.94 s after the caller's own end on dev (D-067). With a talker, the hold
 costs less than it adds: the transcription and the talker's first request start as the hold
-begins, and only the reply waits for its end ([latency.md](latency.md), "The early start"). An
-app that wants a turn to end at Smart Turn's verdict sets no hold:
+begins, and only the reply waits for its end ([latency.md](latency.md), "The early start"); with
+`T2V_TURNS__EARLY_AT_STOP=true` the transcription starts at the speech detector's stop instead,
+kept only when Smart Turn calls the turn complete. An app that wants a turn to end at Smart
+Turn's verdict sets no hold:
 
 ```bash
 T2V_TURNS__COMPLETE_HOLD_MS=0

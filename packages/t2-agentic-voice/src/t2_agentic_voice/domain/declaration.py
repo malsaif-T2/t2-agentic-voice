@@ -9,9 +9,9 @@ check. The talker's parts, all optional (domain/talker_declaration.py), are its 
 its tools, its vocabulary and its version; an agent that declares instructions runs the talker
 (plan 006). Each language is built from its preset, which gives it its tag, its frame and a text
 for each notice the caller may be told; the team gives its greeting, the phrase that opens a
-call, and may give its own notices and the progress lines its tools name. The phrases a call
-speaks as written (domain/fixed_phrases.py) are synthesized once, at the runtime's start, and
-played from the phrase cache.
+call, and may give its own notices and the progress lines its tools name (`ProgressLine`). The
+phrases a call speaks as written (domain/fixed_phrases.py) are synthesized once, at the
+runtime's start, and played from the phrase cache.
 
 A phrase (a greeting, the frame, a notice, a spoken form) says something, on one line, and holds
 no character a reader cannot see but the no-break spaces, the joiners and the direction marks
@@ -45,7 +45,7 @@ from t2_agentic_voice.core.settings.base import FROZEN, PLAIN
 from t2_agentic_voice.core.settings.tts import LanguageTag
 from t2_agentic_voice.core.settings.words import LanguageCode, primary_code
 from t2_agentic_voice.domain.declaration_errors import FROM_PRESET, Declared
-from t2_agentic_voice.domain.declared_phrases import DeclaredPronunciations, Phrase
+from t2_agentic_voice.domain.declared_phrases import DeclaredPronunciations, Phrase, ProgressLine
 from t2_agentic_voice.domain.presets import ECHO_FRAMES, NOTICES
 from t2_agentic_voice.domain.talker_declaration import (
     DeclaredTool,
@@ -122,18 +122,18 @@ class Language(Declared):
     Arabic, `en` English), the `greeting` the agent opens a call with in it, the `echo_frame`
     the echo says before the words it heard, its `notices`, the text of each kind of notice
     (`NoticeKind`) the caller is told in it, and its `progress` lines, the text of each line a
-    tool names by its key (`Tool(progress=...)`), spoken when the tool runs long (none by
-    default). Build one with its preset: `Language.saudi_arabic(greeting=...)`,
-    `Language.arabic(...)` or `Language.english(...)`, which gives the tag, the frame and each
-    notice's text in the language's register (plan 003, Q5: Saudi for `ar-SA`, Modern Standard
-    Arabic for `ar`); a team's own `notices` replace the kinds they name. Each tag is spoken in
-    the model and voice `tts.languages` gives it."""
+    tool names by its key (`Tool(progress=...)`), or a list of its wordings, one said each time,
+    spoken when the tool runs long (none by default). Build one with its preset:
+    `Language.saudi_arabic(greeting=...)`, `Language.arabic(...)` or `Language.english(...)`,
+    which gives the tag, the frame and each notice's text in the language's register (plan 003,
+    Q5: Saudi for `ar-SA`, Modern Standard Arabic for `ar`); a team's own `notices` replace the
+    kinds they name. Each tag is spoken in the model and voice `tts.languages` gives it."""
 
     tag: LanguageTag
     greeting: Phrase
     echo_frame: Phrase
     notices: Annotated[Mapping[NoticeKind, Phrase], AfterValidator(_every_kind), FROZEN, PLAIN]
-    progress: Annotated[Mapping[ProgressKey, Phrase], FROZEN, PLAIN] = Field(
+    progress: Annotated[Mapping[ProgressKey, ProgressLine], FROZEN, PLAIN] = Field(
         default_factory=dict, validate_default=True
     )
 
@@ -143,7 +143,7 @@ class Language(Declared):
         *,
         greeting: str,
         notices: Mapping[NoticeKind, str] | None = None,
-        progress: Mapping[str, str] | None = None,
+        progress: Mapping[str, str | Sequence[str]] | None = None,
     ) -> Self:
         """Saudi Arabic (`ar-SA`), opening each call with `greeting`; `notices` replaces the
         preset's text of each kind it names; `progress` gives the tools' progress lines."""
@@ -155,7 +155,7 @@ class Language(Declared):
         *,
         greeting: str,
         notices: Mapping[NoticeKind, str] | None = None,
-        progress: Mapping[str, str] | None = None,
+        progress: Mapping[str, str | Sequence[str]] | None = None,
     ) -> Self:
         """Modern Standard Arabic (`ar`), opening each call with `greeting`; `notices` replaces
         the preset's text of each kind it names; `progress` gives the tools' progress lines."""
@@ -167,7 +167,7 @@ class Language(Declared):
         *,
         greeting: str,
         notices: Mapping[NoticeKind, str] | None = None,
-        progress: Mapping[str, str] | None = None,
+        progress: Mapping[str, str | Sequence[str]] | None = None,
     ) -> Self:
         """English (`en`), opening each call with `greeting`; `notices` replaces the preset's
         text of each kind it names; `progress` gives the tools' progress lines."""

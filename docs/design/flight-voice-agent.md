@@ -927,8 +927,13 @@ Greeting templates:
 - English: "Hi $traveler, this is $persona, $airline's voice assistant. Where would you like to
   fly?"
 
-Progress lines: `searching`: «أشوف لك وش فيه رحلات.» / "Checking the flights for you.";
-`fares`: «أشوف لك أرخص الأيام.» / "Looking up the cheapest days." (the calendar's own key).
+Progress lines (plan 010's 1.15), each said as its search starts (`find_flights`,
+`search_flights`, the fare calendar; `compare_cabins` keeps the library's 2.6 s), in one of a few
+short wordings, never the one the call said last, then 0.1 s of silence before the answer:
+`searching`: «أشوف لك.», «أدوّر لك الحين.», «خلني أشوف لك.» / "Checking now.", "Let me look.",
+"Let me check.", "Looking that up."; `fares` (the calendar's own key): «أشوف لك الأسعار.»,
+«أشيّك على الأسعار.» / "Checking the fares.", "Looking at fares.", "Let me check prices." Drafts
+for the owner's pick, rendered in Saad's voice.
 
 `VOCABULARY` (the Whisper prompt's terms): Riyadh, Jeddah, Dubai, Doha, Cairo, Istanbul, London,
 Heathrow, Paris, Mumbai, Singapore, economy, business, and the airline's English name from

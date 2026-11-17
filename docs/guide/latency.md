@@ -62,6 +62,24 @@ result, before step 5.
   (counted in the call's usage), never a reply to half a question. A client's Stop in the hold
   cancels it too. While a reply to an earlier turn is still in progress the turn has no early
   start, so the model reads the call after that reply is stopped.
+- **The early start from the detector's stop** (`T2V_TURNS__EARLY_AT_STOP=true`, off by
+  default). The turn's speech goes to speech-to-text as the speech detector hears the caller
+  stop, Smart Turn's time before its verdict (on the flight agent's calls of 2026-11-17, about
+  230 ms at the median), so the transcript is in hand that much sooner on every turn. Its answer
+  is kept only when Smart Turn then calls the turn complete; when it calls the pause unfinished,
+  or the caller speaks again, its answer is never used, and the next pause sends again with the
+  whole turn. The dropped request is left to run out, never cancelled, since a request cancelled
+  in flight closes its connection and the next one would pay a new handshake. So each turn's words are answered once, and a pause
+  Smart Turn calls unfinished costs one more speech-to-text request. Under
+  `stt.live_language = "classified"` the turn's language is decided at the stop, so the
+  classifier's verdict has Smart Turn's time less to come. It needs a hold
+  (`turns.complete_hold_ms` above 0).
+- **The early start over a reply** (`T2V_SESSION__EARLY_OVER_REPLY=true`, off by default). A turn
+  held while a reply to an earlier turn is still in progress (nothing of it playing as the turn
+  began: a search, say) starts early too: its held words stop that reply first, as its answer
+  would, so the model reads the call as it then stands, and its reply waits for the hold's end.
+  Speech resumed in the hold drops the early work, the earlier reply staying stopped. While the
+  call is confirming an action, such a turn starts nothing early.
 - **Speech while the model writes.** Each clause goes to the voice as soon as it is whole, so
   the caller hears the first while the model writes the rest; the library's rules ask the model
   for a short first sentence ([writing-for-voice.md](writing-for-voice.md)).
@@ -104,9 +122,23 @@ result, before step 5.
 - **A progress line for a long wait.** A reply with a tool that has a progress line, with no
   answer begun `progress_after_s` (2.6 s by default) after the caller stopped speaking, gets the
   line from the phrase cache, with no request, so the caller hears that the agent is at work
-  ([concepts.md](concepts.md), "Progress lines"). It is kept for the long waits: the line takes
-  two to three seconds to say and the answer waits behind it, so a line on every search would make
-  most answers later.
+  ([concepts.md](concepts.md), "Progress lines"). By default it is kept for the long waits: a
+  line of two to three seconds, then a beat of 0.4 s, holds up an answer ready behind it. A
+  short line (under a second) can be said as the search starts instead (a small
+  `progress_after_s`), with `session.progress_beat_ms` counting the beat from the end of its
+  speech, so the caller hears something at the tool call and the answer follows it at once; the
+  flight agent does so (plan 010's 1.15).
+- **The fallback end of a turn.** A pause Smart Turn judges unfinished ends the turn after
+  `turns.max_silence_ms` (3 s by default) of silence. With `turns.read_back_silence_ms` set, a
+  turn said while an action's read-back awaits its answer waits that long instead, so a
+  shorter fallback for every other turn does not cut "yes, [pause] but change ..." after the
+  yes; it needs the hold after "complete" above 0.
+- **Smart Turn's own time.** Each judgement is logged as `smart_turn_judged`: the verdict, the
+  model's own time (`model_ms`, Pipecat's measure) and where the rest went (the wait for the
+  model's thread, the audio joined in it, the event loop taking the verdict back). On an idle
+  laptop the model took about 60 ms on one thread and 40 ms on two
+  (`turns.smart_turn_threads`); with every core busy, 140 to 180 ms on either, the waits around
+  it staying under 3 ms.
 - **A stop costs no model time.** The interruption rule stops the reply before any model request
   is sent, so the talker adds nothing to the time a stop takes.
 - **A clause said before plays from disk** (`tts.cache_clauses`, on by default by the

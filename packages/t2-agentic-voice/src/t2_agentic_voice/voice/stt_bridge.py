@@ -28,11 +28,10 @@ own `Transcribed` is that part's result again, with no request; otherwise the tu
 goes as for any turn. So at most two requests decide an overlap. Where the parts start and end
 is counted in the audio held, never on the clock, which the turn analyzer stalls at each stop.
 
-With `early` (a call with a talker: plan 006's early start), a turn that is no overlap whose
-hold began (turn_hold.py's `TurnHeldFrame`) hands `TurnHeld` and sends its speech so far as its
-`held` request at once, trimmed as the turn's own would be; speech resumed in the hold
-(`HoldResumedFrame`) cancels that request, then hands `HoldResumed`. When no speech followed its
-audio, the turn's own `Transcribed` is that request's result again, with no request.
+With `early` (a call with a talker: plan 006's early start), a turn that is no overlap sends
+its `held` request at its hold, which the turn's own `Transcribed` reuses when no speech followed
+it, or with `at_stop` (`turns.early_at_stop`) at the detector's stop, kept only when Smart Turn
+then calls the turn complete: stt_held.py's `HeldRequests`.
 
 Every request is stt_requests.py's: each names the language `languages` gives it, with its
 Whisper prompt (`call_prompts`), and under `detect` a turn's own and held ones also go naming
@@ -65,18 +64,13 @@ from pipecat.services.stt_service import STTService
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.domain.ports.speech_to_text import SpeechToText
 from t2_agentic_voice.voice.pipecat_events import FailureReport
-from t2_agentic_voice.voice.session.session_events import (
-    HoldResumed,
-    Transcribed,
-    TurnClosed,
-    TurnHeld,
-    TurnOpened,
-)
+from t2_agentic_voice.voice.session.session_events import Transcribed, TurnClosed, TurnOpened
 from t2_agentic_voice.voice.session_bridge import EventStream
+from t2_agentic_voice.voice.stt_held import HeldRequests
 from t2_agentic_voice.voice.stt_language import TurnLanguages
 from t2_agentic_voice.voice.stt_requests import SttRequests, SwitchRule
 from t2_agentic_voice.voice.stt_turn import HeldOverlap, HeldTurn
-from t2_agentic_voice.voice.turn_hold import HoldResumedFrame, TurnHeldFrame
+from t2_agentic_voice.voice.turn_hold import HoldResumedFrame, TurnHeldFrame, TurnUnfinishedFrame
 
 log = get_logger(__name__)
 
@@ -104,7 +98,8 @@ class TurnSTTBridge(STTService):
     detector's start delay; `early`, a turn's `held` request at its hold; `prompts`, the call's
     Whisper prompt of each language (`call_prompts`; none by default); `languages`, each turn's
     language (no classifier by default); `detect`, a long turn's second request or each
-    turn's answer read for a move (the module's)."""
+    turn's answer read for a move; `at_stop`, the held request sent at the detector's stop
+    (the module's)."""
 
     def __init__(
         self,
@@ -117,6 +112,7 @@ class TurnSTTBridge(STTService):
         prompts: Mapping[str, str] | None = None,
         languages: TurnLanguages | None = None,
         detect: SwitchRule | None = None,
+        at_stop: bool = False,
     ) -> None:
         super().__init__(
             audio_passthrough=False,
@@ -143,6 +139,10 @@ class TurnSTTBridge(STTService):
             prompts=prompts or {},
             languages=self._languages,
             detect=detect,
+        )
+        languages, trail_s = self._languages, TRAIL_S
+        self._holds = HeldRequests(
+            self, self._requests, events, languages, early=early, trail_s=trail_s, at_stop=at_stop
         )
         self._dropped, self._early = False, early
 
@@ -222,30 +222,15 @@ class TurnSTTBridge(STTService):
                 turn.stopped()
                 if turn.overlap is not None and turn.overlap.part is None:
                     self._send_overlap(turn, turn.overlap)
+                self._holds.stopped(turn)
         elif isinstance(frame, UserStartedSpeakingFrame) and turn is None:
             self._open(now)
         elif isinstance(frame, UserStoppedSpeakingFrame) and turn is not None:
             self._close(turn, now)
         elif isinstance(frame, TurnHeldFrame | HoldResumedFrame) and turn is not None:
-            await self._hold(turn, now, began=isinstance(frame, TurnHeldFrame))
-
-    async def _hold(self, turn: HeldTurn, now: float, *, began: bool) -> None:
-        """The turn's hold began (its `held` request sent) or resumed (it cancelled), in a call
-        with the early start, for a turn that is no overlap (the module's); told to
-        `languages` in every call."""
-        self._languages.held(turn, self.sample_rate, began=began)
-        if not self._early or turn.overlap is not None:
-            return
-        if began and turn.held is None:
-            self._events.hand(TurnHeld(turn_id=turn.turn_id, at=now))
-            audio = turn.request(int(TRAIL_S * self.sample_rate) * 2)
-            voiced_s = turn.voiced_s(self.sample_rate)
-            turn.held = self._requests.send(turn.turn_id, audio, "held", voiced_s=voiced_s)
-            turn.held_starts = turn.starts
-        elif not began and turn.held is not None:
-            held, turn.held = turn.held, None
-            await self.cancel_task(held)
-            self._events.hand(HoldResumed(turn_id=turn.turn_id, at=self._events.clock.now()))
+            await self._holds.hold(turn, now, began=isinstance(frame, TurnHeldFrame))
+        elif isinstance(frame, TurnUnfinishedFrame) and turn is not None:
+            self._holds.unfinished(turn)
 
     def _bytes(self, seconds: float) -> int:
         """How many bytes of the caller's audio last `seconds`."""

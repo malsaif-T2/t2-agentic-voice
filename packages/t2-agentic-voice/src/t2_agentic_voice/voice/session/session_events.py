@@ -65,9 +65,10 @@ class TurnClosed:
 class TurnHeld:
     """Smart Turn called the caller's turn complete, and its hold began (voice/turn_hold.py): in
     a call with a talker, the speech-to-text bridge sends the turn's speech so far as its `held`
-    request now, and the session starts the talker on its transcript (plan 006, Q2), playing
-    nothing before the hold ends with the turn's `TurnClosed`. Given only for a turn that is no
-    overlap, and only in a call with a talker."""
+    request now (or keeps the one it sent at the detector's stop, `turns.early_at_stop`), and
+    the session starts the talker on its transcript (plan 006, Q2), playing nothing before the
+    hold ends with the turn's `TurnClosed`. Given only for a turn that is no overlap, and only
+    in a call with a talker."""
 
     turn_id: TurnId
     at: float

@@ -60,7 +60,8 @@ from t2_agentic_voice.voice.transport import (
     WebRTCPeer,
 )
 from t2_agentic_voice.voice.tts_bridge import ClauseTTSBridge
-from t2_agentic_voice.voice.turns import turn_processors
+from t2_agentic_voice.voice.turn_hold import LongerWait
+from t2_agentic_voice.voice.turns import stops_early, turn_processors
 
 log = get_logger(__name__)
 
@@ -100,21 +101,26 @@ class CallPipeline:
         self.stt = stt  # the speech-to-text the call hears with, which its join warms
         self.report = FailureReport(call_id=setup.call_id, emit=setup.emit, clock=setup.clock)
         self.events = events = EventStream(setup.clock, record=record)
+        turns, early = setup.settings.turns, setup.talker is not None  # the talker's (plan 006, Q2)
+        at_stop = early and stops_early(turns, analyzer)  # its request at the stop (plan 010's 2.2)
         self.stt_bridge = TurnSTTBridge(
             stt=stt,
             events=events,
             report=self.report,
             start_s=detector.params.start_secs,
-            early=setup.talker is not None,  # the early start is the talker's (plan 006, Q2)
+            early=early,
             prompts=call_prompts(setup.agent, setup.settings),  # once a call (plan 006, Q23)
             languages=turn_languages(setup.agent, setup.settings, classifier, setup.clock),
             detect=detect_rule(setup.agent, setup.settings),
+            at_stop=at_stop,
         )
         bridge = SessionBridge(events)
         timeout_s = setup.settings.tts.timeout_s
         self.tts_bridge = ClauseTTSBridge(
             tts=tts, events=events, report=self.report, timeout_s=timeout_s
         )
+        wait_s = turns.read_back_silence_ms  # a read-back's answer's longer wait, when set
+        self.longer = None if wait_s is None else LongerWait(seconds=wait_s / 1000)
         self.commands = SessionCommands(
             bridge,
             events,
@@ -122,9 +128,11 @@ class CallPipeline:
             hear=self.stt_bridge.hear_overlap,
             send=self._send,
             hang_up=self._hung_up,
+            wait=self._wait,
             record=record,
         )
-        vad, user_turns = turn_processors(detector, analyzer, setup.settings.turns)
+        longer, unfinished = self.longer, at_stop  # each unfinished pause told to the bridge
+        vad, user_turns = turn_processors(detector, analyzer, turns, longer, unfinished=unfinished)
         processors: list[FrameProcessor] = [] if input is None else [input]
         processors += [CallerTap(events), vad, user_turns, self.stt_bridge, bridge]
         processors += [self.tts_bridge, ClauseGate(events), output]
@@ -188,6 +196,10 @@ class CallPipeline:
 
     async def _send(self, message: object) -> None:
         await self._output.send_message(OutputTransportMessageUrgentFrame(message=message))
+
+    def _wait(self, waiting: bool) -> None:
+        if self.longer is not None:
+            self.longer.on = waiting
 
     def _hung_up(self, reason: EndReason) -> None:
         self._hung_up_now.set()

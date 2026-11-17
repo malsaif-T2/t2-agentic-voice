@@ -30,9 +30,11 @@ class HeldTurn:
     """One open turn: `turn_id`, its `audio` so far, and `speech`, the byte where the detector
     heard its speech begin; `cut_at`, the bytes held when the detector last heard the speech
     stop, and `cut_starts`, the detector's starts heard by then (`starts`, since the turn
-    opened); `full` once `MAX_TURN_S` was reached; its `overlap`, once marked one; and its
-    `held` request, sent when its hold began (the early start), with the detector's starts
-    heard by then (`held_starts`)."""
+    opened); `full` once `MAX_TURN_S` was reached; its `overlap`, once marked one; its `held`
+    request, sent when its hold began (the early start), with the detector's starts heard by
+    then (`held_starts`); and under `turns.early_at_stop` the request sent at the detector's
+    last stop, its answer handed only once Smart Turn calls the turn complete (`ahead`, its
+    starts `ahead_starts`: stt_held.py)."""
 
     turn_id: int
     audio: bytearray
@@ -44,6 +46,8 @@ class HeldTurn:
     overlap: HeldOverlap | None = None
     held: asyncio.Task[Transcribed] | None = None
     held_starts: int = 0
+    ahead: asyncio.Task[Transcribed] | None = None
+    ahead_starts: int = 0
 
     def stopped(self) -> None:
         """The detector heard the speech stop: the turn's audio is cut here."""

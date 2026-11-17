@@ -15,6 +15,7 @@ from t2_agentic_voice.voice.session.commands import (
     HangUp,
     HearOverlap,
     ListenIn,
+    ReadBackWait,
     Send,
     Speak,
     StopSpeaking,
@@ -249,6 +250,7 @@ def test_every_command_of_the_session_has_its_case(caplog: pytest.LogCaptureFixt
         hear=lambda turn_id, window_ms: done.append("HearOverlap"),
         send=lambda message: _noted(done, "Send"),
         hang_up=lambda reason: done.append("HangUp"),
+        wait=lambda waiting: done.append(f"ReadBackWait {waiting}"),
     )
     samples: list[Command] = [
         ListenIn(language="en"),
@@ -256,6 +258,7 @@ def test_every_command_of_the_session_has_its_case(caplog: pytest.LogCaptureFixt
         Speak(reply_id=0, clause=0, turn_id=None, text="Hello", language="en"),
         StopSpeaking(reply_id=0),
         Send(message=Duck(level=0.25)),
+        ReadBackWait(waiting=True),
         HangUp(reason="hangup"),
     ]
     assert {type(sample) for sample in samples} == set(COMMANDS)
@@ -265,7 +268,7 @@ def test_every_command_of_the_session_has_its_case(caplog: pytest.LogCaptureFixt
             await commands.run(sample)
 
     asyncio.run(run_pipeline([bridge, Tail()], feed))
-    assert done == ["ListenIn", "HearOverlap", "Send", "HangUp"]
+    assert done == ["ListenIn", "HearOverlap", "Send", "ReadBackWait True", "HangUp"]
     assert events.asked == events.dropped == {(0, 0)}
     lines = [r.getMessage() for r in caplog.records]
     assert "command_after_end" not in lines and "command_failed" not in lines

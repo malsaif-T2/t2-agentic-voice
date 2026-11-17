@@ -208,10 +208,13 @@ question, so the caller knows it is their turn.
 A tool that may run long (a search) names a progress line, spoken when the caller has waited
 `progress_after_s` (2.6 s by default) with no answer begun ([concepts.md](concepts.md), "Progress
 lines"). Make it short and honest: it says the agent is at work, promises no time, asks
-nothing, and is said once a reply, whatever else follows.
+nothing, and is said once a reply, whatever else follows. A line said as the search starts
+(a small `progress_after_s`) holds the answer up for as long as it plays, so keep it under a
+second, and give it a few wordings, so a caller who searches twice hears it said another way.
 
 - Weak: "Okay, one moment please, I'll be right back with that."
 - Better: "I'm checking that for you."
+- Better still, said as the search starts: `["Checking now.", "Let me look.", "Let me check."]`.
 
 ## An action's words
 

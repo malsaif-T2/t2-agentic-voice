@@ -38,7 +38,7 @@ from t2_agentic_voice.domain.text.keys import speak_keys
 from t2_agentic_voice.domain.text.speaking import speak_digits
 from t2_agentic_voice.domain.text.spoken_text import speak_text
 from t2_agentic_voice.voice.protocol import ClauseIndex, ReplyId
-from t2_agentic_voice.voice.session.echo import BEAT_S, padded, phrase_audio, said
+from t2_agentic_voice.voice.session.echo import BEAT_S, beat_after, padded, phrase_audio, said
 from t2_agentic_voice.voice.session.io import CallSetup
 from t2_agentic_voice.voice.session.playback import ReadBackPart
 from t2_agentic_voice.voice.session.scope import CancelScope
@@ -163,14 +163,17 @@ class OpenReply:
     ) -> bool:
         """Ask for a fixed phrase, `text` in `language`'s voice, from the phrase cache, as the
         reply's next clause (`progress` for a progress line, timed apart and followed by a beat
-        of silence, so the answer does not run into it; `beat_before` for a line said after the
-        reply's words); whether it was."""
+        of silence so the answer does not run into it: `session.progress_beat_ms` from the end
+        of its speech when set; `beat_before` for a line said after the reply's words); whether
+        it was."""
         audio = phrase_audio(self._setup, text, language, reply_id=self.reply_id)
         if audio is None:
             return False
-        audio = padded(
-            audio, before_s=BEAT_S if beat_before else 0.0, after_s=BEAT_S if progress else 0.0
-        )
+        beat_ms = self._setup.settings.session.progress_beat_ms
+        if progress and beat_ms is not None:
+            audio = beat_after(audio, beat_ms / 1000)
+        after_s = BEAT_S if progress and beat_ms is None else 0.0
+        audio = padded(audio, before_s=BEAT_S if beat_before else 0.0, after_s=after_s)
         asked = await self._writer.write(
             self.reply_id,
             text=text,

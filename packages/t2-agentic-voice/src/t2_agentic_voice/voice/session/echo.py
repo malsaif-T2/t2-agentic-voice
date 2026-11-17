@@ -41,9 +41,13 @@ _log = get_logger(__name__)
 # at Orpheus's 200 characters, about 40 s of English said back, and under a third of Groq's
 # published 10 requests a minute, so a transcript a hallucination made long cannot burst past it.
 MAX_ECHO_REQUESTS = 3
-# The silence around a fixed line said next to other speech (a progress line, a notice), so one
-# does not run into the other (D-077).
+# The silence around a fixed line said next to other speech (a notice; after a progress line,
+# `session.progress_beat_ms`, this by default), so one does not run into the other (D-077).
 BEAT_S = 0.4
+# Where a take's speech ends, for a beat counted from it (`beat_after`): the last 10 ms holding a
+# sample this loud (about -40 dBFS of 32,767), and how much of the fall after it is kept.
+SOUND = 330
+FALL_S = 0.03
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -92,6 +96,21 @@ def padded(audio: AudioChunk, *, before_s: float = 0.0, after_s: float = 0.0) ->
     """`audio` with silence before and after it."""
     before, after = (bytes(2 * round(s * audio.sample_rate)) for s in (before_s, after_s))
     return audio.model_copy(update={"pcm16": before + audio.pcm16 + after})
+
+
+def beat_after(audio: AudioChunk, beat_s: float) -> AudioChunk:
+    """`audio` with the silence after its speech made `beat_s` long: the take's own silence
+    after its last 10 ms of sound (a sample at `SOUND` or louder) cut, its first `FALL_S` kept
+    within the beat so a word's fall is not cut; `beat_s` added to a take with no sound."""
+    samples = memoryview(audio.pcm16[: len(audio.pcm16) // 2 * 2]).cast("h")
+    step, end = max(1, audio.sample_rate // 100), len(samples)
+    while end > 0 and max(abs(s) for s in samples[max(0, end - step) : end]) < SOUND:
+        end -= step
+    if end <= 0:
+        return padded(audio, after_s=beat_s)
+    kept = min(len(samples), end + round(min(FALL_S, beat_s) * audio.sample_rate))
+    silence = bytes(2 * max(0, round(beat_s * audio.sample_rate) - (kept - end)))
+    return audio.model_copy(update={"pcm16": audio.pcm16[: 2 * kept] + silence})
 
 
 def said(text: str, *, agent: VoiceAgent, language: Language, max_chars: int | None) -> list[str]:

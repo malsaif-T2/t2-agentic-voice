@@ -127,16 +127,24 @@ class SttRequests:
         self._requests: set[asyncio.Task[Transcribed]] = set()
 
     def send(
-        self, turn_id: int, audio: bytes, part: TranscriptPart, *, voiced_s: float | None = None
+        self,
+        turn_id: int,
+        audio: bytes,
+        part: TranscriptPart,
+        *,
+        voiced_s: float | None = None,
+        hand: bool = True,
     ) -> asyncio.Task[Transcribed]:
         """One request of the turn's `part`, on a task of its own (`transcribe`), also sent
         naming no language when its turn held `voiced_s` seconds of voiced speech enough to
         detect (None: an overlap's part, never), or, under a `HintRule`, its answer read for a
-        move when it is a turn's own or held one and no overlap's."""
+        move when it is a turn's own or held one and no overlap's; with `hand` off, its
+        `Transcribed` only returned (a `reuse` of it hands it)."""
         rule, own = self._detect, part in ("held", "turn")
         detect = isinstance(rule, DetectRule) and own and rule.detects(voiced_s)
         hint = isinstance(rule, HintRule) and own and voiced_s is not None
-        return self._track(self.transcribe(turn_id, audio, part, detect=detect, hint=hint))
+        asked = self.transcribe(turn_id, audio, part, detect=detect, hint=hint, hand=hand)
+        return self._track(asked)
 
     def reuse(
         self, source: asyncio.Task[Transcribed], part: TranscriptPart
@@ -162,18 +170,20 @@ class SttRequests:
         *,
         detect: bool = False,
         hint: bool = False,
+        hand: bool = True,
     ) -> Transcribed:
         """One request of the turn's `part`, its `Transcribing` handed as it goes, and its one
-        `Transcribed`, handed and returned; none goes for no audio or an unusable bridge. With
-        `detect`, a second naming no language, at the same time; with `hint`, its answer read
-        for a move (the module's)."""
+        `Transcribed`, handed (unless `hand` is off) and returned; none goes for no audio or an
+        unusable bridge. With `detect`, a second naming no language, at the same time; with
+        `hint`, its answer read for a move (the module's)."""
         events, clock, rule = self._events, self._events.clock, self._detect
         heard = Transcribed(
             turn_id=turn_id, at=0.0, audio_s=0.0, sent_at=None, transcript=None, part=part
         )
         if not audio or not self._processor.is_usable:
             heard = replace(heard, at=clock.now())
-            events.hand(heard)
+            if hand:
+                events.hand(heard)
             return heard
         sent_at, named = clock.now(), self._languages.named(turn_id, part)
         language = named.language
@@ -228,7 +238,8 @@ class SttRequests:
         )
         if moved is not None and part == "turn":
             self._languages.listen_in(moved)
-        events.hand(heard)
+        if hand:
+            events.hand(heard)
         return heard
 
     async def _ask(

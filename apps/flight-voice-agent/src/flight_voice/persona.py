@@ -47,14 +47,27 @@ GREETINGS: Final[dict[Tag, Template]] = {
         "Hi $traveler, this is $persona, $airline's voice assistant. Where would you like to fly?"
     ),
 }
-# The progress lines the tools name (tools/search.py, cabins.py: `searching`; calendar.py:
-# `fares`), said while a search runs long.
-PROGRESS: Final[dict[Tag, dict[str, str]]] = {
-    # ashoof lak wesh fih riHlaat: I am looking up what flights there are for you (Najdi «وش
-    # فيه»; never «لحظة», a wait word); ashoof lak arkhas al-ayyaam: the cheapest days for you.
-    "ar-SA": {"searching": "أشوف لك وش فيه رحلات.", "fares": "أشوف لك أرخص الأيام."},
-    "en": {"searching": "Checking the flights for you.", "fares": "Looking up the cheapest days."},
+# The progress lines the tools name (lean/find.py, tools/search.py, cabins.py: `searching`;
+# calendar.py: `fares`), each in a few short wordings, one said each time, never the one the
+# call said last (plan 010's 1.15), so the answer is not held up behind a long line; drafts in
+# Saad's voice for the owner's pick, the shortest first (none holds «لحظة», a wait word).
+PROGRESS: Final[dict[Tag, dict[str, tuple[str, ...]]]] = {
+    # ashoof lak: I'll look for you; adawwir lak al-Heen: I'm searching for you now (Najdi
+    # «الحين»); khallni ashoof lak: let me look for you; ashoof lak al-as'aar: I'll look at the
+    # prices for you; ashayyik 'ala al-as'aar: I'm checking the prices (Saudi «أشيّك», check).
+    "ar-SA": {
+        "searching": ("أشوف لك.", "أدوّر لك الحين.", "خلني أشوف لك."),
+        "fares": ("أشوف لك الأسعار.", "أشيّك على الأسعار."),
+    },
+    "en": {
+        "searching": ("Checking now.", "Let me look.", "Let me check.", "Looking that up."),
+        "fares": ("Checking the fares.", "Looking at fares.", "Let me check prices."),
+    },
 }
+# How long after the caller stopped speaking a search's progress line is due: at once, as the
+# search starts, since its tool call always lands later than this (the library's 2.6 s
+# otherwise); never once the answer has begun (plan 010's 1.15).
+PROGRESS_AT_S: Final = 0.1
 # The terms a transcript should write as the airline writes them, the airline's name after them.
 TERMS: Final = (
     "Riyadh",
@@ -139,9 +152,12 @@ def vocabulary(names: Names) -> Vocabulary:
 
 
 def spoken_lines(names: Names, traveler: Traveler = TRAVELER) -> dict[Tag, tuple[str, ...]]:
-    """Each line a call speaks as written, by language: its greeting, then its progress
-    lines."""
-    return {tag: (greeting(tag, names, traveler), *PROGRESS[tag].values()) for tag in TAGS}
+    """Each line a call speaks as written, by language: its greeting, then each wording of
+    its progress lines."""
+    return {
+        tag: (greeting(tag, names, traveler), *(w for line in PROGRESS[tag].values() for w in line))
+        for tag in TAGS
+    }
 
 
 def _form(text: str) -> str:
