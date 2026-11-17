@@ -1,9 +1,8 @@
-"""A pass of one of run H's Scribe arms (D-115): `poe eval-languages --scribe-arm ARM`, with
-`--split dev`, `--out`, `--note`, `--price-per-hour` and `--cap-usd`, and `--estimate-only`,
+"""A pass of one of run H's Scribe arms (D-115, D-117): `poe eval-languages --scribe-arm ARM`,
+with `--split dev`, `--out`, `--note`, `--price-per-hour` and `--cap-usd`, and `--estimate-only`,
 `--smoke-only`, `--audio`, `--env-file` and `--var-dir` as a pass takes them (languages_run.py;
-the arms are scribe_arms.py's, the scorecard scribe_arm_card.py's). `detected` also takes
-`--language-from`, its gate's offline detected pass (scribe_arm_gate.py), and no other arm does.
-It spends.
+the arms are scribe_arms.py's, the scorecard scribe_arm_card.py's). `detected` and `single` also
+take `--language-from`, their gate's offline detected pass (scribe_arm_gate.py), alone. It spends.
 
 The settings load as a pass's do (`run_settings.env_settings`), `stt.provider` set to elevenlabs
 on top, so the adapter is the library's Scribe v3 (`Providers.speech_to_text`). A request naming
@@ -11,7 +10,7 @@ a language carries that language's prompt, as a live call builds it (`stt.send_p
 vocabulary, then `words.vocabulary`, then the language's command words, the `languages`
 facade's `whisper_prompt`), which Scribe takes as keyterms. The pass records the provider, its
 model, `stt.timeout_s`, `stt.send_prompt`, `stt.switch_min_probability`, the `elevenlabs` group
-(a key only as set or not), the arm, the price and `detected`'s gate (`shown`).
+(a key only as set or not), the arm, the price and the gate of `detected` or `single` (`shown`).
 
 Before any clip is sent, the pass refuses what every pass refuses (the main checkout, a dirty
 tree, an `--out` that exists or that git would track, a name that is no name, audio that is not
@@ -53,6 +52,7 @@ from ole5_voice.evals.scribe_arms import (
     ARM_NAMES,
     ARM_TURNS_FILE,
     CALL_CODES,
+    GATED,
     ArmAnswer,
     ArmName,
     ArmResult,
@@ -70,15 +70,15 @@ def arm_flags(parser: argparse.ArgumentParser) -> None:
     """`poe eval-languages`' flags of an arm's pass."""
     add = parser.add_argument
     add("--scribe-arm", choices=ARM_NAMES, help="a pass of one of run H's Scribe arms (spends)")
-    add("--language-from", type=Path, help="detected's gate: a --classifier detected pass")
+    add("--language-from", type=Path, help="the gate of detected and single: a detected pass")
 
 
 def require_arm(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     """Refused by `poe eval-languages`' parser (exit 2): an arm's pass lacking a flag it needs,
     with a classifier's flag or `--read`, or of the held-out split; `--language-from` other than
-    with `--scribe-arm detected`, which needs it."""
-    if (args.scribe_arm == "detected") != (args.language_from is not None):
-        parser.error("--language-from, detected's gate, serves --scribe-arm detected, and only it")
+    with `--scribe-arm detected` or `single`, which need it."""
+    if (args.scribe_arm in GATED) != (args.language_from is not None):
+        parser.error("--language-from, the gate, serves --scribe-arm detected or single alone")
     require(parser, args, ("split", "out", "note", "price_per_hour", "cap_usd"), noun="pass")
     if args.read or args.classifier or args.classifier_dir:
         parser.error(
@@ -105,8 +105,8 @@ def arm_prompts(settings: VoiceSettings) -> dict[str, str]:
 
 
 def shown(settings: VoiceSettings, args: argparse.Namespace, gate: str) -> dict[str, str]:
-    """What the pass's answers depend on, by dotted name (the module's docstring); `gate`,
-    `detected`'s (`Gate.shown`), or none."""
+    """What the pass's answers depend on, by dotted name (the module's docstring); `gate`, that
+    of `detected` or `single` (`Gate.shown`), or none."""
     stt = settings.stt
     return {
         "env": settings.env,
@@ -192,8 +192,8 @@ async def _sent(
     turns_file: Path,
     results: list[ArmResult],
 ) -> None:
-    """Each variant's requests, one at a time, `detected`'s by its `gate`, its answers kept as
-    it finishes; the adapter closed at the end."""
+    """Each variant's requests, one at a time, shaped by the `gate` under `detected` or
+    `single`, its answers kept as it finishes; the adapter closed at the end."""
     try:
         for each in todo:
             clip, detects = clip_of(each), None if gate is None else gate.of(each)
@@ -237,7 +237,7 @@ def run_arm(args: argparse.Namespace, parts: Parts, make_stt: MakeStt) -> int:
     plan = load_plan(checkout.top / DATA, choice, parts)
     todo = [plan.smoke] if args.smoke_only else list(plan.todo)
     gate = None
-    if arm == "detected":
+    if arm in GATED:
         where = {"split": args.split, "commit": checkout.commit, "digest": plan.digest}
         gate = detect_gate(args.language_from, todo, **where)
     price = args.price_per_hour

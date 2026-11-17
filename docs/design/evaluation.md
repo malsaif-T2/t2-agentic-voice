@@ -294,14 +294,17 @@ given after the task's name:
   once complete, never shown by variant), its scorecard by `languages_score.py`, and a
   languages line appended (it refuses the main checkout; `--smoke-only` feeds one dev variant
   and appends none); `--read <passes>` logs condition 4 for each classifier pass against the
-  two off passes, writing nothing; and `--scribe-arm hinted`, `secondary`, `none` or `detected`
-  in place of `--classifier` (D-115, `scribe_arm_run.py`), a dev pass of one of run H's Scribe
-  arms, which spends: each checked variant sent whole to Scribe v3, one request at a time, as
+  two off passes, writing nothing; and `--scribe-arm hinted`, `secondary`, `none`, `detected` or
+  `single` in place of `--classifier` (D-115, D-117, `scribe_arm_run.py`), a dev pass of one of
+  run H's Scribe arms, which spends: each checked variant sent whole to Scribe v3, one request at
+  a time, as
   each arm shapes its requests (`scribe_arms.py`: the call's language as the hint with the other
   as a secondary language; the two as secondary languages; neither; or `detected`'s, its
   request naming no language sent only for a variant whose first turn `detects` in the offline
   `--classifier detected` pass that `--language-from` names, complete and at the same commit,
-  split and data, as a live call sends it only for a turn of 1.2 s of voiced speech or more),
+  split and data, as a live call sends it only for a turn of 1.2 s of voiced speech or more; or
+  `single`'s, by the same gate: the request naming no language alone for a variant it passed,
+  the call's language alone for any other),
   read as a turn of an Arabic call and of an English one with the library's rule,
   each variant's answers kept in `arm_turns.jsonl` and its scorecard by `scribe_arm_card.py`
   (the right, wrong and missed moves, the false moves on short replies, WER and CER by item

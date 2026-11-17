@@ -35,7 +35,8 @@ kept aside until the last has run (plan 007's "Run H").
 `--read RUN ...` reads the complete passes of one commit, split and data, exactly two of them
 off, and logs condition 4 for each classifier pass (languages_reading.read_passes), writing
 nothing. `--scribe-arm ARM`, in place of `--classifier`, is a pass of one of run H's Scribe arms
-(D-115; scribe_arm_run.py), which spends; `detected`'s takes its gate, `--language-from`.
+(D-115, D-117; scribe_arm_run.py), which spends; `detected`'s and `single`'s take their gate,
+`--language-from`.
 """
 
 from __future__ import annotations

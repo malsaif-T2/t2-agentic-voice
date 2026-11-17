@@ -3,8 +3,9 @@ default since the registered rule F held on plan 002's runs R1 and R3 (GP-18); t
 prompt each request sends, on by default since run W kept its arm W1 (plan 006, Q23); and the
 spoken-language classifier of `live_language = "classified"`, off by default, since run H kept
 no arm (D-086, as amended on 2026-11-12); and `live_language = "hinted"`, one request a turn
-whose answer's language and probability move the call (D-115), off by default until run H's
-Scribe arms are measured (GP-18)."""
+whose answer's language and probability move the call (D-115), and `"single"`, one request a
+turn, naming none for a long turn, whose answer moves the call so (D-117), each off by default
+until run H's Scribe arms keep it (GP-18)."""
 
 from __future__ import annotations
 
@@ -27,8 +28,8 @@ HEARS_NO_LANGUAGE: frozenset[SttProvider] = frozenset(
     {"speechmatics", "cohere", "telnyx", "nabrah"}
 )
 # The providers whose answer gives the language heard with its probability (ElevenLabs'
-# `language_code` and `language_probability`): only on them does `live_language = "hinted"`
-# move a call; on any other it runs as `session` (D-115).
+# `language_code` and `language_probability`): only on them does `live_language = "hinted"` or
+# `"single"` move a call; on any other each runs as `session` (D-115, D-117).
 REPORTS_PROBABILITY: frozenset[SttProvider] = frozenset({"elevenlabs"})
 SttModel = Literal["whisper-large-v3", "whisper-large-v3-turbo"]
 # The least Groq bills a transcription request, in seconds, however short its audio (its
@@ -39,8 +40,9 @@ WHISPER_MIN_BILLED_S = 10.0
 # turn's from a spoken-language classifier, the call's current one with a second request of a
 # long turn naming none, whose language moves the call (D-038's amendment), or the call's current
 # one as a hint with the agent's other languages beside it, the answer's language and probability
-# moving the call (D-115).
-LiveLanguage = Literal["session", "auto", "classified", "detected", "hinted"]
+# moving the call (D-115), or one request a turn, naming none for a long turn, its answer's
+# language and probability moving the call, and the call's current one for a short turn (D-117).
+LiveLanguage = Literal["session", "auto", "classified", "detected", "hinted", "single"]
 # The spoken-language classifier: Silero's 95 languages on onnxruntime, or ECAPA on VoxLingua107,
 # which runs on torch through SpeechBrain, the library's `ecapa` extra.
 Classifier = Literal["silero", "ecapa"]
@@ -98,7 +100,12 @@ class SttSettings(Group):
             "`stt.switch_min_probability`, in a question or request, never a short reply, the "
             "call moves to it, and a switch request or the talker moves it too; on a provider "
             "that gives no language probability, every one but elevenlabs, it runs as session, "
-            "which the runtime's start logs). A registered measurement sets the default (GP-18)."
+            "which the runtime's start logs) or single (each turn sends one request: a turn with "
+            "`stt.detect_from_s` seconds of voiced speech or more names no language, and its "
+            "answer is the turn's words, moving the call by hinted's rule; a shorter turn names "
+            "the call's current language and never moves it; on a provider that gives no "
+            "language probability it runs as session, which the runtime's start logs). A "
+            "registered measurement sets the default (GP-18)."
         ),
     )
     detect_from_s: float = Field(
@@ -107,10 +114,11 @@ class SttSettings(Group):
         le=30,
         allow_inf_nan=False,
         description=(
-            "Under live_language detected, the seconds of voiced speech a turn needs, from "
-            "where the speech detector heard it begin to where it last heard it stop (never "
-            "the silence after), for its second request naming no language; a shorter turn "
-            "keeps the call's current language. 1.2, registered for run H (D-038's amendment)."
+            "Under live_language detected or single, the seconds of voiced speech a turn needs, "
+            "from where the speech detector heard it begin to where it last heard it stop "
+            "(never the silence after), for its request naming no language (detected's second, "
+            "single's one); a shorter turn keeps the call's current language. 1.2, registered "
+            "for run H (D-038's amendment)."
         ),
     )
     switch_min_probability: float = Field(
@@ -119,10 +127,11 @@ class SttSettings(Group):
         le=1,
         allow_inf_nan=False,
         description=(
-            "Under live_language hinted, the least probability the provider must give the "
-            "language it heard, one of the agent's other languages, for the turn to move the "
-            "call (with a question or request, never a short reply); under it the call keeps "
-            "its language. 0.8, a placeholder until run H's Scribe arms are measured (GP-18)."
+            "Under live_language hinted or single, the least probability the provider must give "
+            "the language it heard, one of the agent's other languages, for the turn to move "
+            "the call (with a question or request, never a short reply); under it the call "
+            "keeps its language. 0.8, a placeholder until run H's Scribe arms are measured "
+            "(GP-18)."
         ),
     )
     classifier: Classifier = Field(
@@ -214,7 +223,13 @@ class SttSettings(Group):
         `session` (D-115)."""
         return self.live_language == "hinted" and self.provider in REPORTS_PROBABILITY
 
+    def single_holds(self) -> bool:
+        """Whether `live_language = "single"` holds on this provider, as `hints` says of
+        `hinted`; on any other, single runs as `session` (D-117)."""
+        return self.live_language == "single" and self.provider in REPORTS_PROBABILITY
+
     def language_moves(self) -> bool:
         """Whether a call's language may move within the call (D-103): under `detected`, and
-        under `hinted` where it holds (`hints`); never under any other setting."""
-        return self.live_language == "detected" or self.hints()
+        under `hinted` or `single` where it holds (`hints`, `single_holds`); never under any
+        other setting."""
+        return self.live_language == "detected" or self.hints() or self.single_holds()

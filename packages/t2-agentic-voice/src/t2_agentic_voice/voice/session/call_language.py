@@ -15,10 +15,10 @@ read-back said before a move is read again in the new language before it can be 
 
 The session's notices, its fixed phrases, the echo, the overlap words and a reply's fallback
 tag read it; a reply follows each turn's heard language (agent/language.py), and a turn that asked
-for the move is answered in the language it asked for (`TalkerTurn.asked`). Under `hinted` where
-it holds (D-115) the call moves in the same three ways, the first by the answer of the turn's one
-request (voice/stt_requests.py). Under any other `stt.live_language` the call never moves, as
-D-038 holds."""
+for the move is answered in the language it asked for (`TalkerTurn.asked`). Under `hinted` or
+`single` where it holds (D-115, D-117) the call moves in the same three ways, the first by the
+answer of the turn's one request (voice/stt_requests.py). Under any other `stt.live_language`
+the call never moves, as D-038 holds."""
 
 from __future__ import annotations
 

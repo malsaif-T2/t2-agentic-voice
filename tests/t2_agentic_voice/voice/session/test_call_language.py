@@ -43,6 +43,8 @@ from tests.t2_agentic_voice.voice.session.talker_support import (
 DETECTED = VoiceSettings(env="test", stt=SttSettings(live_language="detected"))
 # Under hinted (D-115) on Scribe, the default provider, a turn its one answer moved is the same.
 HINTED = VoiceSettings(env="test", stt=SttSettings(live_language="hinted"))
+# Under single (D-117) on Scribe, too.
+SINGLE = VoiceSettings(env="test", stt=SttSettings(live_language="single"))
 QUESTION = "what time does my flight to Riyadh leave"
 ASK_ENGLISH = "بالانجليزي لو سمحت"  # bil-ingleezi law samaht, in English please
 ASK_OTHER = "ممكن نتكلم بلغة ثانية"  # mumkin nitkallam bi-lugha thanya, can we use another language
@@ -66,7 +68,9 @@ async def _turn(
     await settle()
 
 
-@pytest.mark.parametrize("settings", [DETECTED, HINTED], ids=["detected", "hinted"])
+@pytest.mark.parametrize(
+    "settings", [DETECTED, HINTED, SINGLE], ids=["detected", "hinted", "single"]
+)
 def test_a_detected_turn_moves_the_call_and_the_notices_follow(settings: VoiceSettings) -> None:
     io, _, _ = talker_call(settings, language="ar-SA")
 

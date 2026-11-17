@@ -74,13 +74,13 @@ the call too, and its reply is in the language asked for; said over a reply unde
 moves the call whether the reply stops or goes on. Once the call has moved, the session's
 notices, its fixed phrases, the echo and the interruption rule's words are the new language's
 (`CallSetup.now`, `voice/session/call_language.py`), and the call report names a detected turn's
-language with `language_by = "detected"`. Under `hinted` (next section) the call moves in the
-same ways; under `session` and `auto` it never moves.
+language with `language_by = "detected"`. Under `hinted` and `single` (the next two sections)
+the call moves in the same ways; under `session` and `auto` it never moves.
 
 The list is a fast path only. For any other wording ("can we do this in English?", «ممكن نتكلم
 بلغة ثانية») the talker is given the library's `switch_language` tool
-(`actions/language_tool.py`), under `detected` or `hinted` (where it holds, next section) and
-for an agent of two languages or more, unless
+(`actions/language_tool.py`), under `detected`, or `hinted` or `single` where it holds (the next
+two sections), and for an agent of two languages or more, unless
 the agent declares a tool of that name. The model calls it with the code asked for (`en`, `ar`);
 the rest of that reply is then in the new language (its prompt, its clauses' voice, its tools'
 context), the call moves, and the speech-to-text bridge is told after the step. A language the
@@ -124,7 +124,34 @@ another one it heard, and how sure it is when it does. Run H's Scribe arms (`poe
 `detected` as a live call sends it (its second request only for a turn of `stt.detect_from_s` of
 voiced speech or more, read from an offline detected pass), on the moves, the false moves on
 short replies, each language's error rate and the time to the transcript, at every threshold
-from 0.5 to 0.95.
+from 0.5 to 0.95. On dev (D-115's amendment) Scribe answered a request naming a language in that
+language, at probability 1.0, so under `hinted` the call never moved; `hinted` stays off.
+
+## One request a turn, naming no language for a long turn
+
+`stt.live_language = "single"` (D-117, provisional) is the owner's "one request language change
+without hurting the transcription". Told no language, Scribe reports the language spoken, but on
+short replies it was wrong 20 times in 584 turns on dev (D-115's amendment). So `single` sends
+each turn one request, and names no language only where `detected` sends its second one:
+
+- **A long turn**, of `stt.detect_from_s` (1.2) seconds of voiced speech or more, counted as
+  `detected` counts it, goes once naming no language, with the prompt of the call's current
+  language (Scribe's keyterms) and no secondary language. Its answer is the turn's words. The
+  call moves by `hinted`'s three conditions read on that answer: one of the agent's other
+  languages, a probability of `stt.switch_min_probability` or more, and a question or request.
+  Otherwise its words stand, and the call keeps its language.
+- **A shorter turn** goes once naming the call's current language, with its prompt, and never
+  moves the call, as under `detected`.
+- **An overlap's parts** (its window and its overlap request) name the call's current language,
+  and their answers never move the call; a switch request said over a reply still does.
+
+A long turn costs one request and waits for one answer, not the slower of two. A switch request
+and the talker's tool move the call as above, and an action's read-back is read again after a
+move. The rule is `domain/language_hint.py`'s `SingleRule`: `detected`'s gate with `hinted`'s
+rule. It is off by default (GP-18) until its own arm of run H (`poe eval-languages --scribe-arm
+single`, gated by the same offline detected pass as `detected`'s arm) is read against `detected`
+by the rule D-117 registered. On a provider that gives no language probability, a call under
+`single` runs as `session`, and the runtime's start logs `single_as_session` once.
 
 ## Each turn's language from a classifier
 

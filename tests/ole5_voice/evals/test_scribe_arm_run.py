@@ -207,8 +207,9 @@ def test_a_pass_past_the_cap_or_with_no_key_is_refused_before_any_clip(
         (["--price-per-hour", "1", "--cap-usd", "1", "--split", "held-out"], "--split dev only"),
         (["--cap-usd", "1"], "a pass needs --price-per-hour"),
         (["--price-per-hour", "1", "--cap-usd", "1", "--scribe-arm", "auto"], "invalid choice"),
-        (["--price-per-hour", "1", "--cap-usd", "1", "--scribe-arm", "detected"], "only it"),
-        (["--price-per-hour", "1", "--cap-usd", "1", "--language-from", "x"], "only it"),
+        (["--price-per-hour", "1", "--cap-usd", "1", "--scribe-arm", "detected"], "single alone"),
+        (["--price-per-hour", "1", "--cap-usd", "1", "--scribe-arm", "single"], "single alone"),
+        (["--price-per-hour", "1", "--cap-usd", "1", "--language-from", "x"], "single alone"),
     ],
 )
 def test_the_parser_refuses_an_arms_flags_that_do_not_fit(
@@ -226,4 +227,4 @@ def test_language_from_serves_no_pass_but_the_detected_arms(
     argv = ["--split", "dev", "--classifier", "detected", "--out", "x", "--note", "n"]
     with pytest.raises(SystemExit) as done:
         languages_run.main([*argv, "--language-from", "x"])
-    assert done.value.code == 2 and "only it" in capsys.readouterr().err
+    assert done.value.code == 2 and "single alone" in capsys.readouterr().err

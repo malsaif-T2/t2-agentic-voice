@@ -196,15 +196,16 @@ class CallSetup:
     calling and what they consented to, as the identity source verified them at join; the agent,
     and the call's language at join, one of the agent's (`VoiceAgent.call_language`), which
     `now` holds as the call's current one, moving only under `stt.live_language = "detected"`,
-    or `hinted` where it holds (call_language.py); the settings; the runtime's phrase audio;
-    the most characters one text-to-speech request of a language takes (the provider's
-    `max_chars`, which the clause splitter honours); the runtime's tracing; where the session's
-    public events go; the call's clock; the call's talker, built for it when the agent runs the
-    talker (`session.mode`, `SessionSettings.mode_for`), None for the echo; the chat model of
-    the session's own requests, which decides an overlap the rule left uncertain (D-069) and
-    judges an answer to a read-back that the yes rule's lists leave unplaced (D-082), each only
-    for an agent that asks, None for a call that asks none; and the part that carries out a
-    confirmed action (plan 007; the `ActionJobs` port), None for an agent with none."""
+    or `hinted` or `single` where it holds (call_language.py); the settings; the runtime's
+    phrase audio; the most characters one text-to-speech request of a language takes (the
+    provider's `max_chars`, which the clause splitter honours); the runtime's tracing; where the
+    session's public events go; the call's clock; the call's talker, built for it when the agent
+    runs the talker (`session.mode`, `SessionSettings.mode_for`), None for the echo; the chat
+    model of the session's own requests, which decides an overlap the rule left uncertain
+    (D-069) and judges an answer to a read-back that the yes rule's lists leave unplaced
+    (D-082), each only for an agent that asks, None for a call that asks none; and the part that
+    carries out a confirmed action (plan 007; the `ActionJobs` port), None for an agent with
+    none."""
 
     call_id: CallId
     caller: Caller
