@@ -3866,6 +3866,29 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   setting off and on, and the adversarial cases: before the summary played whole, a yes followed
   by other words, words before the read-back began, the agent's echo, a read-back replaced).
 
+## D-109 · The flight agent lists a day briefly · 2026-11-17 · Accepted (the owner's ruling of 2026-11-17, "Brief, voice only"; the flight app's text, no library setting)
+
+- **Context:** the owner's live test of 2026-11-17. A day of three or four flights took about
+  20 s to list: each flight by its time and fare, a fourth by its part of the day, then "one
+  way, per person". The return listing said the fare basis again.
+- **Decision:** the owner chose "Brief, voice only". For a day of three or four flights the
+  agent says how many there are, the first and last departure times, and the cheapest by its
+  time and fare. A day of one or two flights is said each by time and fare, as before. The
+  other flights are said only when the caller asks; their data stays in the result, and the
+  cards show every flight. The fare basis is said once a call, on the first listing; the
+  return listing and the relisted days no longer say it. A full flight named is said as full,
+  with no fare. The screen is still never mentioned (D-075 stands: the lead's question named
+  pointing to the cards as an option, and the owner did not take it).
+- **Consequences:** this amends D-101's "every option is said aloud" for the flight agent. The
+  listing results gain `count`, `first_departs` and `last_departs`, computed in code, and the
+  options keep their numbers and the cards' row order, so a number pick still matches the
+  card. Run F's `max_options`, `said_any` for the fare basis and `repeat` are read against the
+  brief listing, by rule F's amendment of 2026-11-17, registered before any result (the flight
+  spec's 7.1). A voice-only caller who picks "the third one" gets the third in the list order,
+  which may not be the third to leave.
+- **Evidence:** the owner's ruling of 2026-11-17 (plan 010's decision log); the flight app's
+  `tools/says.py` and `tools/listing.py`, and their tests under `tests/flight_voice/tools/`.
+
 ## D-110 · A card may name its slot on the page · 2026-11-17 · Accepted (the owner's ruling of 2026-11-17 on the flight page's three segments; a new optional field, which changes nothing for a page that ignores it)
 
 - **Context:** the owner ruled on 2026-11-17 that the flight page shows three segments, the

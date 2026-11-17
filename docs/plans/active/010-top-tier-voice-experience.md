@@ -1312,6 +1312,22 @@ Block 0.
   fare_calendar, is for prices. (5) English nonsense: two degenerate gpt-oss replies (markdown
   around zero-width spaces and "[cut ...", and two questions joined by a run of dots that the
   question limit read as one clause), which no filter caught.
+- 2026-11-17: rule F amended by the lead for round 3, before any result of it (the flight spec's
+  7.1 and 7.2 hold the text): `args` reads a departure span of days as its `span` and a fare
+  pick as its `fare_sar`; `outcome` of f22's bare «إي» over the closing question is now `done`
+  (the owner's "Any yes books"), its send-word turn removed; `max_options` (3) is read against
+  the brief listing (the first, last and cheapest times; a full flight said as full one more; a
+  span's overview the route's daily times); `said_any` for the fare basis is held on the first
+  listing's turn only; `repeat` is still held for a brief relisting of another day (f04 and f27
+  may now fail it, a risk the reviewers named); four new dev calls, f29 to f32 (a week's
+  overview, the dearest pick on a tie, a bare yes over the read-back's summary, a full flight
+  said as full). And the `violations` play check: TextCall's yes rule accepts, under the flight
+  app's `interruptions.yes_over_read_back`, a confirmation whose speech began after the summary's
+  first audio when a reading of the same draft then played whole (its code fix is round 3's
+  review fix F4); with the setting off it reads as before. Round 3 (6c74a36, b8a96f0) was gated
+  green (9676 passed); four read-only reviewers found 14 issues, three of them races in the held
+  yes (a no begun in the summary's last 200 ms, a yes said over an earlier clause of the same
+  reply, transcripts landing out of order), fixed after the lean build.
 
 ## Decision log
 
