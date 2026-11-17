@@ -4,7 +4,8 @@ part, since only api may build an adapter (harness.toml [layers]).
 - `Providers`: speech-to-text, text-to-speech and the chat model, each an adapter object, and
   the spoken-language classifier under `stt.live_language = "classified"` (D-086). A setting
   picks a built-in adapter (`from_settings`: Groq's, D-004; Silero's or ECAPA's classifier,
-  `stt.classifier`), and any other is passed in code:
+  `stt.classifier`; the chat model `llm.provider`'s, `chat_model`: Groq's, or OpenAI's for
+  the talker with Groq's for the library's own checks, D-112), and any other is passed in code:
   `Providers.from_settings(settings).replace(stt=...)`; `each` lists the ones given.
 - `stt_kinds`: each speech-to-text provider `stt.provider` names (`SttKind`): its builder, its
   key's group and the models it takes, the one place the dev console's choice reads them from
@@ -145,11 +146,10 @@ class Providers:
     @classmethod
     def from_settings(cls, settings: VoiceSettings) -> Providers:
         """The built-in adapters the settings pick (`stt.provider`: `speech_to_text`;
-        `tts.provider`: `tts_kinds`; `llm.provider`: Groq's; `stt.classifier` under
+        `tts.provider`: `tts_kinds`; `llm.provider`: `chat_model`; `stt.classifier` under
         `classified`), built from the settings with no IO; built in the runtime's lifespan when
         none are given."""
         from t2_agentic_voice.adapters.ecapa_language import EcapaLanguage
-        from t2_agentic_voice.adapters.groq_chat import GroqChat
         from t2_agentic_voice.adapters.silero_language import SileroLanguage
 
         classifier: LanguageClassifier | None = None
@@ -159,9 +159,27 @@ class Providers:
         return cls(
             stt=cls.speech_to_text(settings),
             tts=cls.text_to_speech(settings),
-            chat=GroqChat.from_settings(settings),
+            chat=cls.chat_model(settings),
             classifier=classifier,
         )
+
+    @staticmethod
+    def chat_model(settings: VoiceSettings) -> ChatModel:
+        """The chat adapter `llm.provider` names, built from the settings with no IO: Groq's
+        (D-004); under `openai` a `ChatRoute` (api/chat_route.py) that sends the talker's
+        model to OpenAI's adapter and the library's own checks to Groq's (D-112). A
+        ConfigurationError naming the key's setting when one is missing; the eval commands
+        build theirs here too."""
+        from t2_agentic_voice.adapters.groq_chat import GroqChat
+
+        if settings.llm.provider == "groq":
+            return GroqChat.from_settings(settings)
+        from t2_agentic_voice.adapters.openai_chat import OpenAIChat
+        from t2_agentic_voice.api.chat_route import ChatRoute
+
+        talker = OpenAIChat.from_settings(settings)  # its key's error first, before Groq's
+        checks = GroqChat.from_settings(settings)
+        return ChatRoute(main=("openai", talker), others={"groq": checks})
 
     @staticmethod
     def speech_to_text(settings: VoiceSettings) -> SpeechToText:

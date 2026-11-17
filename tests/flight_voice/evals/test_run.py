@@ -129,7 +129,7 @@ def _parts(tree: Tree, plays: Plays, *, folder: Path | None = None) -> RunParts:
     return RunParts(
         folder=tree.top if folder is None else folder,
         git=tree.git,
-        chat=lambda env_file: FunctionLLM(lambda request: ScriptedLLM.reply("-")),
+        chat=lambda env_file, model: FunctionLLM(lambda request: ScriptedLLM.reply("-")),
         play=plays,
         now=lambda: NOW,
         sleep=nap,
@@ -326,7 +326,7 @@ def test_a_chat_model_that_cannot_be_built_is_refused_before_the_folder_is_made(
 ) -> None:
     tree, plays = Tree(tmp_path), Plays()
 
-    def no_key(env_file: Path | None) -> ChatModel:
+    def no_key(env_file: Path | None, model: str) -> ChatModel:
         raise ConfigurationError("GROQ_API_KEY is not set. FIX: set it.")
 
     parts = replace(_parts(tree, plays), chat=no_key)

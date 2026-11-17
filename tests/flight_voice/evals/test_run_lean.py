@@ -53,7 +53,7 @@ def _run(tree: Tree, scripted: Plays, lean: Plays, *extra: str) -> int:
     parts = RunParts(
         folder=tree.top,
         git=tree.git,
-        chat=lambda env_file: FunctionLLM(lambda request: ScriptedLLM.reply("-")),
+        chat=lambda env_file, model: FunctionLLM(lambda request: ScriptedLLM.reply("-")),
         play=scripted,
         lean=lean,
         now=lambda: NOW,

@@ -739,6 +739,7 @@ T2V_TURNS__COMPLETE_HOLD_MS=0
 | --- | --- | --- |
 | `T2V_SESSION__MODE` | unset | What answers each turn: unset follows the declaration (the talker for an agent with instructions, else the echo); `echo` for any agent; `talker` |
 | `T2V_LLM__MODEL` | `openai/gpt-oss-120b` | The talker's chat model, on Groq; it changes only on a registered measurement |
+| `T2V_LLM__PROVIDER` | `groq` | Which API reaches the talker's model: `openai` sends it to OpenAI's own API with `T2V_OPENAI__API_KEY` (one of its models, at `T2V_LLM__REASONING_EFFORT=none`, the one effort its Chat Completions take with tools), while the yes rule's check and the uncertain overlap's request stay on Groq (D-112) |
 | `T2V_LLM__REASONING_EFFORT` | `medium` | How much a reasoning model thinks before it answers; medium invented fewer answers than low on run K's dev pass, for about 0.33 s more to the first clause (D-074) |
 | `T2V_LLM__MAX_OUTPUT_TOKENS`, `__TIMEOUT_S` | 1024, 8 | The most one model request writes, and how long it may take |
 | `T2V_LLM__MAX_REQUESTS_PER_TURN` | 3 | The most model requests one turn makes, the last with no tools, from 2 to 5 |

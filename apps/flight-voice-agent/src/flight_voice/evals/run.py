@@ -55,7 +55,6 @@ from t2_agentic_voice.evals import (
     run_git,
     run_refused,
 )
-from t2_agentic_voice.groq import GroqChat
 from t2_agentic_voice.ports import ChatModel
 
 from flight_voice import LOGGERS
@@ -75,11 +74,6 @@ log = get_logger(__name__)
 Play = Callable[[Scenario, ChatModel, VoiceSettings], Awaitable[call.PlayRead]]
 
 
-def _groq(env_file: Path | None) -> ChatModel:
-    """The chat adapter, its key from the environment and `env_file` when given."""
-    return GroqChat.from_settings(VoiceSettings.from_env(env_file=env_file, env="dev"))
-
-
 def _here() -> Path:
     return Path(__file__).resolve().parent
 
@@ -95,7 +89,7 @@ class RunParts:
 
     folder: Path = field(default_factory=_here)
     git: Git = run_git
-    chat: Callable[[Path | None], ChatModel] = _groq
+    chat: Callable[[Path | None, str], ChatModel] = setup.chat
     play: Play = call.play
     lean: Play = lean_call.play
     now: Callable[[], datetime] = _now
@@ -228,7 +222,7 @@ def _built(args: argparse.Namespace, parts: RunParts) -> _Run:
         for m, x in limits.items()
     }
     spend = Spend(prices=prices, cap_usd=args.cap_usd, before_usd=before)
-    inner = parts.chat(args.env_file)  # refused before the folder is made: no key, say
+    inner = parts.chat(args.env_file, args.model)  # refused before the folder is made: no key
     if not args.resume:
         folder.begin(info)
     paced = PacedChat(
