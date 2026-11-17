@@ -88,7 +88,7 @@ def language_arm(
     if args.language_from is None:
         return LanguageArm(plan=plan)
     call: CallLanguage = args.language_hint
-    found, results = _pass(args.language_from, args.split, commit, plan.digest)
+    found, results = language_pass(args.language_from, args.split, commit, plan.digest)
     by_variant = {(r.item, r.variant): r for r in results}
     if any((t.item.id, t.variant.id) not in by_variant for t in plan.todo):
         raise run_refused(
@@ -149,10 +149,11 @@ def _detected(
     return LanguageArm(sent, copied, {SETTING: shown}, arm.merge)
 
 
-def _pass(
+def language_pass(
     path: Path, split: str, commit: str, digest: str
 ) -> tuple[LanguagesScorecard, tuple[LanguageResult, ...]]:
-    """The H1 pass the arm reads, or the run's refusal."""
+    """The H1 pass an arm reads (`--language-from`; also the Scribe `detected` arm's gate,
+    scribe_arm_gate.py), or the run's refusal."""
     try:
         found, results = load_pass(path)
     except EvalDataError as error:

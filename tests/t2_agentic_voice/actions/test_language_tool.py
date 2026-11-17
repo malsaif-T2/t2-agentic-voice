@@ -70,6 +70,10 @@ def test_the_talker_gets_it_only_under_detected_with_two_languages() -> None:
     assert talker_tools(agent(languages=(ENGLISH,)), DETECTED) == ()
     auto = VoiceSettings(env="test", stt=SttSettings(live_language="auto"))
     assert talker_tools(two, auto) == ()
+    hinted = SttSettings(live_language="hinted")  # on Scribe, which gives a probability: D-115
+    assert [t.name for t in talker_tools(two, VoiceSettings(env="test", stt=hinted))] == [NAME]
+    as_session = VoiceSettings(env="test", stt=hinted.model_copy(update={"provider": "groq"}))
+    assert talker_tools(two, as_session) == ()
 
 
 def test_a_teams_own_tool_of_that_name_is_kept_alone() -> None:

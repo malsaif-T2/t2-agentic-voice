@@ -66,11 +66,13 @@ the call too, and its reply is in the language asked for; said over a reply unde
 moves the call whether the reply stops or goes on. Once the call has moved, the session's
 notices, its fixed phrases, the echo and the interruption rule's words are the new language's
 (`CallSetup.now`, `voice/session/call_language.py`), and the call report names a detected turn's
-language with `language_by = "detected"`. Under `session` and `auto` the call never moves.
+language with `language_by = "detected"`. Under `hinted` (next section) the call moves in the
+same ways; under `session` and `auto` it never moves.
 
 The list is a fast path only. For any other wording ("can we do this in English?", «ممكن نتكلم
 بلغة ثانية») the talker is given the library's `switch_language` tool
-(`actions/language_tool.py`), under `detected` and for an agent of two languages or more, unless
+(`actions/language_tool.py`), under `detected` or `hinted` (where it holds, next section) and
+for an agent of two languages or more, unless
 the agent declares a tool of that name. The model calls it with the code asked for (`en`, `ar`);
 the rest of that reply is then in the new language (its prompt, its clauses' voice, its tools'
 context), the call moves, and the speech-to-text bridge is told after the step. A language the
@@ -81,6 +83,40 @@ waits for its answer, the turn that moved it is no answer: the read-back is read
 new language, from the same draft, and only a yes after that new read-back played in full
 confirms it, with its own receipt (invariant 1; `voice/session/read_back_moved.py`). An action
 with no lines in the new language is declined instead, and the talker answers the turn.
+
+## One request a turn: the language Scribe heard and its probability
+
+`stt.live_language = "hinted"` (D-115, provisional) moves the call as `detected` does, but each
+turn sends one request, not two. Every answer of ElevenLabs' Scribe v3 holds a detected language
+(`language_code`) and the confidence of that detection, 0 to 1 (`language_probability`): the API
+reference marks both required. So each request names the call's current language as a hint
+(`language_code`, which the reference says may help when the language is known) and gives the
+agent's other languages beside it as secondary languages (`secondary_language_codes`, "other
+languages that may be spoken in the audio alongside `language_code`", Scribe v3 only, one form
+field each). Neither limits what Scribe may hear: no field of the request restricts its
+detection to a list. The call moves when all three hold:
+
+1. the answer's language is one of the agent's other languages (mapped exactly, as above);
+2. its probability is `stt.switch_min_probability` (0.8, a placeholder until run H measures the
+   Scribe arms) or more;
+3. the turn is a question or request, by the same rule as `detected`: two words or more, and not
+   only short replies.
+
+Then the turn's words are that one answer's, and every later request names the new language with
+the old one beside it. A switch request and the talker's tool move the call as above, and an
+action's read-back is read again after a move. The rule is `domain/language_hint.py`'s; the
+secondary languages ride on the request's clip (`AudioClip.other_languages`, a field a team's own
+adapter may ignore). It is off by default (GP-18). On a provider that gives no language
+probability (every one but `elevenlabs`; Whisper on Groq names a language with no probability), a
+call under `hinted` runs as `session`, and the runtime's start logs `hinted_as_session` once.
+
+What the docs leave open is measured, not assumed: whether Scribe told a language still reports
+another one it heard, and how sure it is when it does. Run H's Scribe arms (`poe eval-languages
+--scribe-arm`) compare the hint with secondary languages, secondary languages alone, no hint, and
+`detected` as a live call sends it (its second request only for a turn of `stt.detect_from_s` of
+voiced speech or more, read from an offline detected pass), on the moves, the false moves on
+short replies, each language's error rate and the time to the transcript, at every threshold
+from 0.5 to 0.95.
 
 ## Each turn's language from a classifier
 

@@ -3976,3 +3976,59 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Evidence:** the owner's live calls of 2026-11-17 and their five diagnoses (confirmation,
   picks, cards, ranges and listing, nonsense); the tests in `tests/flight_voice/lean/`,
   `tests/flight_voice/test_server_lean.py` and `tests/flight_voice/evals/test_run_lean.py`.
+
+## D-115 · One request a turn: Scribe v3's own language and probability move the call (`stt.live_language = "hinted"`) · 2026-11-17 · Accepted (the owner's request of 2026-11-17; a library setting, off by default until run H's Scribe arms are measured, GP-18)
+
+- **Context:** under `detected` (D-103), each turn of 1.2 s of voiced speech or more goes twice at once: once naming the call's language, and once naming none so that the provider detects the language. On 2026-11-17 the owner asked: "we should utilize Elevenlabs scribe v3 language probability to switch the language seamlessly during a call instead of sending two requests", and "I thought that Elevenlabs scribe v3 give me the ability to limit the detected languages to a list, or at least gives the probability with each request, which then we can change the parameter for the language if the other has surpassed a certain threshold". ElevenLabs' API reference (speech-to-text convert, read 2026-11-17) says:
+  - `language_code` is optional and "can sometimes improve transcription performance if known beforehand", which makes it a hint;
+  - `secondary_language_codes` holds "additional … language codes that may be present in the audio, alongside language_code". It is taken by scribe_v3 only and sent as one repeated form field per language (the batch guide);
+  - every answer carries a detected `language_code` and its `language_probability`, 0 to 1, both required;
+  - no field limits detection to a list.
+
+  The docs do not say whether an answer to a request that named a language can report another language.
+- **Decision:** a fifth value of `stt.live_language`, `hinted`, keeps the call's current language as `detected` does, but each turn sends one request. That request names the current language as the hint and carries the agent's other languages beside it. They travel on the clip as `AudioClip.other_languages`, a new optional field defaulting to empty, so the port's signature and every team's adapter are unchanged; ElevenLabs' adapter sends them as `secondary_language_codes`, on scribe_v3 only. The call moves to the answer's language when all three conditions hold:
+  1. the language maps exactly to another of the agent's codes;
+  2. its probability is at least `stt.switch_min_probability` (0.8, a placeholder until the arms are measured);
+  3. the turn is a question or request by D-103's text rule.
+
+  That answer is then the turn's words, and later requests name the new language, as under `detected`. A spoken switch request and the talker's `switch_language` tool move the call too, and a read-back waiting when the call moves is read again (invariant 1). The rule is in `domain/language_hint.py`. On a provider that gives no language probability (every one but `elevenlabs`), `hinted` runs as `session`, and the runtime's start logs `hinted_as_session` once.
+- **Consequences:**
+  - A long turn costs one Scribe request instead of two, and waits for one answer instead of the slower of two.
+  - Whether the hint lets Scribe report the other language is measured, not assumed. If Scribe echoes the hint, `hinted` never moves the call, and the arms' missed moves will show it.
+  - `session` stays the default. The flight and Ole5 apps turn nothing on. The dev console offers `hinted` per call.
+  - Run H gains four dev arms, `poe eval-languages --scribe-arm hinted|secondary|none|detected`,
+    which spend:
+    - (a) the hint with secondary languages;
+    - (b) secondary languages alone, which the docs neither allow nor forbid;
+    - (c) no hint;
+    - `detected`, the reference, as a live call sends it: the request in the call's language,
+      plus the one naming no language only for a variant whose first turn `detects`
+      (`stt.detect_from_s`, 1.2 s of voiced speech) in an offline `--classifier detected` pass.
+      `--language-from` names that pass, complete and at the same commit, split and data (the gate
+      run H's Whisper detected arm uses, detect_arm.py). A variant the gate did not pass keeps its
+      named answer and its own seconds, and never moves the call.
+
+    Each arm records the right, wrong and missed moves, the false moves on short replies, the WER
+    and CER of each item language, the seconds to the transcript (p50 and p95), the moves at each
+    threshold from 0.5 to 0.95, and, for each turn, whether `detected`'s gate sent its second
+    request.
+  - The keep rule, registered by the lead before any run (plan 010's progress log, 2026-11-17),
+    read against the gated `detected` reference, which is the live mode. Keep `hinted` at the
+    lowest threshold of the table where:
+    - its false moves on short replies are 0;
+    - its wrong moves are no more than `detected`'s;
+    - its right moves are at least `detected`'s minus 2;
+    - its WER in each item language is no worse than `detected`'s beyond the run's noise.
+
+    That threshold becomes the default of `stt.switch_min_probability`; otherwise `detected` stands.
+    `hinted` reads every turn's answer, so it may move the call on a turn of under 1.2 s of voiced
+    speech, which `detected` never does; such moves count as right or wrong by the same truth.
+- **Evidence:** the owner's words above; ElevenLabs' API reference and batch-language guide (read 2026-11-17). Tests:
+  - `tests/t2_agentic_voice/domain/test_language_hint.py`;
+  - `tests/t2_agentic_voice/adapters/test_elevenlabs_secondary.py`;
+  - `tests/t2_agentic_voice/voice/test_stt_hinted.py`;
+  - `tests/t2_agentic_voice/voice/session/test_call_language.py`;
+  - `tests/ole5_voice/evals/test_scribe_arms.py`;
+  - `tests/ole5_voice/evals/test_scribe_arm_run.py`.
+
+  Run H's Scribe arms' numbers are added when they are read.

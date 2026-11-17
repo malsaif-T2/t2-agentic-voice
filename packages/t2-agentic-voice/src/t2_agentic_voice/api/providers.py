@@ -11,7 +11,9 @@ part, since only api may build an adapter (harness.toml [layers]).
   (api/stt_choices.py).
 - `opened`: the runtime's start of them: each one's close pushed on its stack, and the
   classifier loaded, off the event loop, with the agent's codes, when the calls hear each
-  turn's language (an agent of one code runs none).
+  turn's language (an agent of one code runs none); under `stt.live_language = "hinted"` on a
+  provider that gives no language probability, a warning, once, that the calls run as
+  `session` (D-115).
 
 Each call's talker is built by agent/talker.py's `chat_talkers`, on the chat model here.
 """
@@ -24,6 +26,7 @@ from dataclasses import dataclass
 from typing import get_args
 
 from t2_agentic_voice.core.config import VoiceSettings
+from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.settings.provider_keys import TelnyxSttModel
 from t2_agentic_voice.core.settings.stt import SttModel
 from t2_agentic_voice.domain.declaration import VoiceAgent
@@ -32,6 +35,8 @@ from t2_agentic_voice.domain.ports.language_classifier import LanguageClassifier
 from t2_agentic_voice.domain.ports.speech_to_text import SpeechToText
 from t2_agentic_voice.domain.ports.text_to_speech import TextToSpeech
 from t2_agentic_voice.domain.turn_language import spoken_codes
+
+log = get_logger(__name__)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -178,6 +183,9 @@ async def opened(
     language with, loaded (the module's docstring); None when they hear none."""
     for provider in providers.each():
         stack.push_async_callback(provider.aclose)
+    stt = settings.stt
+    if stt.live_language == "hinted" and not stt.hints():
+        log.warning("hinted_as_session", provider=stt.provider, reason="no_language_probability")
     codes, classifier = spoken_codes(agent), providers.classifier
     if settings.stt.live_language != "classified" or classifier is None or len(codes) < 2:
         return None

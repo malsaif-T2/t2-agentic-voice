@@ -43,6 +43,7 @@ RATIOS = {
     ("turns", "smart_turn_threshold"),
     ("interruptions", "duck_level"),
     ("stt", "classifier_min_share"),
+    ("stt", "switch_min_probability"),
 }
 
 

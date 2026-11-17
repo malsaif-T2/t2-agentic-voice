@@ -34,7 +34,8 @@ kept aside until the last has run (plan 007's "Run H").
 
 `--read RUN ...` reads the complete passes of one commit, split and data, exactly two of them
 off, and logs condition 4 for each classifier pass (languages_reading.read_passes), writing
-nothing.
+nothing. `--scribe-arm ARM`, in place of `--classifier`, is a pass of one of run H's Scribe arms
+(D-115; scribe_arm_run.py), which spends; `detected`'s takes its gate, `--language-from`.
 """
 
 from __future__ import annotations
@@ -95,6 +96,7 @@ from ole5_voice.evals.run_parts import (
     marked_end,
 )
 from ole5_voice.evals.runs import cost_usd
+from ole5_voice.evals.scribe_arm_run import MakeStt, arm_flags, make_scribe, require_arm, run_arm
 from ole5_voice.evals.stt_arms import ARMS
 
 _DESCRIPTION = "Measure each turn's language on the golden set, offline, into a new folder --out."
@@ -126,10 +128,13 @@ def _parser() -> argparse.ArgumentParser:
     add("--cap-usd", type=float, help="the most a provider's pass may cost, in USD")
     add("--estimate-only", action="store_true", help="log a provider's estimate, send nothing")
     add("--read", nargs="+", type=Path, metavar="RUN", help="read passes' folders: condition 4")
+    arm_flags(parser)  # --scribe-arm and --language-from
     return parser
 
 
 def _require(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    if args.scribe_arm or args.language_from:
+        return require_arm(parser, args)
     if args.read:
         if any(getattr(args, n) for n in ("split", "classifier", "out", "note", "smoke_only")):
             parser.error("--read takes the passes alone")
@@ -269,6 +274,7 @@ def main(
     make_provider: MakeProvider = provider_language,
     append_line: AppendLine = history.append_line,
     peak: Peak = peak_mb,
+    make_stt: MakeStt = make_scribe,
 ) -> int:
     """`uv run poe eval-languages`: one pass of run H's H1, or `--read` of its passes. 0 when
     the pass is complete or the passes were read, 1 when the pass is not (an interrupt), 2 when
@@ -281,8 +287,9 @@ def main(
         if args.read:
             return read_condition_4(args.read)
         parts = Parts() if parts is None else parts
-        makers = (make_classifier, make_provider)
-        return _run(args, parts, turn_languages, *makers, append_line, peak)
+        if args.scribe_arm:
+            return run_arm(args, parts, make_stt)
+        return _run(args, parts, turn_languages, make_classifier, make_provider, append_line, peak)
     except T2VoiceError as error:
         log.error("eval_languages_refused", code=error.code, message=error.message)
         return 2

@@ -9,7 +9,8 @@ languages. The short list of spoken requests is the fast path (domain/language_s
   does. It changes nothing itself: the talker's turn then says the rest of its reply in that
   language (agent/turn.py), and the session moves the call to it (voice/session/call_language.py).
 - **`with_language_tool`**: an agent's tools with it added, for an agent of two languages or
-  more under `stt.live_language = "detected"`, unless the agent declares a tool of that name.
+  more under `stt.live_language = "detected"`, or `hinted` where it holds (D-115), unless the
+  agent declares a tool of that name.
 - **`switched_to`**: the tag the switch calls of one model request moved to, the last that
   succeeded; None when none did.
 """
@@ -76,7 +77,7 @@ def with_language_tool(
     tools: tuple[Tool, ...], languages: Sequence[Language], settings: VoiceSettings
 ) -> tuple[Tool, ...]:
     """`tools` with the `switch_language` tool added (the module's docstring)."""
-    if settings.stt.live_language != "detected" or len(languages) < 2:
+    if not settings.stt.language_moves() or len(languages) < 2:
         return tools
     if any(tool.name == NAME for tool in tools):
         return tools

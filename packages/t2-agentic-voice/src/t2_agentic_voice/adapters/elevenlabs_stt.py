@@ -6,6 +6,11 @@ variable of its own read, no redirect followed), with:
 
 - `model_id`, `scribe_v3` by default; the language the request names as `language_code`, none
   to let Scribe detect it; audio events and timestamps off, since only the text is read.
+- `secondary_language_codes`: the clip's `other_languages` (the agent's other languages, under
+  `stt.live_language = "hinted"`, D-115), each its own form field, as the provider's guide says
+  ("Repeat the form field once per language"), but the one named as `language_code`; sent only
+  to the models the API reference says take it (`SECONDARY_MODELS`: "Supported by scribe_v3",
+  read 2026-11-17), and none when the clip gives none.
 - `keyterms`: the terms of the prompt the call sends (the agent's vocabulary, then the command
   words; domain/whisper_prompt.py), at most 100, each at most 50 characters: ElevenLabs bills a
   20-second minimum a request past 100 keyterms (the provider guide, read 2026-11-16).
@@ -49,6 +54,8 @@ MODEL: Final = "scribe_v3"
 # The most keyterms a request carries, and the longest one, in characters (the module's docstring).
 MOST_KEYTERMS: Final = 100
 LONGEST_KEYTERM: Final = 50
+# The models that take `secondary_language_codes` (the API reference, read 2026-11-17).
+SECONDARY_MODELS: Final = frozenset({"scribe_v3"})
 # ElevenLabs' three-letter codes for the agent's languages, as the agent writes them.
 _CODES: Final = {"ara": "ar", "eng": "en"}
 # Where ElevenLabs processes and keeps speech-to-text requests, from the provider guide's reading
@@ -114,6 +121,9 @@ class ElevenLabsSTT:
         }
         if language:
             fields["language_code"] = language
+        others = [code for code in dict.fromkeys(clip.other_languages) if code != language]
+        if others and self._model in SECONDARY_MODELS:
+            fields["secondary_language_codes"] = others
         terms = keyterms(prompt, most=MOST_KEYTERMS, longest=LONGEST_KEYTERM)
         if terms:
             fields["keyterms"] = list(terms)
