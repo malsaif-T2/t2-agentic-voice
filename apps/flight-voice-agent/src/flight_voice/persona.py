@@ -102,6 +102,11 @@ def _fill(names: Names, traveler: Traveler) -> dict[str, str]:
     }
 
 
+def filled(names: Names, traveler: Traveler = TRAVELER) -> dict[str, str]:
+    """What an instructions template is filled with (`_fill`), for the lean agent's too."""
+    return _fill(names, traveler)
+
+
 def greeting(tag: Tag, names: Names, traveler: Traveler = TRAVELER) -> str:
     """The greeting of a call held in `tag`, in its own script's names."""
     filled = _fill(names, traveler)

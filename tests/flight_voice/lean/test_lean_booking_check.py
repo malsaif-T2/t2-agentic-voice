@@ -1,0 +1,148 @@
+"""The lean agent's booking check (flight_voice/lean/booking_check.py), fed the call's events as
+the runtime's observers would: it holds once a reply since the trip was completed states its
+total, played up to it, and the caller spoke after it (a later turn that cut the reply past its
+total counting though its transcript came before the reply's end); and it refuses with no total
+said, the
+total cut off before it played, no caller turn after the reply, and the trip changed after the
+summary. A total is read in digits (a thousands mark, Arabic-Indic digits) or in words in
+English, Saudi Arabic and MSA; a call held in text reads its events from the call itself, and
+an ended call's are dropped."""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime
+
+from flight_voice.lean.booking_check import BookingCheck, stated_at
+from t2_agentic_voice.events import AgentSpeechEnded, Event, UserTurnEnded
+from t2_agentic_voice.languages import speak_number
+
+from tests.flight_voice.lean.lean_support import LeanCall, chosen_trip, ids
+from tests.flight_voice.tools.tool_support import CALL_ID
+
+
+def _summary(call: LeanCall) -> str:
+    return f"Riyadh to Jeddah and back, economy, one traveler: {call.total()} riyals in all."
+
+
+def _holds(call: LeanCall) -> bool:
+    return call.check.confirmed(CALL_ID, call.draft, call.total())
+
+
+def test_the_check_holds_once_the_total_played_and_the_caller_spoke() -> None:
+    call = chosen_trip()
+    call.said(_summary(call) + " Shall I book it?")
+    assert not _holds(call)  # the caller has not spoken since
+    call.heard("yes")
+    assert _holds(call)
+
+
+def test_no_total_said_is_refused() -> None:
+    call = chosen_trip()
+    call.said("Riyadh to Jeddah and back, economy, one traveler. Shall I book it?")
+    call.heard("yes")
+    assert not _holds(call)
+
+
+def test_a_total_cut_off_before_it_played_is_refused() -> None:
+    call = chosen_trip()
+    call.said(_summary(call), played=0.5)
+    call.heard("yes")
+    assert not _holds(call)
+    call.said(_summary(call) + " Shall I book it?", played=0.9)  # said again, heard past it
+    call.heard("yes please")
+    assert _holds(call)
+
+
+def test_a_turn_that_cut_the_reply_after_its_total_holds_though_it_ended_first() -> None:
+    call = chosen_trip()
+    call.heard("the first ones")  # turn 1: the summary answers it
+    summary = _summary(call) + " Shall I book it?"
+    call.heard("yes, book it")  # turn 2, over the question: its transcript came first
+    call.said(summary, played=0.93, turn=1)  # then the overlap's verdict cut the summary
+    assert _holds(call)
+
+
+def test_a_turn_before_the_reply_ended_counts_only_when_it_cut_the_reply_past_its_total() -> None:
+    whole = chosen_trip()
+    whole.heard("the first ones")
+    whole.heard("mm")  # turn 2, said over the summary, which went on and played whole
+    whole.said(_summary(whole) + " Shall I book it?", played=1.0, turn=1)
+    assert not _holds(whole)
+    early = chosen_trip()
+    early.heard("the first ones")
+    early.heard("wait, wait")  # turn 2 cut the summary before its total played
+    early.said(_summary(early) + " Shall I book it?", played=0.3, turn=1)
+    assert not _holds(early)
+    same = chosen_trip()
+    same.heard("the first ones")  # turn 1 itself, heard before the cut reply that answers it
+    same.said(_summary(same) + " Shall I book it?", played=0.93, turn=1)
+    assert not _holds(same)
+
+
+def test_no_caller_turn_after_the_reply_is_refused() -> None:
+    call = chosen_trip()
+    call.heard("the first ones")
+    call.said(_summary(call))
+    assert not _holds(call)
+
+
+def test_a_trip_changed_after_the_summary_is_refused() -> None:
+    call = chosen_trip()
+    call.said(_summary(call))
+    call.heard("make it two of us")
+    call.choose(travelers=2)
+    assert not _holds(call)
+    call.said(_summary(call))  # the new total said
+    call.heard("yes")
+    assert _holds(call)
+
+
+def test_a_summary_said_before_the_trip_was_complete_never_counts() -> None:
+    call = LeanCall()
+    found = call.find(destination="Jeddah", depart="2026-11-19")
+    call.said("Riyadh to Jeddah on Thursday.")
+    call.heard("the first one")
+    call.choose(outbound_id=ids(found)[0])
+    assert not _holds(call)
+
+
+def test_a_total_is_read_in_digits_and_in_words() -> None:
+    for text in ("Total 4230 riyals.", "Total 4,230 riyals.", "المجموع ٤٬٢٣٠ ريال."):
+        assert stated_at(text, 4230) is not None, text
+    for words in (
+        speak_number(4230, language="en"),
+        speak_number(4230, language="ar-SA", register="saudi"),
+        speak_number(4230, language="ar-SA", register="msa"),
+    ):
+        assert stated_at(f"The total is {words} riyals.", 4230) is not None, words
+    assert stated_at("Total 14230 riyals.", 4230) is None
+    assert stated_at("Total 42300 riyals.", 4230) is None
+    at = stated_at("Total 880. Shall I book it now, or change something first?", 880)
+    assert at is not None and 0 < at < 0.3
+
+
+def test_a_call_in_text_reads_its_events_from_the_call() -> None:
+    call = chosen_trip()
+    events: list[Event] = []
+    call.check.read_from(lambda: events)
+    at = datetime(2026, 11, 16, 9, tzinfo=UTC)
+    events.append(
+        AgentSpeechEnded(call_id=CALL_ID, turn_id=0, at=at, text=_summary(call), played_fraction=1)
+    )
+    events.append(UserTurnEnded(call_id="another", turn_id=1, at=at, heard="yes"))
+    assert not _holds(call)  # another call's turn is not this caller's
+    events.append(UserTurnEnded(call_id=CALL_ID, turn_id=1, at=at, heard="yes"))
+    assert _holds(call)
+
+
+def test_an_ended_call_is_dropped_and_the_calls_kept_are_capped() -> None:
+    call = chosen_trip()
+    call.said(_summary(call))
+    call.heard("yes")
+    assert len(call.check) == 1
+    call.ended()
+    assert len(call.check) == 0
+    capped = BookingCheck(max_calls=2)
+    for n in range(3):
+        capped.ledger(f"call-{n}")
+    assert len(capped) == 2

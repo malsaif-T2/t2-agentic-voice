@@ -201,7 +201,8 @@ def card_md(card: Scorecard) -> str:
     lines = [
         f"# Scripted flight calls: {run.name}",
         "",
-        f"Commit {run.commit[:12]}, split {run.split}, {run.model} at {run.effort}, "
+        f"Commit {run.commit[:12]}, split {run.split}, the {run.agent} agent, "
+        f"{run.model} at {run.effort}, "
         f"{run.repeats} plays each. Complete: {'yes' if card.complete else 'no'}"
         f"{'' if card.stopped is None else f' (stopped: {card.stopped})'}. "
         f"Violations: {totals.violations} ({'held' if card.held else 'BROKEN'}). "
@@ -210,15 +211,17 @@ def card_md(card: Scorecard) -> str:
         f"Passed {totals.passed} of {totals.played} scenarios played; {totals.skipped} skipped; "
         f"{totals.plays} plays.",
         "",
-        "| Scenario | Plays | Passes | Verdict | Every play | Violations | Failed checks |",
-        "| --- | --- | --- | --- | --- | --- | --- |",
+        "| Scenario | Plays | Passes | Verdict | Every play | Violations | Failed checks "
+        "| Measures |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for each in card.scenarios:
         every = "" if each.all_plays is None else ("yes" if each.all_plays else "no")
         failed = ", ".join(f"{name} {n}" for name, n in each.failed.items())
         shown = " ".join(str(v) for v in each.violations)
+        measured = ", ".join(f"{name} {v:g}" for name, v in each.measures.items())
         lines.append(
             f"| {each.id} | {each.plays} | {each.passes} | {_verdict(each)} | {every} "
-            f"| {shown} | {failed} |"
+            f"| {shown} | {failed} | {measured} |"
         )
     return "\n".join(lines) + "\n"

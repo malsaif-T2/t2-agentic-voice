@@ -1343,6 +1343,7 @@ Yes words, send words, fillers and listening sounds spoken over the summary are 
 - **The part that acts.** For an agent with actions, `TextCall` builds the action runner as the runtime does, its daily cap per caller from the settings, over its outbox (`TextCall(outbox=...)`, a `MemoryOutbox` unless given), with a record of the call's own. The outcome line answers no turn, so `action_completed` checks it and a turn's `said` does not hold it. Its typed words carry the source `typed`.
 - **Expectations:** `turn.expect.tool_call(name, **args)`, `.read_back(contains=, **values)`, `.no_read_back()`, `.asked_again()`, `.confirmed(name, **values)`, `.no_action()`, `.action_ended(name, kind)` (the `sending` line, then the outcome's, said; `kind` one of `done`, `failed`, `unknown`), `.action_completed(name)`, `.said(contains=)`, `.blocked()`, `.cancelled(tool)`, `.language("ar-SA")`. A failure names the action, the turn and the fields that differ, never their values.
 - **`call.violations`** holds the guard and yes-rule checks. They run automatically in every call: rule B always; rules A and C, and the check that each confirmed action was confirmed by words begun once a read-back of its own draft had played whole, only for an agent that declares an action (section 8.2). The runtime's own lines are exempt, as the guard exempts them.
+- **`call.emitted`** holds the call's public events so far, in order, as the runtime's observers get them. It is read-only (D-113).
 
 ### 9.3 The adversarial suite
 

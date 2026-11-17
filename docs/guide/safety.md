@@ -152,7 +152,10 @@ lines: not that a closing question holds a send word, nor that it holds no yes w
 ### When any yes books: `interruptions.yes_over_read_back`
 
 An app may turn on `interruptions.yes_over_read_back` (off by default; D-108, the owner's ruling
-of 2026-11-17, "Any yes books"); the flight agent does. Then:
+of 2026-11-17, "Any yes books"); the flight agent does. (Its lean agent, served when
+`FLIGHT_VOICE_AGENT=lean`, has no read-back at all: it books from a tool once a booking check in
+the app's code holds, a departure from "only actions act" for its mock airline alone, D-113; an
+app that books for real declares an action.) Then:
 
 - **A yes over the summary is held, not dropped.** A yes, a send word or the action's own send
   words, with only fillers beside them, said over the summary after its first audio ("yes",

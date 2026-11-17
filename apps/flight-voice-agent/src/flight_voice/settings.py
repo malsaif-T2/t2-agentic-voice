@@ -6,8 +6,9 @@ The app's own (`AppSettings`, each field's description says what it does): the a
 owner types on the page (required, at least 16 characters, made with `GENERATOR`), the website
 allowed to frame the page, the token route's tokens a day (50), the airline's today (`live`, or
 a date pinned), the mock airline's modes (its bookings' writes and lookup, its searches, its
-profile, a slow read's seconds), and the persona's names, the owner's picks by default
-(persona.py's `Names`).
+profile, a slow read's seconds), the agent served (`agent`: `scripted`, today's, by default, or
+`lean`, the model-led one beside it, D-113), and the persona's names, the owner's picks by
+default (persona.py's `Names`).
 
 `load` also, whatever else sets them:
 - **nests the runtime's folder** under `<storage.var_dir>/flight` (`APP_FOLDER`): its used
@@ -17,12 +18,13 @@ profile, a slow read's seconds), and the persona's names, the owner's picks by d
   `limits.actions_per_caller_per_day`: a demo day books more than the library's default;
 - **turns on** `guard.question_stop_drops_calls`, `guard.drop_stage_notes` and
   `guard.plain_speech` (`GUARD_ON`), sets `llm.max_requests_per_turn` to 4 (`REQUESTS_PER_TURN`),
-  and turns on `interruptions.yes_over_read_back` (`YES_OVER_READ_BACK`), each unless the
-  environment sets it (run F's rounds 2 and 3): a question the limit stopped ends the turn with
-  no call of its request run, a stage note or a tag the model writes is never said, nor a clause
-  that is not speech, its request tried once more (D-111), a refused booking's next pick and its
-  read-back fit in one turn, and a yes over the read-back books once its summary has played
-  (D-108, the owner's "Any yes books");
+  and, for the scripted agent alone, turns on `interruptions.yes_over_read_back`
+  (`YES_OVER_READ_BACK`), each unless the environment sets it (run F's rounds 2 and 3): a
+  question the limit stopped ends the turn with no call of its request run, a stage note or a
+  tag the model writes is never said, nor a clause that is not speech, its request tried once
+  more (D-111), a refused booking's next pick and its read-back fit in one turn, and a yes over
+  the read-back books once its summary has played (D-108, the owner's "Any yes books"); the lean
+  agent has no read-back to hold a yes over (`for_the_app`'s `agent`);
 - **under `env` dev alone**, names the demo traveler the test console's dev caller, so a call the
   console starts is the traveler's, as a page's call is;
 - **refuses a name that breaks the lines' rule** (persona.py's `breaking`), naming its setting.
@@ -69,6 +71,9 @@ ACTIONS_PER_DAY: Final = 50
 GUARD_ON: Final = ("question_stop_drops_calls", "drop_stage_notes", "plain_speech")
 REQUESTS_PER_TURN: Final = 4
 YES_OVER_READ_BACK: Final = "yes_over_read_back"
+# The agent the app serves: today's scripted one, or the lean one beside it (D-113).
+AgentKind = Literal["scripted", "lean"]
+AGENTS: Final[tuple[AgentKind, ...]] = ("scripted", "lean")
 MIN_ACCESS_CODE_CHARS: Final = 16
 GENERATOR: Final = 'python -c "import secrets; print(secrets.token_urlsafe(24))"'
 # A name: one line of at most 40 characters, with no control character, brace or dollar.
@@ -130,6 +135,11 @@ class AppSettings(BaseSettings):
     )
     slow_s: float = Field(
         default=SLOW_S, gt=0, le=30, description="How long a slow read of the airline waits."
+    )
+    agent: AgentKind = Field(
+        default="scripted",
+        description="The agent served: scripted (today's, with its read-back and yes rule) or "
+        "lean (the model-led one beside it, D-113).",
     )
     persona_name_en: str = _name(_DEFAULT.persona_name_en, "The persona's name in English.")
     persona_name_ar: str = _name(_DEFAULT.persona_name_ar, "The persona's name in Arabic.")
@@ -211,14 +221,15 @@ def load(env_file: Path | None = None) -> Settings:
             "listening or send word, or a booking's claim. FIX: choose another name.",
             details={"settings": [*broken]},
         )
-    return Settings(app=app, voice=for_the_app(voice))
+    return Settings(app=app, voice=for_the_app(voice, agent=app.agent))
 
 
-def for_the_app(voice: VoiceSettings) -> VoiceSettings:
-    """`voice` as the app runs it: its folder nested (`APP_FOLDER`), its bookings a caller a
-    day `ACTIONS_PER_DAY`, the guard's `GUARD_ON` on, its most requests a turn
-    `REQUESTS_PER_TURN` and `YES_OVER_READ_BACK` on, each unless set, and under `env` dev alone
-    the demo traveler the test console's dev caller; every other setting as it was."""
+def for_the_app(voice: VoiceSettings, *, agent: AgentKind = "scripted") -> VoiceSettings:
+    """`voice` as the app runs `agent`: its folder nested (`APP_FOLDER`), its bookings a caller
+    a day `ACTIONS_PER_DAY`, the guard's `GUARD_ON` on, its most requests a turn
+    `REQUESTS_PER_TURN` and, for the scripted agent alone (the lean one has no read-back),
+    `YES_OVER_READ_BACK` on, each unless set, and under `env` dev alone the demo traveler the
+    test console's dev caller; every other setting as it was."""
     storage = StorageSettings.model_validate(
         voice.storage.model_dump() | {"var_dir": voice.storage.var_dir / APP_FOLDER}
     )
@@ -229,7 +240,7 @@ def for_the_app(voice: VoiceSettings) -> VoiceSettings:
         )
     if on := {name: True for name in GUARD_ON if name not in voice.guard.model_fields_set}:
         update["guard"] = GuardSettings.model_validate(voice.guard.model_dump() | on)
-    if YES_OVER_READ_BACK not in voice.interruptions.model_fields_set:
+    if agent == "scripted" and YES_OVER_READ_BACK not in voice.interruptions.model_fields_set:
         update["interruptions"] = InterruptionSettings.model_validate(
             voice.interruptions.model_dump() | {YES_OVER_READ_BACK: True}
         )

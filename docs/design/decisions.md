@@ -3943,3 +3943,36 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   turn 6 (4 clauses); none in f-dev-6. The dot rule changes what the question limit lets be
   said in exactly 2 replies, f-dev-5's f15 (five questions joined by dot runs) and the owner's
   turn 2. The tests in `tests/t2_agentic_voice/agent/test_plain_speech.py`.
+
+## D-113 · The lean flight agent beside the scripted one, its booking checked in the app's code · 2026-11-17 · Accepted (the owner's ruling of 2026-11-17, "Lean next to it"; the flight app's code and one setting, `FLIGHT_VOICE_AGENT`, scripted by default; for the mock airline alone)
+
+- **Context:** in the owner's live calls of 2026-11-17 the flight agent felt clunky because our
+  code kept overriding the model: a scripted read-back and a strict yes rule, six fixed pick
+  kinds and a rule against the model resolving a pick, closed date forms and a gate that listed
+  nothing before a return day, and tool results that dictate every sentence. HUMAIN Air's demo
+  feels natural with a thin loop and a good prompt.
+- **Decision:** a lean agent beside today's (`apps/flight-voice-agent/src/flight_voice/lean/`),
+  chosen by `FLIGHT_VOICE_AGENT` (`scripted`, the default, or `lean`), compared on live calls and
+  by run F's outcome mode (`poe eval-flights --agent lean`), the winner kept. The same airline,
+  trip state, persona, words, page and voice layer; four tools of plain data with no scripted
+  `say` (`find_flights`, `choose_flights`, `book_trip`, `traveler_profile`); short instructions
+  with a calendar written in code, the model resolving dates and picks itself. What stays in
+  code: facts only from tools (the output guard's rule B, plain speech) and one booking check:
+  `book_trip` books the trip chosen so far only when it is complete, a reply since it was last
+  completed or changed states its total, that reply played at least up to the total, and the
+  caller spoke after it, read from the call's `AgentSpeechEnded` and `UserTurnEnded` events.
+  The model's judgement that the caller agreed is the yes: any yes books.
+- **Consequences:** this departs from the library's "only actions act" design (invariant 1, the
+  read-back and its receipt) for the mock airline alone: the lean agent declares no action and
+  its `book_trip` is a tool that writes to the mock store, as the scripted agent's action job
+  does, for the call's verified traveler, one booking a call, a write whose end is not known
+  never sent again. A bare yes the model misjudges can book, which the scripted agent's yes rule
+  would not let; the check still refuses a booking whose total was never said and heard. The
+  library gains one read-only accessor, `TextCall.emitted`, so a call held in text gives its
+  events to an app's tools as observers get them. The calendar is written when the agent is
+  declared, so a lean server holds the day it started, and its airline keeps that day as its
+  today; it is restarted daily, `FLIGHT_VOICE_TODAY` pinned only to today, and a call on a
+  calendar whose day is not Riyadh's today logs `lean_calendar_stale`. A spending run of the lean mode, and the live calls, decide which agent stays.
+- **Evidence:** the owner's live calls of 2026-11-17 and their five diagnoses (confirmation,
+  picks, cards, ranges and listing, nonsense); the tests in `tests/flight_voice/lean/`,
+  `tests/flight_voice/test_server_lean.py` and `tests/flight_voice/evals/test_run_lean.py`.

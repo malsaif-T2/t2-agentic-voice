@@ -31,6 +31,10 @@ the owner's ruling, "Brief, voice only" (3.2); four dev calls f29 to f32 and f22
 owner's "any yes books" (7.2); and the page's three segments, outbound, return and review, each
 filled in place by the card whose `slot` names it (D-110; 3.4, 6.1).
 
+**The lean agent (D-113, the owner's ruling of 2026-11-17, "Lean next to it"):** a model-led
+agent beside today's, chosen by `FLIGHT_VOICE_AGENT`, its booking checked in the app's code, and
+run F's outcome mode for it (section 13). Everything above describes the scripted agent.
+
 ## 0. Read first
 
 **Why this app exists.** The owner, 2026-11-16: make our voice agent do flight booking "for the
@@ -1589,3 +1593,116 @@ different form, said below.
 12. *L3's time zone needs tzdata in the library.* Taken: in L3 and B2, with the declaration check.
 13. *Section 0 misstates Q23.* Taken. Checked: plan 010 records the four answers and the names
     proposal (commit 14b1b0f). Section 0 cites them; the names are put to the owner before A8.
+
+## 13. The lean agent (D-113, the owner's ruling of 2026-11-17)
+
+**Why.** In the owner's live test the agent felt clunky because the code kept overriding the
+model: a scripted read-back and a strict yes rule, six fixed pick kinds, closed date forms and a
+gate that listed nothing before a return day, and tool results that dictate every sentence. The
+owner ruled "Lean next to it": a model-led agent beside today's (`src/flight_voice/lean/`), the
+same airline, trip state, persona, names, words and page, compared on live calls, the winner
+kept. The setting `FLIGHT_VOICE_AGENT` chooses it (`scripted` by default, or `lean`); the server
+declares the agent chosen and, for the lean one, registers its booking check's observers
+(`AgentSpeechEnded`, `UserTurnEnded`, `CallEnded`). Its settings path turns on
+`guard.plain_speech`, `guard.drop_stage_notes`, `guard.question_stop_drops_calls` and four model
+requests a turn, as the scripted agent's does, and not the yes held over a read-back, which it
+has none of. Its name is `flight-lean`, so its traces and its runtime's folder are its own.
+
+**What stays in code, and nothing more.**
+
+1. *Facts only from tools.* The library's output guard (rule B) and plain speech stay on; the
+   prompt says every flight, time, fare and reference comes from a tool result of this call.
+2. *One booking check, in the app's code* (`lean/booking_check.py`; the owner: "code only checks
+   that the booking matches what was said"). `book_trip` books the trip chosen so far only when
+   the trip is complete (every leg chosen, seats for the travelers in the cabin); since the trip
+   was last completed or changed, a reply of the agent states its total (the number, in digits
+   or in words, normalized as the guard normalizes, through the `languages` facade); that reply
+   played at least up to the total (where the total ends, over the text's length, is at most its
+   `played_fraction`); and the caller spoke after that reply (a turn heard after it ended, or,
+   for a reply cut short, a later turn heard before it ended: a turn that cuts a reply can end
+   before the reply's end is told). The check reads the call's events,
+   kept per call and dropped at `CallEnded` as the trip book drops a trip (a call held in text
+   reads them from `TextCall.emitted`); the tools mark the trip each time they write it, so a
+   total said before a change never books the changed trip. When the check fails, `book_trip`
+   books nothing and answers `not_confirmed`, its one fixed `say`: "Say the trip with its total
+   in one sentence and ask whether to book it. Book only after the caller agrees." The model's
+   own judgement that the caller agreed is the yes: any yes books, a bare one too.
+   **This departs from the library's "only actions act" design** (invariant 1: the read-back and
+   its receipt), for the mock airline alone, by the owner's ruling. The lean agent declares no
+   action, so its prompt gets no action rules, and `book_trip` is one of its tools, writing to the
+   mock airline's booking store as the scripted agent's action job does, for the call's verified
+   traveler (invariant 3), one booking a call, a write whose end is not known never sent again.
+3. *The voice layer is untouched:* turn-taking, interruptions, speech-to-text, text-to-speech and
+   the language switch.
+
+**The tools** (plain data in and out, no scripted `say`; a short `note` only where the data alone
+would mislead: a full flight, a route not served, a date outside the window):
+
+- `find_flights` (`lean/find.py`, `span.py`) takes a city in any language or its code (Riyadh
+  the start unless another), the day they leave as an ISO date or a span of at most 14 days
+  (`{"first", "last"}`), the return day or null (one way, or not said yet), and the cabin and the
+  travelers (the trip's own, economy and one at first). A day gives the route in the caller's
+  register (`route`, with `route_msa` beside a Saudi reply's), `fares_are: "one way, per
+  person"`, and the outbound flights with the return day's in the same shape: each a stable id
+  (`T2-401-2026-11-19`), its name and aircraft (said only when asked, as the card shows them),
+  its times, its length, its fare per person, `seats_ok`, `nonstop` and `part_of_day`, with
+  `count`, `first_departs`, `last_departs` and `cheapest_id`; the trip takes
+  the route, the days and the options; its card is the outbound segment. A span gives each day's
+  weekday, flight count and lowest fare, the daily departure times, the days with no flight and
+  the two cheapest days, writes nothing, and its card is the outbound segment's calendar. Its
+  refusals are data: `not_served` with the cities, `date_problem` naming the window,
+  `cabin_not_offered`, `no_flights` with the nearest days.
+- `choose_flights` (`lean/choose.py`) takes `outbound_id`, `return_id`, `cabin` and `travelers`,
+  each optional: the model resolves the caller's pick itself from the options it was given. It
+  gives the trip so far: each chosen leg's id, name, aircraft, day, times, length, `nonstop` and
+  fare (`book_trip` gives the legs booked in the same shape), the
+  travelers, the cabin,
+  `missing` (each listed again in `listed`), `lost` (a leg a change left with no seats, by its
+  departure time) and, once complete, `total`; a changed cabin or traveler count prices the trip
+  again. Its card is the return segment with the outbound pick kept beside it, then the review.
+  Its refusals, nothing written: `nothing_listed`, `unknown_id` and `no_seats` with the leg's
+  other ids, fares and seats, `cabin_not_offered`.
+- `book_trip` (`lean/book.py`) takes nothing: the booking check, then the store. It gives
+  `booked` with the reference, the total, the route and the legs booked, and the review card
+  ending "Booked ·
+  Reference ..."; else `not_confirmed`, `incomplete`, `refused` (the store's reason), `unknown`
+  (a write that did not answer and was not found by its request ID) or `already_booked` (the
+  booking and the trip as it was booked, never the call's trip changed since).
+- `traveler_profile` is today's tool.
+
+**The prompt** (`lean/instructions/en.md` and `ar-SA.md`, about 30 lines each, filled by
+`lean/prompt.py`): Saad of T2 Air, the existing names and greeting; speech first, one to three
+short sentences, one question at the end, never a list read out, never markdown, never a screen
+(D-075). A calendar written in code in the reply's language: today with its weekday, the next 21
+days each with its weekday, and the days "this week", "this weekend", "next week" and "next
+weekend" cover (the Saudi week Sunday to Saturday, the weekend Friday and Saturday); the model
+reads every date from it, never a day the caller did not say, and searches a span for days asked
+about. The defaults (Riyadh, economy, one traveler) never asked and said in the summary; the
+return asked only when not said. A day listed briefly (its count, its first and last departures,
+the cheapest by time and fare; the others only when asked; "one way, per person" once a call), a
+span by its departures and its two cheapest days. The pick resolved by the model, asked with the
+fares only when truly unclear. The trip confirmed in one sentence (the route, each leg's day and
+time, the cabin, the travelers, the total), booked only after any yes, a change confirmed again.
+Facts only from tool results of this call; a reference only when asked. The Saudi and MSA
+register lines and the greeting rule copied from today's instructions. No example copies a line
+of a scripted call (D-011; `tests/flight_voice/lean/test_lean_prompt.py`). The calendar is
+written when the agent is declared, so a server holds the day it started, and its airline keeps
+that day as its today; the library's "Today is" line follows the clock, so the server is restarted
+each day and `FLIGHT_VOICE_TODAY` pinned only to today, and each call on a calendar whose day is
+not Riyadh's today logs an error (`lean_calendar_stale`).
+
+**Run F's outcome mode** (`poe eval-flights --agent lean`; `evals/lean_call.py` and
+`lean_checks.py`): the same scenarios, the lean agent in each play, scored by outcomes. Kept:
+`failure`; `violations` (the call's own, each reply plain speech drops, and a booking claimed
+before the store held one); `booked` (one booking exactly when the scenario books, holding its
+read-back's flights, days, travelers and cabin, for the demo traveler alone, none otherwise);
+`reference`; and on each turn `language`, `register`, `stage_note`, `notice`, `max_words` and
+`repeat`. Not used: `calls`, `args`, `outcome`, `own_summary`, `said_any`, `said_none`,
+`max_options`, `card`, `progress` and `cut_repeat`. Measured, never pass or fail: the caller
+turns and the seconds until the booking, and the words the agent said. A turn said `when =
+"read_back"` or `"closing_question"` (moments of the library's read-back) is said right after the
+agent's reply, once it is silent, so it answers the reply that states the total: words said over
+a reply that goes on are settled by the voice layer and never answered. A scenario whose
+`asked_again` only makes sense for the read-back counts on its booking alone. The run, its
+scorecard and its history line name the agent (`scripted` or `lean`), so the two compare by
+scenario.

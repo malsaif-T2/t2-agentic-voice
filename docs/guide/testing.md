@@ -351,9 +351,12 @@ goes to the test's model, the same one the talker writes with.
   checks the fake was asked (`[r for r in llm.requests if is_consent_check(r)]`), or answer them
   with a `FunctionLLM` that asks `is_consent_check(request)` first, which need not count.
 - **Which way the answer went**: observers get `ConfirmationAnswered` (the `events` facade), its
-  `by` `words` for the lists or `model`. `TextCall` keeps no public list of its call's events, so
-  a test reads the outcome by the expectations (`confirmed`, `no_action`, `asked_again`) and the
-  checks the fake was asked, counted as above.
+  `by` `words` for the lists or `model`. In a `TextCall`, `call.emitted` holds the call's public
+  events so far, in order, as observers get them (`ConfirmationAnswered` among them), so a test
+  reads which way it went there, or by the expectations (`confirmed`, `no_action`,
+  `asked_again`) and the checks the fake was asked, counted as above. A tool of yours that reads
+  the call's events (an app's own check, as the flight app's lean agent's booking check) reads
+  them from `call.emitted` in a test, where the runtime would hand them to its observers.
 - **`consent_check_request(summary, question, words)`** builds the request the session sends,
   with the library's model and bounds (`openai/gpt-oss-120b` at low effort, temperature 0, at
   most 256 output tokens); a measurement may name its own (`model=`, `reasoning_effort=`,

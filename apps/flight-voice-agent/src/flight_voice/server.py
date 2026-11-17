@@ -4,14 +4,18 @@ tokens a day, 50 by default), the page's own routes (routes.py) and the library'
 under `VOICE_PREFIX`, with its test console under `env` dev, run by uvicorn with one worker.
 
 `uv run --offline python -m flight_voice.server --env-file .env` serves it on 127.0.0.1:7862,
-its settings from the environment and the file given (settings.py). Its agent (agent.py) is the
-talker over the mock airline, kept in memory and reset to its seed at each start, its modes and
-today the settings'; each call's trip is kept in one `TripBook`, dropped as the call ends
-(`CallEnded`). Every join token the token route mints names the demo traveler (traveler.py),
-whatever the request says. There is no echo: the mock airline needs no outside service, and the
-library's runtime needs the Groq key for its chat model and voices whatever the agent, so with
-none set it refuses to start, naming the key's setting. The app is built as the library's mount
-asks, as Ole5's is:
+its settings from the environment and the file given (settings.py). Its agent is the one the
+setting `FLIGHT_VOICE_AGENT` chooses, today's scripted talker (agent.py) by default or the lean one
+beside it (lean/agent.py, D-113, its booking check observing each call's `AgentSpeechEnded`,
+`UserTurnEnded` and `CallEnded`, and its calendar's day each `CallStarted`), over the mock
+airline, kept in memory and reset to its seed at each start, its modes and today the settings'
+(for the lean agent, today as the server starts, the day its calendar is written for, kept);
+each call's trip is kept in one `TripBook`,
+dropped as the call ends (`CallEnded`). Every join token the token route mints names the demo
+traveler (traveler.py), whatever the request says. There is no echo: the mock airline needs no
+outside service, and the library's runtime needs the Groq key for its chat model and voices
+whatever the agent, so with none set it refuses to start, naming the key's setting. The app is
+built as the library's mount asks, as Ole5's is:
 - FastAPI's own telemetry off (`TELEMETRY_OFF`), since the library instruments no other library
   (D-023);
 - CORS for `server.allowed_origins` alone, with POST and PATCH, and as headers `content-type`
@@ -30,6 +34,7 @@ from __future__ import annotations
 import argparse
 import time
 from collections.abc import Awaitable, Callable, Mapping, Sequence
+from datetime import date
 from pathlib import Path
 from typing import Final
 
@@ -45,7 +50,7 @@ from t2_agentic_voice import (
     configure_logging,
     get_logger,
 )
-from t2_agentic_voice.events import CallEnded
+from t2_agentic_voice.events import CallEnded, CallStarted, Event
 from t2_agentic_voice.identity import SignedJoinTokens
 from t2_agentic_voice.server import (
     AccessCodeGuard,
@@ -58,6 +63,9 @@ from flight_voice import LOGGERS
 from flight_voice.agent import declare
 from flight_voice.airline.bookings import BookingStore
 from flight_voice.airline.system import Airline
+from flight_voice.lean.agent import OBSERVED, calendar_watch
+from flight_voice.lean.agent import declare as declare_lean
+from flight_voice.lean.booking_check import BookingCheck
 from flight_voice.routes import api_router
 from flight_voice.settings import AppSettings, Settings, load
 from flight_voice.traveler import demo_caller
@@ -93,10 +101,10 @@ FILES: Final = {
 log = get_logger(__name__)
 
 
-def airline_of(app: AppSettings) -> Airline:
-    """The mock airline as the settings set it: its today, its modes and its code, its bookings
-    the seed."""
-    today = app.today_source()
+def airline_of(app: AppSettings, today: Callable[[], date] | None = None) -> Airline:
+    """The mock airline as the settings set it: its today (`today` when given), its modes and
+    its code, its bookings the seed."""
+    today = app.today_source() if today is None else today
     bookings = BookingStore(today=today, mode=app.booking_mode, lookup=app.booking_lookup)
     return Airline(
         today=today,
@@ -143,15 +151,34 @@ def build_app(
 def make_app(settings: Settings) -> FastAPI:
     """The app as it serves the flight agent's calls: the runtime's callers verified by the
     signed join tokens the token route mints, with the key `join.current_kid` names; its agent
-    the talker over the mock airline the settings set, each call's trip dropped as it ends."""
+    the one `app.agent` chooses over the mock airline the settings set, each call's trip
+    dropped as it ends, and for the lean agent its booking check observing each call's events
+    (lean/agent.py)."""
     voice = settings.voice
     tokens = SignedJoinTokens.from_settings(voice.join, prefix=voice.prefix)
-    airline = airline_of(settings.app)
     trips = TripBook()
-    agent = declare(airline, trips, settings.app.names())
+    names = settings.app.names()
+    observers: list[tuple[type[Event], Callable[[Event], Awaitable[None]]]] = []
+    if settings.app.agent == "lean":
+        day = settings.app.today_source()()  # the calendar's, kept as the airline's today
+        airline = airline_of(settings.app, today=lambda: day)
+        check = BookingCheck()
+        agent = declare_lean(airline, trips, check, names)
+        observers += [(kind, check.observed) for kind in OBSERVED]
+        observers.append((CallStarted, calendar_watch(day)))
+    else:
+        airline = airline_of(settings.app)
+        agent = declare(airline, trips, names)
     runtime = VoiceRuntime(agent, settings=voice, identity=tokens)
     runtime.on(CallEnded)(trips.call_ended)
-    log.info("airline_ready", today=str(settings.app.today), search=settings.app.search_mode)
+    for kind, observer in observers:
+        runtime.on(kind)(observer)
+    log.info(
+        "airline_ready",
+        today=str(settings.app.today),
+        search=settings.app.search_mode,
+        agent=agent.name,
+    )
     return build_app(settings, router=runtime.router(), minter=tokens, airline=airline)
 
 

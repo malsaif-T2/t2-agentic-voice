@@ -13,12 +13,12 @@ from pathlib import Path
 
 from flight_voice.evals.call import PlayRead, TurnRead
 from flight_voice.evals.folder import append_line, card_md
+from flight_voice.evals.history import history_line
 from flight_voice.evals.scenarios import load
 from flight_voice.evals.score import (
     PlayRecord,
     RunInfo,
     Session,
-    history_line,
     needed,
     record_of,
     scorecard,

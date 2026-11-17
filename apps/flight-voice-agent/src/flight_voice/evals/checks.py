@@ -146,7 +146,7 @@ def _outcome(turn: Turn, read: TurnRead) -> str | None:
     return None if ok else "outcome"
 
 
-def _language(scenario: Scenario, turn: Turn, words: Sequence[HeardClause]) -> Iterator[str]:
+def language_checks(scenario: Scenario, turn: Turn, words: Sequence[HeardClause]) -> Iterator[str]:
     language = turn.language or scenario.language
     text = said(words)
     arabic, latin = len(_ARABIC.findall(text)), len(_LATIN.findall(text))
@@ -188,7 +188,7 @@ def turn_checks(
     text = said(words)
     if turn.outcome == "read_back" and _DIGIT.search(normalize_digits(text)):
         yield "own_summary"
-    yield from _language(scenario, turn, words)
+    yield from language_checks(scenario, turn, words)
     if len(text.split()) > turn.max_words:
         yield "max_words"
     if options_said(text) > turn.max_options:
@@ -222,7 +222,7 @@ def _last_read_back(scenario: Scenario) -> ReadBack | None:
     return found[-1] if found else None
 
 
-def _booked(scenario: Scenario, read: PlayRead) -> Iterator[str]:
+def booking_checks(scenario: Scenario, read: PlayRead) -> Iterator[str]:
     mine = [b for b in read.made if b.traveler_id == TRAVELER.id]
     if len(mine) != len(read.made):
         yield "others"
@@ -240,7 +240,7 @@ def _booked(scenario: Scenario, read: PlayRead) -> Iterator[str]:
         yield "booked"
 
 
-def _references(scenario: Scenario, read: PlayRead) -> Iterator[Failed]:
+def reference_checks(scenario: Scenario, read: PlayRead) -> Iterator[Failed]:
     references = [b.reference for b in read.made]
     for n, turn in enumerate(read.turns):
         if turn is None:
@@ -258,8 +258,8 @@ def failures(scenario: Scenario, read: PlayRead) -> tuple[Failed, ...]:
         found.append(Failed("failure"))
     if read.violations:
         found.append(Failed("violations"))
-    found += [Failed(name) for name in _booked(scenario, read)]
-    found += _references(scenario, read)
+    found += [Failed(name) for name in booking_checks(scenario, read)]
+    found += reference_checks(scenario, read)
     last_depart: date | None = None
     for n in range(len(scenario.turns)):
         found += [Failed(name, n + 1) for name in turn_checks(scenario, n, read.turns, last_depart)]

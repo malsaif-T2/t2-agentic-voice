@@ -1328,6 +1328,24 @@ Block 0.
   green (9676 passed); four read-only reviewers found 14 issues, three of them races in the held
   yes (a no begun in the summary's last 200 ms, a yes said over an earlier clause of the same
   reply, transcripts landing out of order), fixed after the lean build.
+- 2026-11-17: the lean Saad built beside the scripted agent (the owner's "Lean next to it",
+  D-113): four tools that return plain data (find_flights for a day or a span, choose_flights,
+  book_trip, traveler_profile), a 30-line prompt per language with a 21-day calendar, and one
+  booking check in the app's code (the total said, played past it, a caller turn after it; a change
+  to the trip resets it); `FLIGHT_VOICE_AGENT`, scripted by default. Run F's outcome mode for the
+  lean agent registered before any result of it (the flight spec's section 13): kept checks
+  `failure`, `violations` (rule B, the plain-speech drops, a booking claimed before the store holds
+  one), `booked` (one booking exactly when the scenario books, with its flights, dates, travelers and
+  cabin; none otherwise), `reference`, `language`, `register`, `stage_note`, `notice`, `max_words`
+  and `repeat`; reported, not scored: the caller turns and seconds until the booking and the words
+  said; a turn marked `read_back` or `closing_question` is said right after the reply that states
+  the total. Two read-only reviews found 9 issues; 7 fixed, among them a turn that cut the summary
+  past its total now counts as the yes, and a calendar stale past midnight is logged. Open: a bare
+  yes said over the summary's closing question is settled as a go-on overlap and never answered, so
+  the call goes quiet; its fix is a library setting (the owner's "Any yes books" for an agent with
+  no read-back), after round 3's fixes land.
+- 2026-11-17: the owner split the laptop's lock: spending practice runs take a run lock of their own,
+  still one at a time; test jobs and gates keep the test lock; a timing run takes both.
 
 ## Decision log
 

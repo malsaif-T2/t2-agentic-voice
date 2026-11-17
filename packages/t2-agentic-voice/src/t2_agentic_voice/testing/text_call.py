@@ -50,7 +50,7 @@ C, and the yes rule's, run on everything the talker said and every action confir
 **What a turn did**, as data, for a runner that scores the call rather than asserts on it
 (testing/turn_data.py): its fate, the clauses the caller heard with their languages, the tool
 calls with their arguments, the cards, the blocked clauses, the times to the first token and the
-first clause, and the model requests and their usage (testing/text_turn.py).
+first clause, the model requests and their usage (testing/text_turn.py); its events, `emitted`.
 """
 
 from __future__ import annotations
@@ -95,21 +95,18 @@ from t2_agentic_voice.voice.session.session_events import Connected, FromClient
 
 __all__ = ["TextCall", "TextTurn", "TurnExpectations"]
 
-# The clock a call runs on: a virtual one, moved only by `advance`; or the system's, for a
-# measurement with a real model.
+# The clock a call runs on: virtual, moved only by `advance`, or the system's (a measurement's).
 ClockKind = Literal["virtual", "system"]
-# The pace the fake text-to-speech plays each clause at: about 15 characters a second, a calm
-# speaking rate.
+# The fake text-to-speech's pace for each clause: about 15 characters a second, a calm one.
 CHARS_PER_SECOND = 15.0
 _OUTSIDE = "A text call is used inside `async with`. FIX: enter it first."
 
 
 class TextCall:
-    """A call of `agent` held in text (the module's docstring), its talker on `llm`, with
-    `settings` (`env` test, the library's defaults, unless given), its caller `caller` (a made-up
-    one unless given) in `language` (the agent's first unless given), on `clock` (virtual unless
-    `system`), on the day `today` in the agent's time zone if given, its actions' writes kept in
-    `outbox` (in memory unless given). Enter it (`async with`) to connect the call, greeted."""
+    """A call of `agent` held in text (the module's docstring), its talker on `llm`; each of
+    `settings` (`env` test, the library's defaults), `caller` (a made-up one), `language` (the
+    agent's first), `clock` (virtual, or `system`), `today` (in the agent's time zone) and
+    `outbox` (in memory) as given, else as said. Enter it (`async with`) to connect, greeted."""
 
     def __init__(
         self,
@@ -144,9 +141,8 @@ class TextCall:
         self._time: Clock = SYSTEM_CLOCK
 
     def _talker(self, call: TalkerCall, settings: VoiceSettings, clock: Clock) -> Talker:
-        """The call's talker: the library's, built as the runtime builds it (agent/talker.py's
-        `talker_factory`), on the test's model, the agent's tools through the recording runner,
-        and its actions' runner, the one the session's jobs go to."""
+        """The call's talker, built as the runtime builds it (agent/talker.py's `talker_factory`):
+        the test's model, the tools through the recording runner, and the actions' runner."""
         build = talker_factory(self.agent, settings, self.llm, self._actions, runner=self._runner)
         return build(call, clock)
 
@@ -252,8 +248,7 @@ class TextCall:
         return TextTurn(reads, turn_id)
 
     async def advance(self, seconds: float) -> None:
-        """Move the call's virtual clock `seconds` on, what is due by then done (on the system
-        clock, wait `seconds`)."""
+        """Move the virtual clock `seconds` on, what is due by then done (system clock: wait)."""
         self._parts()
         await self._drive().advance(seconds)
         self._failed()
@@ -286,6 +281,11 @@ class TextCall:
     def violations(self) -> tuple[str, ...]:
         """What the call's checks found so far (testing/text_checks.py), each said in words."""
         return call_violations(self._reads(), year=self._time.wall().year)
+
+    @property
+    def emitted(self) -> tuple[Event, ...]:
+        """The call's public events so far, in order, as the runtime's observers get them."""
+        return tuple(self._emitted)
 
     def _reads(self) -> TextReads:
         side, session = self._parts()

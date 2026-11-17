@@ -1,21 +1,22 @@
-"""What a run of the flight agent's scripted calls keeps (evals/run.py): a record per play, the
-scorecard, and the session's line in the app's run history.
+"""What a run of the flight agent's scripted calls keeps (evals/run.py): a record per play and the
+scorecard; the session's line in the app's run history is history.py's.
 
 - **A play's record** (`PlayRecord`): its scenario and repeat, whether every check held, the
   checks it failed by name and turn (checks.py's `Failed`, as `outcome@3`), why it could not go
   on, the call's violations, and each turn as heard (its words, its tools and each call's
   arguments as sent, the clauses the guard blocked) for reading a failure by hand, with no
   replay. A smoke play's record is marked `smoke` and never scored; a record kept before the
-  calls and the blocked clauses were kept still loads, with them empty.
+  calls and the blocked clauses were kept still loads, with them empty. A lean play (`--agent
+  lean`) is scored by its outcomes, its violations the lean ones too, with its measures
+  (lean_checks.py).
 - **The scorecard** (`Scorecard`, `scorecard.json` and `scorecard.md`): the run, each scenario's
   plays and passes (passed when at least two of its three plays hold every check, `PASS_SHARE`;
   `all_plays` says whether it held in every play, the rule for a target among the long-call
   checks), the plays failing each check, its violations counted per play, the scenarios skipped
   for a capability that does not play yet, and the totals; `held` is the hard constraint, no
-  violation in any play, the smoke play's among them.
-- **The history line** (`HistoryLine`), one a session, appended to the app's
-  `evals/history.jsonl`: the library's day counter (`requests_today`) reads its `time` and its
-  `requests`, each model's requests that session, so a run of either app counts the key's day.
+  violation in any play, the smoke play's among them; a lean run's scenarios hold their
+  measures' means. The run names the agent played (`RunInfo.agent`, `scripted` or `lean`), so
+  the two compare by scenario; a run kept before is the scripted agent's.
 """
 
 from __future__ import annotations
@@ -31,7 +32,10 @@ from t2_agentic_voice.evals import ModelSpend
 
 from flight_voice.evals.call import PlayRead, Stuck
 from flight_voice.evals.checks import Failed, failures, own, said
+from flight_voice.evals.lean_checks import Measures, lean_failures, lean_violations, measures
+from flight_voice.evals.lean_checks import mean_measures as means
 from flight_voice.evals.scenarios import Scenario, Split
+from flight_voice.settings import AgentKind
 
 # The share of a scenario's plays in which every check must hold for it to pass: two of three.
 PASS_SHARE: Final = 2 / 3
@@ -75,6 +79,7 @@ class PlayRecord(_Model):
     violations: tuple[str, ...] = ()
     seconds: float = Field(ge=0)
     turns: tuple[TurnKept, ...] = ()
+    measures: Measures | None = None  # the lean agent's (lean_checks.py)
 
 
 def _named(failed: Failed) -> str:
@@ -82,10 +87,18 @@ def _named(failed: Failed) -> str:
 
 
 def record_of(
-    scenario: Scenario, repeat: int, read: PlayRead, seconds: float, *, smoke: bool = False
+    scenario: Scenario,
+    repeat: int,
+    read: PlayRead,
+    seconds: float,
+    *,
+    smoke: bool = False,
+    agent: AgentKind = "scripted",
 ) -> PlayRecord:
-    """The record of one play of `scenario`, what it did `read`."""
-    found = failures(scenario, read)
+    """The record of one play of `scenario` by `agent`, what it did `read`: the lean agent's
+    scored by its outcomes, with its measures (lean_checks.py)."""
+    lean = agent == "lean"
+    found = lean_failures(scenario, read) if lean else failures(scenario, read)
     turns = tuple(
         TurnKept()
         if t is None
@@ -106,9 +119,10 @@ def record_of(
         passed=not found,
         failed=tuple(_named(f) for f in found),
         failure=read.failure,
-        violations=read.violations,
+        violations=(*read.violations, *lean_violations(read)) if lean else read.violations,
         seconds=round(seconds, 3),
         turns=turns,
+        measures=measures(read) if lean else None,
     )
 
 
@@ -119,6 +133,7 @@ class RunInfo(_Model):
     started_at: datetime
     commit: str
     split: Split
+    agent: AgentKind = "scripted"
     model: str
     effort: str
     repeats: int
@@ -155,6 +170,7 @@ class ScenarioCard(_Model):
     violations: tuple[int, ...] = ()
     failed: dict[str, int] = Field(default_factory=dict)
     skipped: tuple[str, ...] = ()
+    measures: dict[str, float] = Field(default_factory=dict)  # the lean agent's, their means
 
 
 class Totals(_Model):
@@ -202,6 +218,7 @@ def _card(
         violations=tuple(len(p.violations) for p in plays),
         failed=dict(sorted(checks.items())),
         skipped=skip,
+        measures=means([p.measures for p in plays]),
     )
 
 
@@ -238,47 +255,4 @@ def scorecard(
         ),
         sessions=tuple(sessions),
         cost_usd=round(sum(s.cost_usd for s in sessions), 6),
-    )
-
-
-class HistoryLine(_Model):
-    """One session's line in the app's run history (the module's docstring)."""
-
-    kind: Literal["flights"] = "flights"
-    time: datetime
-    run: str
-    commit: str
-    split: Split
-    model: str
-    effort: str
-    session: int
-    complete: bool
-    stopped: Stopped | None
-    plays: int
-    passed: int
-    played: int
-    violations: int
-    cost_usd: float
-    requests: dict[str, int]
-
-
-def history_line(card: Scorecard, session: Session, number: int) -> HistoryLine:
-    """The line of the run's `number`th session, `session`, its scorecard `card`."""
-    run = card.run
-    return HistoryLine(
-        time=session.started_at,
-        run=run.name,
-        commit=run.commit,
-        split=run.split,
-        model=run.model,
-        effort=run.effort,
-        session=number,
-        complete=card.complete,
-        stopped=card.stopped,
-        plays=card.totals.plays,
-        passed=card.totals.passed,
-        played=card.totals.played,
-        violations=card.totals.violations,
-        cost_usd=card.cost_usd,
-        requests={s.model: s.requests for s in session.spend},
     )

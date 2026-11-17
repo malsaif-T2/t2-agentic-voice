@@ -226,6 +226,7 @@ def run_info(
         started_at=began,
         commit=commit,
         split=args.split,
+        agent=args.agent,
         model=args.model,
         effort=args.effort,
         repeats=args.repeats,

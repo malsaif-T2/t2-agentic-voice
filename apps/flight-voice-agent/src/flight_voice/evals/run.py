@@ -2,7 +2,9 @@
 scenario `--repeats` times (three), each play one call through the seam (call.py) on the system
 clock with the app's own agent and the real talker (`--model`, `gpt-oss-120b`, at `--effort`,
 medium, D-074) against a new mock airline, checked in code (checks.py), kept in `--out`
-(folder.py, score.py).
+(folder.py, score.py; its command line is run_args.py's). Under `--agent lean` each play is the
+lean agent's (lean_call.py, D-113), scored by its outcomes with its measures (lean_checks.py),
+the run, its scorecard and its history line naming the agent.
 
 **Refused before anything is sent** (exit 2): the main checkout as the run's tree, a dirty tree
 (the library's `run_checkout`); an `--out` a run may not write to, or one in use (folder.py);
@@ -38,9 +40,8 @@ from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Final, get_args
 
-from t2_agentic_voice import LlmSettings, T2VoiceError, VoiceSettings, configure_logging, get_logger
+from t2_agentic_voice import T2VoiceError, VoiceSettings, configure_logging, get_logger
 from t2_agentic_voice.evals import (
     Git,
     ModelPacer,
@@ -58,18 +59,16 @@ from t2_agentic_voice.groq import GroqChat
 from t2_agentic_voice.ports import ChatModel
 
 from flight_voice import LOGGERS
-from flight_voice.evals import call
+from flight_voice.evals import call, lean_call
 from flight_voice.evals import run_setup as setup
 from flight_voice.evals.folder import HISTORY_FILE, RunFolder, append_line, folder_for, read_folder
+from flight_voice.evals.history import history_line
+from flight_voice.evals.run_args import parser
 from flight_voice.evals.scenarios import Scenario
-from flight_voice.evals.score import PlayRecord, RunInfo, Session, Stopped, history_line, record_of
+from flight_voice.evals.score import PlayRecord, RunInfo, Session, Stopped, record_of
 from flight_voice.evals.score import scorecard as scored
 from flight_voice.settings import for_the_app
 
-MODELS: Final = get_args(LlmSettings.model_fields["model"].annotation)
-EFFORTS: Final = ("low", "medium", "high")
-REPEATS: Final = 3
-CAP_USD: Final = 10.0
 log = get_logger(__name__)
 
 # One play of a scenario on a chat model with the call's settings, as call.py's `play` plays it.
@@ -92,36 +91,16 @@ def _now() -> datetime:
 @dataclass(frozen=True)
 class RunParts:
     """What a run is built from, each replaceable by a test's fake: the folder whose checkout
-    runs, `git`, the chat adapter, one play, and the clocks."""
+    runs, `git`, the chat adapter, one play of each agent, and the clocks."""
 
     folder: Path = field(default_factory=_here)
     git: Git = run_git
     chat: Callable[[Path | None], ChatModel] = _groq
     play: Play = call.play
+    lean: Play = lean_call.play
     now: Callable[[], datetime] = _now
     clock: RunClock = time.perf_counter
     sleep: RunSleep = asyncio.sleep
-
-
-def parser() -> argparse.ArgumentParser:
-    made = argparse.ArgumentParser(
-        prog="poe eval-flights",
-        description="Play the flight agent's scripted calls over one split, into --out.",
-    )
-    add = made.add_argument
-    add("--split", choices=("dev", "held-out"), required=True, help="the split, all of it")
-    add("--repeats", type=setup.count, default=REPEATS, help=f"plays a scenario ({REPEATS})")
-    add("--out", type=Path, required=True, help="a new absolute folder, the main checkout's var/")
-    add("--model", choices=MODELS, default=setup.MODEL, help=f"the talker's ({setup.MODEL})")
-    add("--effort", choices=EFFORTS, default="medium", help="its reasoning effort (medium)")
-    add("--cap-usd", type=setup.amount, default=CAP_USD, help=f"the most it spends ({CAP_USD:g})")
-    add("--resume", action="store_true", help="go on with the stopped run in --out")
-    add("--env-file", type=Path, help="the .env the Groq key loads from")
-    add("--price", type=setup.price, action="append", default=[], metavar="MODEL=IN/OUT")
-    add("--limits", type=setup.limits, action="append", default=[], metavar="MODEL=RPM/TPM/RPD")
-    add("--input-budget-tokens", type=setup.count, default=setup.INPUT_BUDGET)
-    add("--max-attempts", type=setup.count, default=4, help="sends of a request turned away")
-    return made
 
 
 @dataclass
@@ -147,8 +126,11 @@ class _Run:
     async def _one(self, scenario: Scenario, repeat: int, *, smoke: bool = False) -> PlayRecord:
         start = self.parts.clock()
         settings = setup.play_settings(scenario, self.settings)
-        read = await self.parts.play(scenario, self.paced, settings)
-        return record_of(scenario, repeat, read, self.parts.clock() - start, smoke=smoke)
+        agent = self.info.agent
+        play = self.parts.lean if agent == "lean" else self.parts.play
+        read = await play(scenario, self.paced, settings)
+        seconds = self.parts.clock() - start
+        return record_of(scenario, repeat, read, seconds, smoke=smoke, agent=agent)
 
     def _stopped(self) -> Stopped | None:
         """Why the paced model refused a request (the cap, the key's day), whoever caught it."""
@@ -227,7 +209,7 @@ def _built(args: argparse.Namespace, parts: RunParts) -> _Run:
     if smoke is None or not playable:
         raise run_refused("the split has no scenario that plays", "write one, or name the split")
     folder = folder_for(args.out, resume=args.resume, checkout=checkout, git=parts.git)
-    settings = for_the_app(setup.call_settings(args.model, args.effort))
+    settings = for_the_app(setup.call_settings(args.model, args.effort), agent=args.agent)
     prices, limits = setup.prices_and_limits(args.model, args.price, args.limits)
     done, sessions = read_folder(folder) if args.resume else ([], [])
     played = {(r.scenario, r.repeat) for r in done if not r.smoke}  # a smoke's kept: its violations
