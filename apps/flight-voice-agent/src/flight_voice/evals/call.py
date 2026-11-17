@@ -24,10 +24,12 @@ passed leave the play `stuck` (a provider's error: `provider`); what it did is s
 stands, for the turns said before.
 
 **What a turn did** (`TurnRead`): its reply's clauses, those heard and those the guard blocked,
-its tool calls and cards; as it stood when the caller next spoke, whether the read-back the
-scenario expects (its values, the total priced from the airline) was said whole, or any read-back
-when it expects none, and whether the caller was asked again; once the call settled, whether its
-words confirmed the booking and how its write ended, its sending line and then its outcome's said.
+the talker's clauses as written (`TextTurn.written`: digits and all, where a clause cut into
+several requests is heard as said), its tool calls and cards; as it stood when the caller next
+spoke, whether the read-back the scenario expects (its values, the total priced from the
+airline) was said whole, or any read-back when it expects none, and whether the caller was asked
+again; once the call settled, whether its words confirmed the booking and how its write ended,
+its sending line and then its outcome's said.
 """
 
 from __future__ import annotations
@@ -117,6 +119,7 @@ class TurnRead:
     ended: OutcomeKind | None = None
     blocked: int = 0  # the reply's clauses the output guard blocked
     blocked_texts: tuple[str, ...] = ()  # their texts, in order, never said
+    written: tuple[str, ...] = ()  # the talker's clauses the guard passed, as written
 
 
 @dataclass(frozen=True)
@@ -175,6 +178,7 @@ class _Saying:
             ended=outcome_of(turn),
             blocked=len(turn.blocked),
             blocked_texts=tuple(c.text for c in turn.blocked),
+            written=turn.written,
         )
 
 

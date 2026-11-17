@@ -147,7 +147,9 @@ lines for an action, a read-back's summary or closing question, an ask-again, `d
 `sending` or an outcome's line, so a runner can tell the talker's words from the agent's
 template), its `tool_calls` (each tool's arguments, outcome and time; an action's
 call among them, as the model wrote it, after the stray-script filter), its `cards`, its
-`blocked` clauses, `first_token_s` and `first_clause_s` (on the call's clock,
+`blocked` clauses, its talker's clauses as `written` (as the output guard passed them, digits
+and all: a clause cut into several requests is among `clauses` as said, its numbers in words),
+`first_token_s` and `first_clause_s` (on the call's clock,
 [latency.md](latency.md)), its `model_requests`, its `usage`, its `stray_characters`, how
 many characters the filter took out of, or rewrote in, what the talker wrote
 ([languages.md](languages.md), "Scripts a reply may hold"), and its `unsaid_clauses`, how many

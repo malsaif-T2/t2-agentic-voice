@@ -61,6 +61,13 @@ def test_a_chosen_leg_keeps_its_length_and_nonstop_for_the_booking_too() -> None
         assert answer[leg]["nonstop"] is True and answer[leg]["arrives"] == option["arrives"]
 
 
+def test_a_saudi_reply_gets_the_trip_kind_in_saudi_and_in_msa() -> None:
+    # As the route: f-dev-lean-3 read «رايح جاي» back to an MSA caller, given no MSA form.
+    answer = data(chosen_trip("ar-SA").choose())
+    assert answer["trip"] == "رايح جاي" and answer["trip_msa"] == "ذهاب وعودة"
+    assert "trip_msa" not in data(chosen_trip().choose())  # an English reply's has none
+
+
 def test_more_travelers_price_the_trip_again() -> None:
     call = chosen_trip()
     one = call.total()

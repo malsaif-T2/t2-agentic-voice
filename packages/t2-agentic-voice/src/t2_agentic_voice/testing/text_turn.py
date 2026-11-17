@@ -175,6 +175,16 @@ class TextTurn:
             if isinstance(e, ClauseBlocked)
         )
 
+    @property
+    def written(self) -> tuple[str, ...]:
+        """The talker's clauses of the turn's reply the output guard passed, in order, as it
+        wrote them, digits and all: before the speaking rules said their numbers and the
+        voice's `max_chars` cut them (a clause cut into several requests is among `clauses`
+        as said, part by part). No fixed phrase and none of the runtime's own lines."""
+        talk = self._talk
+        events = [] if talk is None else talk.events
+        return tuple(e.text for _, e in events if isinstance(e, SpokenClause))
+
     def _since(self, at: float | None) -> float | None:
         said = self._reads.said.get(self.turn_id)
         return None if at is None or said is None else max(0.0, at - said.handed_at)

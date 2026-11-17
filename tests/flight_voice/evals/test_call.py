@@ -108,6 +108,7 @@ def test_the_earliest_flight_is_read_back_and_booked_and_every_check_holds() -> 
     assert first is not None and second is not None and third is not None
     assert [c.tool for c in first.tools] == [SEARCH_FLIGHTS] and first.cards == 1
     assert first.tools[0].arguments["destination"] == "Dubai" and first.blocked_texts == ()
+    assert " ".join(first.written) == LISTED  # the talker's clauses as written
     assert [c.tool for c in second.tools] == [CHOOSE_FLIGHT, BOOK_TRIP]
     assert second.read_back and not second.confirmed
     assert third.confirmed and third.ended == "done"

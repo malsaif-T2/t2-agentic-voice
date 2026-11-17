@@ -4,7 +4,9 @@ the persona's names and the calendar the model reads every date from.
 **The calendar** (`calendar`), written in code in the reply's language: today with its weekday,
 then the next `AHEAD` days, each with its weekday (tomorrow named), then the days "this week",
 "this weekend", "next week" and "next weekend" cover, the Saudi week running Sunday to Saturday
-and the weekend Friday and Saturday, none of them before today. Each date is written whole and as
+and the weekend Friday and Saturday, none of them before today; and the booking window's last day
+(`window`), so a day past the listed ones is searched, never taken for one that cannot be booked
+(f-dev-lean-3 refused a day past them as not among its days). Each date is written whole and as
 `YYYY-MM-DD`, the form the tools take.
 
 The instructions are built once, when the agent is declared, from the airline's today: a server
@@ -23,6 +25,7 @@ from typing import Final
 from flight_voice.airline.airports import Register
 from flight_voice.airline.dates import week_index
 from flight_voice.airline.profile import TRAVELER, Traveler
+from flight_voice.airline.schedule import window
 from flight_voice.persona import TAGS, Names, filled
 from flight_voice.said import Tag, words
 
@@ -39,6 +42,8 @@ _TEXTS: Final[dict[str, dict[str, str]]] = {
         "this_weekend": "This weekend: {days}.",
         "next_week": "Next week: {first} to {last}.",
         "next_weekend": "Next weekend: {days}.",
+        "open": "Bookings are open up to {last}: any day up to it can be searched, listed above "
+        "or not.",
         "and": " and ",
     },
     "ar": {
@@ -50,6 +55,7 @@ _TEXTS: Final[dict[str, dict[str, str]]] = {
         "this_weekend": "عطلة هذا الأسبوع: {days}.",
         "next_week": "الأسبوع القادم: من {first} إلى {last}.",
         "next_weekend": "عطلة الأسبوع القادم: {days}.",
+        "open": "الحجز مفتوح حتى {last}: يمكن البحث في أي يوم حتى ذلك اليوم، مذكورًا أعلاه أو لا.",
         "and": " و",
     },
 }
@@ -86,6 +92,7 @@ def calendar(today: date, tag: Tag) -> str:
         friday = start + timedelta(days=_FRIDAY)
         weekend = texts[f"{which}_weekend"].format(days=_days(friday, saturday, today, tag))
         lines += [f"- {week}", f"- {weekend}"]
+    lines.append(f"- {texts['open'].format(last=written(window(today)[1], tag))}")
     return "\n".join(lines)
 
 

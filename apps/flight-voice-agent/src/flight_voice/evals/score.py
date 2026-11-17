@@ -57,7 +57,9 @@ class CallKept(_Model):
 class TurnKept(_Model):
     """One turn as the caller heard it: its words (the runtime's lines among them), the
     talker's own words, the tools its reply called (and each call as sent, `calls`), its fate,
-    and the texts of the clauses the guard blocked, never said; a stop's is empty."""
+    the texts of the clauses the guard blocked, never said, and for a lean play the talker's
+    clauses as written (`written`, digits and all: its `max_words` counts them); a stop's is
+    empty."""
 
     heard: str = ""
     own: str = ""
@@ -65,6 +67,7 @@ class TurnKept(_Model):
     fate: str = ""
     calls: tuple[CallKept, ...] = ()
     blocked_texts: tuple[str, ...] = ()
+    written: tuple[str, ...] = ()
 
 
 class PlayRecord(_Model):
@@ -109,6 +112,7 @@ def record_of(
             fate=t.fate,
             calls=tuple(CallKept(tool=c.tool, arguments=dict(c.arguments)) for c in t.tools),
             blocked_texts=t.blocked_texts,
+            written=t.written if lean else (),
         )
         for t in read.turns
     )

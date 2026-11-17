@@ -6,9 +6,10 @@ in the data), its local times at each end, its length, its fare per person in th
 it has a seat for every traveler, that it flies nonstop (every flight of the airline does) and its
 part of the day.
 A leg's flights (`LegList`) hold their day with its weekday in the reply's language, how many
-they are, the first and last departure times and the cheapest with seats. The route is said in
-the reply's register, with its MSA form beside a Saudi reply's (`route_msa`), as the scripted
-tools give it. A result may carry one short `note` only where the data alone would mislead: a
+they are, the first and last departure times and the cheapest with seats. The route, the trip's
+kind and the fares' basis (`fares_are`) are said in the reply's register, each with its MSA form
+beside a Saudi reply's (`route_msa`, `trip_msa`, `fares_are_msa`), as the scripted tools give
+them. A result may carry one short `note` only where the data alone would mislead: a
 full flight, a route not served, a date outside the window.
 
 `leg_options` builds a leg's options three ways from the airline's flights of a day: the model's
@@ -33,7 +34,18 @@ from flight_voice.tools.listing import MAX_OPTIONS, marked, options
 from flight_voice.tools.results import Duration, Option, said
 from flight_voice.trip import Shown
 
-FARES_ARE: Final = "one way, per person"
+# The fares' basis in English (`fares_are`), with no digit word: a fare said right before "one"
+# ("910, one way") reads as one number to the output guard's ID rule, which blocks it.
+EACH_WAY: Final = "per person, each way"
+PER_PERSON: Final = "per person"
+
+
+def fares_are(tag: Tag, *, round_trip: bool) -> tuple[str, str | None]:
+    """The fares' basis, said once a call, in the reply's register, and in MSA beside a Saudi
+    reply's: per person, and on a round trip each way; in Arabic as the scripted tools say it
+    («للشخص، رايح بس», «للشخص، ذهاب فقط»)."""
+    english = EACH_WAY if round_trip else PER_PERSON
+    return said(lambda r: english if r == "en" else words.FARE_BASIS[r], tag)
 
 
 class _Data(BaseModel):
@@ -96,6 +108,11 @@ def option_id(code: str, flight: int, day: date) -> str:
 def route_said(route: tuple[Code, Code], tag: Tag) -> tuple[str, str | None]:
     """The route in the reply's register, and its MSA form beside a Saudi reply's."""
     return said(lambda r: words.route(*route, r), tag)
+
+
+def trip_said(one_way: bool, tag: Tag) -> tuple[str, str | None]:
+    """The trip's kind in the reply's register, and its MSA form beside a Saudi reply's."""
+    return said(lambda r: words.trip_kind(one_way, r), tag)
 
 
 def leg_options(
