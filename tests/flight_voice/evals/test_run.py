@@ -27,8 +27,8 @@ from flight_voice.evals.call import PlayRead, Stuck
 from flight_voice.evals.folder import LOCK_FILE
 from flight_voice.evals.run import RunParts, main
 from flight_voice.evals.scenarios import CALLS, Scenario, load
+from flight_voice.settings import for_the_app
 from t2_agentic_voice import ConfigurationError, InvalidRequestError, VoiceSettings
-from t2_agentic_voice.agent.turn import MAX_REQUESTS
 from t2_agentic_voice.evals import FunctionLLM, GitResult, PacedChat, ScriptedLLM, requests_today
 from t2_agentic_voice.ports import ChatModel
 
@@ -285,17 +285,18 @@ def test_a_resume_at_a_commit_that_changed_more_than_the_histories_is_refused(
 
 
 def test_the_estimate_counts_each_model_request_a_play_may_send() -> None:
-    assert run_setup.TALKER_REQUESTS == MAX_REQUESTS
     (f01,) = [s for s in load() if s.id == TWO[0]]
-    settings = run_setup.call_settings("openai/gpt-oss-120b", "medium")
-    asked = run_setup.asks(f01, settings)
-    # Four turns: three talker requests each; the yes said over the closing question is said
-    # over the agent and answers the read-back.
-    assert [(model, n) for model, n, _ in asked] == [
-        ("openai/gpt-oss-120b", 12),
-        (run_setup.OVERLAP.model, 1),
-        (run_setup.CHECK.model, 1),
-    ]
+    given = run_setup.call_settings("openai/gpt-oss-120b", "medium")
+    # Four turns, each its settings' most talker requests: the app's 4 as the run plays it, the
+    # library's 3 without the app; the yes said over the closing question is said over the
+    # agent and answers the read-back.
+    for settings, talker in ((for_the_app(given), 16), (given, 12)):
+        asked = run_setup.asks(f01, settings)
+        assert [(model, n) for model, n, _ in asked] == [
+            ("openai/gpt-oss-120b", talker),
+            (run_setup.OVERLAP.model, 1),
+            (run_setup.CHECK.model, 1),
+        ]
 
 
 def test_a_set_that_breaks_a_rule_is_refused_but_the_missing_held_out_set(tmp_path: Path) -> None:

@@ -85,9 +85,11 @@ closing quote or bracket after it allowed), and stops before the next one: that 
 said, nor anything after it in the reply (`guard.questions_per_reply`, 1 by default; D-085).
 The clauses between the two are said, and a reply that asks one question and then gives steps
 is said whole. A tool call the talker makes in the same reply still runs, and its result is
-kept for the turns after; the reply just says nothing more. Your own lines never count: a
-progress line, a notice, and an action's read-back with its closing question are said as you
-wrote them.
+kept for the turns after; the reply just says nothing more. With
+`guard.question_stop_drops_calls` on (off by default), none of the calls of the request it
+stopped in runs, an action's among them, so the question ends the turn. Your own lines never
+count: a progress line, a notice, and an action's read-back with its closing question are said
+as you wrote them.
 
 So write your instructions to ask for one thing at a time, and to stop at the question:
 

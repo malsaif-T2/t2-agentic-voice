@@ -106,12 +106,14 @@ def listing(
     again: bool = False,
 ) -> Listing:
     """A leg's options on `day` as the talker is given them, with the fixed `say` for them (a
-    `relisted` one when `again`, the caller having heard another day's); an outbound listing
-    gives the trip's return date too, said back with the departure's."""
+    `relisted` one when `again`, the caller having heard another day's; else an outbound one
+    said from its day, a return one with its own say); an outbound listing gives the trip's
+    return date too, said back with the departure's."""
     route_en, route_msa = said(lambda r: words.route(*route, r), tag)
     cabin_en, cabin_msa = said(lambda r: words.cabin(cabin, r), tag)
     basis, basis_msa = said(words.FARE_BASIS.__getitem__, tag)
     more = len(listed) - SAID_ALOUD if len(listed) > SAID_ALOUD else None
+    first = "return_listed" if leg == "return" else "listed"
     return Listing(
         leg=leg,
         route_said=route_en,
@@ -126,7 +128,7 @@ def listing(
         cabin_said_msa=cabin_msa,
         fare_basis_said=basis,
         fare_basis_said_msa=basis_msa,
-        say=SAY[("relisted" if again else "listed") + ("_more" if more else "") + _full(listed)],
+        say=SAY[("relisted" if again else first) + ("_more" if more else "") + _full(listed)],
     )
 
 

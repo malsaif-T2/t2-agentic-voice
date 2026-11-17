@@ -6,17 +6,18 @@ turn and the call as it was heard to the events the session plays, within the re
   every request (`llm.vary_first_line`: prompt.py's `FIRST_LINE`), the call as the caller heard
   it with what the talker kept beside it (agent/context.py), then the turn, whole; a request
   after a tool result of the turn ends with a line naming the reply's language (prompt.py's
-  `reply_line`). At most `MAX_REQUESTS` a turn: each but the last offers the agent's tools, the
-  last none, so the turn ends in words, told so and holding the results with the calls that
-  asked for them dropped (agent/context.py's `without_calls`); a tool call the last one makes
-  anyway is not run.
+  `reply_line`). At most `llm.max_requests_per_turn` (3) a turn: each but the last offers the
+  agent's tools, the last none, so the turn ends in words, told so and holding the results with
+  the calls that asked for them dropped (agent/context.py's `without_calls`); a tool call the
+  last one makes anyway is not run.
 - **Speech as it is written** (each request's answer streamed by agent/turn_answer.py). Each
   piece the model writes, and each tool call's arguments, are filtered first
   (agent/stray_script.py: no script the agent's languages do not write), so all that follows
   reads one text; a clause the filter left with no letter or digit is none. The
-  text then goes through the leak check (agent/leaked_reasoning.py): from a leak of the
-  model's reasoning on, nothing of the request's text is said, and the reply stops there as a
-  blocked clause's `drop_rest` stops it. What is left goes through the clause splitter as it
+  text then goes through the leak check (agent/leaked_reasoning.py; a stage note or a tag too
+  under `guard.drop_stage_notes`): from a leak of the model's reasoning on, nothing of the
+  request's text is said, and the reply stops there as a blocked clause's `drop_rest` stops
+  it. What is left goes through the clause splitter as it
   streams (`ClauseStream`), any note of the history's it copied taken out first
   (agent/context.py's `Unnoted`), and each whole clause, once the output guard passed it
   (agent/speech_guard.py: rule A on claims, for an agent with actions, then rule B against the
@@ -27,7 +28,9 @@ turn and the call as it was heard to the events the session plays, within the re
 - **Questions.** Before the guard, a clause that asks the caller a question past
   `guard.questions_per_reply` (agent/question_limit.py) is dropped with every clause after it,
   unspoken and unblocked: the reply stops there, but its request's tool calls still run and are
-  kept, and no request follows them. `ReplyDone` counts the clauses dropped.
+  kept, and no request follows them; under `guard.question_stop_drops_calls` none of them runs
+  (`talker_tool_call_ignored`), so the question ends the turn. `ReplyDone` counts the clauses
+  dropped.
 - **Tools** (agent/tool_calls.py). Each call the model asks for starts at once, in the reply's
   scope, and runs through the runner; of those with a progress line, the soonest gives it, for
   the session to say if the wait runs long (one a reply); each result goes back to the model
@@ -95,6 +98,7 @@ from t2_agentic_voice.agent.prompt import (
     tool_definitions,
     with_first_line,
 )
+from t2_agentic_voice.agent.question_limit import REASON
 from t2_agentic_voice.agent.stray_script import StrayScript
 from t2_agentic_voice.agent.tool_calls import Memory, ToolCalls, exchange
 from t2_agentic_voice.agent.turn_answer import Answer, answer_events
@@ -109,8 +113,6 @@ from t2_agentic_voice.domain.declaration import VoiceAgent
 from t2_agentic_voice.domain.ports.chat_model import ChatMessage, ChatModel, ChatRequest, ToolSchema
 
 _log = get_logger(__name__)
-# The most model requests one turn makes; the last offers no tool, so the turn ends in words.
-MAX_REQUESTS = 3
 
 
 class Turn:
@@ -157,7 +159,10 @@ class Turn:
             scripts=self.scripts,
             register=self.register,
         )
-        self.leak = LeakedReasoning(arabic=self.language != "en")  # D-089
+        notes = settings.guard.drop_stage_notes  # a tag holds a tool's or an action's name
+        names = [schema.name for schema in tool_definitions(runner, actions)] if notes else []
+        arabic = self.language != "en"
+        self.leak = LeakedReasoning(arabic=arabic, stage_notes=notes, names=names)  # D-089
         self.tools = ToolCalls(
             runner=runner,
             ctx=self.ctx,
@@ -190,8 +195,9 @@ class Turn:
                 self.memory.keep(self.turn.turn_id, [note])
         requests = tools_run = 0
         warm: bool | None = None  # whether the turn's first request went out on a warm connection
-        for index in range(MAX_REQUESTS):
-            last = index == MAX_REQUESTS - 1
+        most = self.settings.llm.max_requests_per_turn
+        for index in range(most):
+            last = index == most - 1
             tools = () if last else tool_definitions(self.runner, self.actions)
             request = self._request(messages, tools, after_tools=tools_run > 0)
             requests += 1
@@ -218,6 +224,10 @@ class Turn:
             if not tools:
                 _log.warning("talker_tool_call_ignored", turn_id=self.turn.turn_id)
                 break
+            if self.gate.questions.stopped and self.settings.guard.question_stop_drops_calls:
+                ids = {"call_id": self.ctx.call_id, "turn_id": self.turn.turn_id}
+                _log.info("talker_tool_call_ignored", **ids, reason=REASON, calls=len(answer.calls))
+                break  # the stop came in this request: one in an earlier one broke below
             results: dict[str, ToolResult] = {}
             ran = self.tools.run(answer.calls, results)
             try:
@@ -262,7 +272,7 @@ class Turn:
         """The reply goes on in `tag`, which the `switch_language` tool moved it to: its clauses,
         its leak check, its tools' context and its lines' wording."""
         self.language = self.gate.language = tag
-        self.leak = LeakedReasoning(arabic=tag != "en")  # nothing held: each request closed it
+        self.leak = self.leak.anew(arabic=tag != "en")  # nothing held: each request closed it
         self.ctx = self.tools.ctx = self.ctx.model_copy(update={"language": tag})
         self.tools.wording = wording(tag, self.register)
 

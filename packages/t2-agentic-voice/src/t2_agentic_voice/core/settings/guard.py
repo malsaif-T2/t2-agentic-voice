@@ -2,9 +2,10 @@
 tokens of a clause are ID-shaped, and what a blocked clause drops; the phrases added to the
 claim rule's default list (rule A; plan 007); whether a script none of the agent's languages
 writes is taken out of what the talker writes before the guard reads it (agent/stray_script.py);
-and how many questions one reply may ask the caller (agent/question_limit.py, D-085). Every
-clause the talker writes is checked before text-to-speech, and so is a card's text; the
-runtime's own templates are not.
+how many questions one reply may ask the caller (agent/question_limit.py, D-085), and whether a
+stop there drops its request's tool calls; and whether stage notes and tags count as the
+model's reasoning (agent/leaked_reasoning.py, D-089). Every clause the talker writes is checked
+before text-to-speech, and so is a card's text; the runtime's own templates are not.
 """
 
 from __future__ import annotations
@@ -78,6 +79,26 @@ class GuardSettings(Group):
             "The most questions one spoken reply of the talker's may ask the caller: the reply "
             "stops before the next one, which is not said, nor anything after it. A question is "
             "a clause that ends with a question mark. None, given in code: no limit."
+        ),
+    )
+    question_stop_drops_calls: bool = Field(
+        default=False,
+        description=(
+            "Whether a reply the question limit stopped also drops the tool calls of the "
+            "request it stopped in: on, none of them runs, so the question the caller heard "
+            "ends the turn; off, they run and are kept, as before."
+        ),
+    )
+    drop_stage_notes: bool = Field(
+        default=False,
+        description=(
+            "Whether a stage note or a tag the model writes into its answer counts as its "
+            "reasoning, so nothing of that request is said from it on and none of its tools "
+            "runs: in a reply in Arabic script, a parenthesis or bracket glued to a sentence's "
+            "end with a capital Latin letter after it; in any language, one that opens a stage "
+            'word ("(Waiting", "[No output"); and a "<" that opens a tag ("<action", "<data", '
+            "or a tool's or an action's name). Arabic in parentheses never counts. Off: none "
+            "counts."
         ),
     )
 

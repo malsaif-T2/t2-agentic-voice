@@ -64,7 +64,12 @@ NOTHING_TO_CHANGE: Final = (
     "Nothing was changed: pass travelers, cabin or one_way, the one the caller changed."
 )
 _LEG: Final = "The leg the caller chose for: outbound, or return."
-_CHOICE: Final = "The caller's pick, as they said it; never a flight you worked out."
+_CHOICE: Final = (
+    "The caller's pick, as they said it; never a flight you worked out, nor the time or number "
+    "of the flight it means, even one a tool already named: a part of the day goes as "
+    "part_of_day, a comparison of when it leaves as earliest or latest, the only flight listed "
+    "as its number."
+)
 _TRAVELERS: Final = "How many people travel now, when the caller changed it."
 _CABIN: Final = "The cabin the caller wants now, when they changed it."
 _ONE_WAY: Final = "True for one way, false for a round trip, when the caller changed it."

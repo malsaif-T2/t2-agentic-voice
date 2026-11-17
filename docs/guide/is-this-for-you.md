@@ -80,7 +80,8 @@ belongs on storage that survives a restart.
   to three Orpheus requests an echo, and synthesizes its fixed phrases once, at its first start,
   so 100 Orpheus requests a day carry only a few calls. Read your key's real limits in the
   console; each call's report counts its requests per call minute, per model. The talker's
-  one to three chat requests a turn count against the chat model's own limits.
+  one to three chat requests a turn (`llm.max_requests_per_turn`) count against the chat model's
+  own limits.
 - **A 429 in a call** fails that turn, and the caller hears the error notice; waiting it out,
   and turning callers away with a busy notice, are not built yet.
 

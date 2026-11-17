@@ -10,8 +10,8 @@ scenarios that cannot be read or break a rule (rules.py's `problems`, but each k
 held-out scenario while no held-out scenario exists yet); a model with no price or limits; a
 resumed run that differs from the one begun; and the dry estimate of the run's most spend past
 `--cap-usd` ($10, the owner's): for each play left and the smoke play, each turn's most talker
-requests (`TALKER_REQUESTS`), an uncertain overlap's request for each turn said over the agent,
-and the yes rule's check for each turn that may answer a read-back, each reading
+requests (`llm.max_requests_per_turn`), an uncertain overlap's request for each turn said over
+the agent, and the yes rule's check for each turn that may answer a read-back, each reading
 `--input-budget-tokens` and writing its model's most, at each model's price.
 
 **Then** the smoke play, the first dev scenario once, which must end with no failed, retried or

@@ -1,10 +1,11 @@
 """A caller's pick of a listed flight, as the talker passes it (`Choice`), and the code that
 reads it against the options last listed for that leg, in the order said (`pick`).
 
-The talker passes the pick as the caller made it, never a flight it worked out: by its number in
-the list ("the second one", «الثانية»), the cheapest, the earliest, the latest, its part of the
-day ("the morning one", «حقت الصبح») or its departure time. A pick names one option, or it is
-unclear and the options it could mean are said back; "the cheapest" is the one the listing
+The talker passes the pick in the kind the caller said it, never a flight it worked out: by its
+number in the list ("option three", «رقم ثلاثة»), the cheapest, the earliest, the latest, its
+part of the day ("the afternoon one", «اللي الظهر») or a departure time the caller said. Each
+kind's class docstring is its description in the tools' schema. A pick names one option, or it
+is unclear and the options it could mean are said back; "the cheapest" is the one the listing
 marked, the cheapest with a seat for every traveler.
 """
 
@@ -25,39 +26,47 @@ class _Pick(BaseModel):
 
 
 class ByNumber(_Pick):
-    """The option by its number in the list, as said: «الثانية», "the second one"."""
+    """The option by its place in the list, only when the caller said a number or an order word
+    ("option three", «رقم ثلاثة») or picked the only flight listed. A comparison of when it
+    leaves is earliest or latest; one by a part of the day is part_of_day."""
 
     pick: Literal["number"] = "number"
     n: int = Field(ge=1, le=4)
 
 
 class Cheapest(_Pick):
-    """The cheapest option with seats: «الأرخص», "the cheaper one"."""
+    """The cheapest option with seats: "the lowest fare", «أرخص وحدة»."""
 
     pick: Literal["cheapest"] = "cheapest"
 
 
 class Earliest(_Pick):
-    """The option that leaves first."""
+    """The option that leaves first, whenever the caller picks by how early it leaves,
+    a comparison too: "whichever leaves soonest", «اللي تطلع بدري»; never its number."""
 
     pick: Literal["earliest"] = "earliest"
 
 
 class Latest(_Pick):
-    """The option that leaves last."""
+    """The option that leaves last, whenever the caller picks by how late it leaves,
+    a comparison too: "the last flight out", «آخر وحدة تطلع»; never its number."""
 
     pick: Literal["latest"] = "latest"
 
 
 class ByPart(_Pick):
-    """The option that leaves in a part of the day: "the morning one", «حقت الصبح»."""
+    """The option that leaves in a part of the day the caller named, even when you know its time
+    or its number: "the afternoon one", «اللي الظهر», «الرحلة الليلية».
+    Morning is 05:00 to 11:59, afternoon 12:00 to 17:59, evening 18:00 to 21:59,
+    night 22:00 to 04:59."""
 
     pick: Literal["part_of_day"] = "part_of_day"
     part: PartOfDay
 
 
 class ByTime(_Pick):
-    """The option that leaves at a time, as "HH:MM": "the 9:10"."""
+    """The option that leaves at a time the caller said themselves, as "HH:MM": "the 7:45".
+    Never for a flight they named another way, even one a tool gave with its time."""
 
     pick: Literal["time"] = "time"
     departs: str = Field(pattern=r"^([01]?[0-9]|2[0-3]):[0-5][0-9]$")

@@ -11,7 +11,9 @@ the next one.
   up to and including the last question it may ask. The next clause that asks one is dropped,
   and so is every clause after it: the reply stops there. The clauses between the questions are
   said. Each clause is judged as it comes, before the guard reads it, so nothing is held back,
-  no text is changed and no model is asked.
+  no text is changed and no model is asked. The tool calls of the request it stopped in still
+  run and are kept, and no request follows them (agent/turn.py), unless
+  `guard.question_stop_drops_calls` drops them unrun, so the question ends the turn.
 - **Only what was said counts.** The limit reads the clauses said so far in the reply (those the
   guard passed, agent/speech_guard.py's `passed`), so a clause the guard blocked, or one the
   stray-script filter left with nothing to say, asks nothing. The session's own lines (a

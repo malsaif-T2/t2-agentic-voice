@@ -53,6 +53,7 @@ def test_the_outbound_pick_lists_the_return_flights_and_the_draft_holds_both() -
     )
     assert [o["departs"] for o in returns["options"]] == ["16:00", "21:45"]
     assert returns["fare_basis_said"] == "per person, one way"
+    assert returns["say"] == SAY["return_listed"]
     draft = call.draft
     assert draft.chosen_outbound == Leg(flight=401, day=date(2026, 12, 17))
     assert [s.flight for s in draft.shown_return] == [402, 404]

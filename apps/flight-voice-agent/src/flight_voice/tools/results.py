@@ -7,8 +7,10 @@ from the caller's words or any free text.
 
 A listing (`listing.py`) holds at most four options, numbered in the order said, the cheapest
 with seats marked, and the fare's basis ("per person, one way") said once; a fourth is said by
-its part of the day. A listing after one of another day in the call is said from its day,
-without the basis again (`relisted`). A read of the airline that fails is never a result: it is
+its part of the day. A first outbound listing is said from its day and its weekday, in place of
+the caller's request said back (`listed`); a return listing, after the choice said back, is not
+(`return_listed`). A listing after one of another day in the call is said from its day, without
+the basis again (`relisted`). A read of the airline that fails is never a result: it is
 a `ToolError` whose message names the failure and forbids reading it as nothing found
 (`SEARCH_FAILED`, `PROFILE_FAILED`).
 """
@@ -46,13 +48,18 @@ _FOUR: Final = (
 _ONCE: Final = " Say once that fares are one way, per person."
 _NOT_AGAIN: Final = " Do not say again that fares are one way, per person."
 _ASK: Final = " Then ask which one they want. Do not say flight numbers."
+_DAY: Final = "Say the day with its weekday first, in place of saying their request back, then "
 _NEW_DAY: Final = "Say the new day with its weekday first, then "
 _FULL: Final = " A flight with seats_ok false is full in this cabin: if you name it, say so."
 SAY: Final[dict[str, str]] = {
-    "listed": "Say " + _THREE + _ONCE + _ASK,
-    "listed_more": "Say " + _FOUR + _ONCE + _ASK,
-    "listed_full": "Say " + _THREE + _ONCE + _ASK + _FULL,
-    "listed_more_full": "Say " + _FOUR + _ONCE + _ASK + _FULL,
+    "listed": _DAY + _THREE + _ONCE + _ASK,
+    "listed_more": _DAY + _FOUR + _ONCE + _ASK,
+    "listed_full": _DAY + _THREE + _ONCE + _ASK + _FULL,
+    "listed_more_full": _DAY + _FOUR + _ONCE + _ASK + _FULL,
+    "return_listed": "Say " + _THREE + _ONCE + _ASK,
+    "return_listed_more": "Say " + _FOUR + _ONCE + _ASK,
+    "return_listed_full": "Say " + _THREE + _ONCE + _ASK + _FULL,
+    "return_listed_more_full": "Say " + _FOUR + _ONCE + _ASK + _FULL,
     "relisted": _NEW_DAY + _THREE + _NOT_AGAIN + _ASK,
     "relisted_more": _NEW_DAY + _FOUR + _NOT_AGAIN + _ASK,
     "relisted_full": _NEW_DAY + _THREE + _NOT_AGAIN + _ASK + _FULL,
@@ -100,7 +107,8 @@ SAY: Final[dict[str, str]] = {
     "trip_empty": "Nothing is planned yet. Ask where they would like to go.",
     "calendar": "Say the three cheapest days with their fares, then ask which day suits them.",
     "cabins": "Say each cabin's fare on this flight, one way, per person, and ask which cabin "
-    "they want. To change the cabin, call change_trip.",
+    "they want. Then wait for their answer; call change_trip only for a cabin the caller asked "
+    "for.",
     "profile": "Answer from these counts. Say a past trip as one they flew, never as one you "
     "booked. Never read a booking reference unless the caller asks for it.",
 }

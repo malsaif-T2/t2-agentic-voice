@@ -15,6 +15,11 @@ profile, a slow read's seconds), and the persona's names, the owner's picks by d
   process a folder and both servers start with `--env-file .env`;
 - **books up to 50 a caller a day** (`ACTIONS_PER_DAY`) unless the environment sets
   `limits.actions_per_caller_per_day`: a demo day books more than the library's default;
+- **turns on** `guard.question_stop_drops_calls` and `guard.drop_stage_notes` (`GUARD_ON`), and
+  sets `llm.max_requests_per_turn` to 4 (`REQUESTS_PER_TURN`), each unless the environment sets
+  it (run F's round 2): a question the limit stopped ends the turn with no call of its request
+  run, a stage note or a tag the model writes is never said, and a refused booking's next pick
+  and its read-back fit in one turn;
 - **under `env` dev alone**, names the demo traveler the test console's dev caller, so a call the
   console starts is the traveler's, as a page's call is;
 - **refuses a name that breaks the lines' rule** (persona.py's `breaking`), naming its setting.
@@ -36,7 +41,9 @@ from pydantic import Field, SecretStr, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from t2_agentic_voice import (
     ConfigurationError,
+    GuardSettings,
     LimitSettings,
+    LlmSettings,
     ServerSettings,
     StorageSettings,
     VoiceSettings,
@@ -53,6 +60,9 @@ PREFIX: Final = "FLIGHT_VOICE_"
 APP_FOLDER: Final = "flight"
 TOKENS_PER_DAY: Final = 50
 ACTIONS_PER_DAY: Final = 50
+# The library's guard settings the app turns on, and its most model requests a turn, unless set.
+GUARD_ON: Final = ("question_stop_drops_calls", "drop_stage_notes")
+REQUESTS_PER_TURN: Final = 4
 MIN_ACCESS_CODE_CHARS: Final = 16
 GENERATOR: Final = 'python -c "import secrets; print(secrets.token_urlsafe(24))"'
 # A name: one line of at most 40 characters, with no control character, brace or dollar.
@@ -200,7 +210,8 @@ def load(env_file: Path | None = None) -> Settings:
 
 def for_the_app(voice: VoiceSettings) -> VoiceSettings:
     """`voice` as the app runs it: its folder nested (`APP_FOLDER`), its bookings a caller a
-    day `ACTIONS_PER_DAY` unless set, and under `env` dev alone the demo traveler the test
+    day `ACTIONS_PER_DAY`, the guard's `GUARD_ON` on and its most requests a turn
+    `REQUESTS_PER_TURN`, each unless set, and under `env` dev alone the demo traveler the test
     console's dev caller; every other setting as it was."""
     storage = StorageSettings.model_validate(
         voice.storage.model_dump() | {"var_dir": voice.storage.var_dir / APP_FOLDER}
@@ -209,6 +220,12 @@ def for_the_app(voice: VoiceSettings) -> VoiceSettings:
     if "actions_per_caller_per_day" not in voice.limits.model_fields_set:
         update["limits"] = LimitSettings.model_validate(
             voice.limits.model_dump() | {"actions_per_caller_per_day": ACTIONS_PER_DAY}
+        )
+    if on := {name: True for name in GUARD_ON if name not in voice.guard.model_fields_set}:
+        update["guard"] = GuardSettings.model_validate(voice.guard.model_dump() | on)
+    if "max_requests_per_turn" not in voice.llm.model_fields_set:
+        update["llm"] = LlmSettings.model_validate(
+            voice.llm.model_dump() | {"max_requests_per_turn": REQUESTS_PER_TURN}
         )
     if voice.env == "dev":
         update["server"] = ServerSettings.model_validate(

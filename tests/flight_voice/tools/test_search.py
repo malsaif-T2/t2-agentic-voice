@@ -290,8 +290,10 @@ def test_the_talker_sees_its_arguments_and_no_bound_one() -> None:
     schema = tool.tool_schema()
     assert schema.name == SEARCH_FLIGHTS and tool.progress == "searching"
     assert tool.timeout_s == 5.0 and "never work out a date yourself" in schema.description
-    assert "Call it only once the caller has said where they go" in schema.description
-    assert "after a listing, never again for a pick or a cabin change" in schema.description
+    assert "Call it in the same reply as soon as the caller has said where" in schema.description
+    assert "with no question to confirm it first; never before" in schema.description
+    assert "never with a day they did not say" in schema.description
+    assert "After a listing, never again for a pick or a cabin change" in schema.description
     properties = json.loads(json.dumps(dict(schema.parameters)))["properties"]
     assert properties["depart"]["description"] == (
         "The day they leave, as the caller said it; never a day they did not say."

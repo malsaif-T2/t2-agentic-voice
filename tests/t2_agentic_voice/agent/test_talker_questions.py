@@ -11,10 +11,17 @@ stops before the next clause that asks one (`guard.questions_per_reply`, 1 by de
 - What it never changes: a tool call the model makes in the same request runs, and its result
   is kept for the turns after, but no request follows the stop, so nothing more of the reply is
   said; an action called after the stop is still read back; the next turn's request holds only
-  what was said. With the setting None, every event is as before."""
+  what was said. With the setting None, every event is as before.
+- With `guard.question_stop_drops_calls` (off by default, so the tests above hold today's
+  behavior): the stopped request's tool calls and actions do not run, the log line counts them,
+  the next turn's request holds none of them, and a request that asked one question and called
+  a tool still runs it."""
 
 from __future__ import annotations
 
+import logging
+
+import pytest
 from t2_agentic_voice.actions.tools import tool
 from t2_agentic_voice.agent.talker import (
     ClauseBlocked,
@@ -39,6 +46,7 @@ from t2_agentic_voice.domain.ports.chat_model import Done, TextDelta, Usage
 from tests.t2_agentic_voice.agent.action_talk_support import acting
 from tests.t2_agentic_voice.agent.chat_support import (
     FakeChat,
+    Step,
     call,
     calls,
     kinds,
@@ -52,6 +60,7 @@ TURN = TalkerTurn(turn_id=1, words="My laptop will not start.", language="en")
 SAUDI_TURN = TalkerTurn(turn_id=1, words="لابتوبي ما يشتغل", language="ar-SA")
 TWO = "Is it urgent? Is it blocking your work? Tell me more."
 DROP_CLAUSE = VoiceSettings(env="test", guard=GuardSettings(on_block="drop_clause"))
+DROPS_CALLS = VoiceSettings(env="test", guard=GuardSettings(question_stop_drops_calls=True))
 
 
 @tool(description="Do a made-up quick thing.")
@@ -199,6 +208,43 @@ def test_an_action_called_after_the_stop_is_still_read_back() -> None:
     assert _spoken(events) == ["Is it urgent?"]
     assert kinds(events)[-2:] == ["ReadBackRequested", "ReplyDone"]
     assert len(model.requests) == 1
+
+
+def test_a_stop_drops_its_requests_tool_calls_when_the_setting_says_so(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level(logging.DEBUG, logger="t2_agentic_voice")
+    asked: list[Step] = [TextDelta(text=f"{TWO} "), call("quick"), call("quick", "c-2")]
+    model = FakeChat([*asked, Done(finish_reason="tool_calls")], said("Noted."))
+    chat = talker(model, quick, settings=DROPS_CALLS)
+    events = reply(chat, TURN)
+    assert kinds(events) == ["ModelRequested", "SpokenClause", "ModelReplied", "ReplyDone"]
+    assert _spoken(events) == ["Is it urgent?"] and _unsaid(events) == 2
+    assert len(model.requests) == 1
+    [record] = [r for r in caplog.records if r.getMessage() == "talker_tool_call_ignored"]
+    fields = dict(record.fields)  # type: ignore[attr-defined]
+    assert (fields["turn_id"], fields["reason"], fields["calls"]) == (1, "question_limit", 2)
+    reply(chat, TalkerTurn(turn_id=2, words="Yes, very.", language="en"))
+    assert all(not m.tool_calls and m.role != "tool" for m in model.requests[1].messages)
+
+
+def test_an_action_called_after_the_stop_is_not_read_back_when_the_setting_says_so() -> None:
+    turn = TalkerTurn(turn_id=1, words="My laptop will not start, open a request.", language="en")
+    draft = {"category": "software", "summary": "the made-up laptop will not start"}
+    model = FakeChat(calls(call("open_request", **draft), before=f"{TWO} "))
+    events = reply(acting(model, settings=DROPS_CALLS).talker, turn)
+    assert _spoken(events) == ["Is it urgent?"]
+    assert "ReadBackRequested" not in kinds(events) and kinds(events)[-1] == "ReplyDone"
+
+
+def test_a_request_with_one_question_still_runs_its_tool_under_the_setting() -> None:
+    model = FakeChat(
+        calls(call("quick"), before="Is it the office laptop? "),
+        said("First open Settings. Did that work?"),
+    )
+    events = reply(talker(model, quick, settings=DROPS_CALLS), TURN)
+    assert kinds(events).count("ToolEnded") == 1 and len(model.requests) == 2
+    assert _spoken(events) == ["Is it the office laptop?", "First open Settings."]
 
 
 def test_with_no_limit_every_event_is_as_before() -> None:

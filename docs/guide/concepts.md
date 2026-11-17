@@ -80,10 +80,11 @@ The talker answers one turn at a time, and starts again from what the caller hea
   below);
 - **a blocked clause**, never spoken ("The output guard's ID rule", below).
 
-A turn makes at most three model requests. Each but the last offers the agent's tools, the last
-none, so the turn ends in words: a question answered with one tool takes two requests, one that
-calls the tool and one that answers from its result. While the talker or a tool works with
-nothing to play, the client shows `thinking` ([browser-client.md](browser-client.md)).
+A turn makes at most three model requests (`llm.max_requests_per_turn`, from 2 to 5). Each but the
+last offers the agent's tools, the last none, so the turn ends in words: a question answered with
+one tool takes two requests, one that calls the tool and one that answers from its result. While the
+talker or a tool works with nothing to play, the client shows `thinking`
+([browser-client.md](browser-client.md)).
 
 One turn of the quickstart's helper, under the default settings:
 
@@ -732,12 +733,15 @@ T2V_TURNS__COMPLETE_HOLD_MS=0
 | `T2V_LLM__MODEL` | `openai/gpt-oss-120b` | The talker's chat model, on Groq; it changes only on a registered measurement |
 | `T2V_LLM__REASONING_EFFORT` | `medium` | How much a reasoning model thinks before it answers; medium invented fewer answers than low on run K's dev pass, for about 0.33 s more to the first clause (D-074) |
 | `T2V_LLM__MAX_OUTPUT_TOKENS`, `__TIMEOUT_S` | 1024, 8 | The most one model request writes, and how long it may take |
+| `T2V_LLM__MAX_REQUESTS_PER_TURN` | 3 | The most model requests one turn makes, the last with no tools, from 2 to 5 |
 | `T2V_GUARD__MIN_ID_DIGITS` | 3 | The fewest digits in a row that count as an ID |
 | `T2V_GUARD__ID_PATTERNS` | none | More ID shapes, as a JSON list of regular expressions |
 | `T2V_GUARD__ON_BLOCK` | `drop_rest` | What a blocked clause drops: the rest of the reply, or only it (`drop_clause`) |
 | `T2V_GUARD__CLAIMS` | none | Phrases added to each language's default list of what claims any action |
 | `T2V_GUARD__REMOVE_STRAY_SCRIPT` | true | Whether a script none of the agent's languages writes, and each emoji, is taken out of what the talker writes before the guard reads it ([languages.md](languages.md), "Scripts a reply may hold") |
 | `T2V_GUARD__QUESTIONS_PER_REPLY` | 1 | The most questions one reply asks the caller: the reply stops before the next, which is not said, nor anything after it ([writing-for-voice.md](writing-for-voice.md), "One question at a time"); None, in code, for no limit |
+| `T2V_GUARD__QUESTION_STOP_DROPS_CALLS` | false | Whether a reply the question limit stopped also drops its request's tool calls unrun, so the question ends the turn |
+| `T2V_GUARD__DROP_STAGE_NOTES` | false | Whether a stage note ("(Waiting…)") or a tag ("<action…") the model writes is a leak of its reasoning, never said ([safety.md](safety.md)) |
 | `T2V_WORDS__YES`, `__SEND` | none | Your words, added to each language's yes and send words, which the yes rule reads |
 | `T2V_LIMITS__ACTIONS_PER_CALLER_PER_DAY` | 20 | How many of one action one caller may have done in a day; past it, the action is refused before its read-back |
 | `T2V_INTERRUPTIONS__MODE` | `two_step` | `two_step`: the two-step interruption; `drop`: speech over a reply is not answered |

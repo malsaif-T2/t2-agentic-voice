@@ -35,7 +35,7 @@ from flight_voice.tools import flight_tools
 from flight_voice.trip import TripBook
 
 NAME: Final = "flight"
-VERSION: Final = "2026-11-17.2"
+VERSION: Final = "2026-11-17.3"
 # Riyadh's offset from UTC, all year (D-106).
 TIME_ZONE: Final = RIYADH.utcoffset(None) or timedelta(hours=3)
 

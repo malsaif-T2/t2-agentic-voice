@@ -2,8 +2,9 @@
 library's five-second timeout, the search and the cabins under the search's progress line and the
 calendar under its own; none backs up a booking claim; and every `say` the tools give is one of
 the app's fixed strings, listed here, none built from words a caller could say: a listing's asks
-for three times aloud and a fourth by its part of the day, and one on a new day for that day
-first, the fare's basis not said again."""
+for three times aloud and a fourth by its part of the day; a first outbound one for its day and
+weekday first (f27, f-dev-5), a return one for no day, and one on a new day for that day first,
+the fare's basis not said again."""
 
 from __future__ import annotations
 
@@ -18,6 +19,10 @@ SAYS = {
     "listed_more",
     "listed_full",
     "listed_more_full",
+    "return_listed",
+    "return_listed_more",
+    "return_listed_full",
+    "return_listed_more_full",
     "relisted",
     "relisted_more",
     "relisted_full",
@@ -82,12 +87,23 @@ def test_every_say_is_one_of_the_fixed_strings_listed() -> None:
 
 def test_a_listing_says_three_times_and_the_one_more_by_its_part_of_the_day() -> None:
     """Spec 3.2: three aloud, then "and one more in the evening"; never the fourth's time."""
-    for key in ("listed_more", "listed_more_full", "relisted_more", "relisted_more_full"):
-        assert "options 1 to 3 in order" in SAY[key]
-        assert "one more and its part of the day (part_of_day_said)" in SAY[key]
-        assert "never its time or its fare" in SAY[key] and "when it leaves" not in SAY[key]
-    for key in ("listed", "listed_full", "relisted", "relisted_full"):
-        assert "at most three" in SAY[key] and "one more" not in SAY[key]
+    for start in ("listed", "return_listed", "relisted"):
+        for key in (f"{start}_more", f"{start}_more_full"):
+            assert "options 1 to 3 in order" in SAY[key]
+            assert "one more and its part of the day (part_of_day_said)" in SAY[key]
+            assert "never its time or its fare" in SAY[key] and "when it leaves" not in SAY[key]
+        for key in (start, f"{start}_full"):
+            assert "at most three" in SAY[key] and "one more" not in SAY[key]
+
+
+def test_a_first_outbound_listing_says_its_day_first_and_a_return_one_does_not() -> None:
+    """f27 p2: a first listing that named no day, then the bare day the caller said was heard
+    as an hour. A return listing follows the outbound choice said back, so it keeps its words."""
+    first = "Say the day with its weekday first, in place of saying their request back, then "
+    for key in ("listed", "listed_more", "listed_full", "listed_more_full"):
+        assert SAY[key].startswith(first) and "Say once that fares" in SAY[key]
+        back = SAY["return_" + key]
+        assert back == "Say " + SAY[key].removeprefix(first) and "weekday" not in back
 
 
 def test_a_listing_on_a_new_day_says_the_day_first_and_not_the_basis_again() -> None:

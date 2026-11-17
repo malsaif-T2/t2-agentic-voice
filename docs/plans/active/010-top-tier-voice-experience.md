@@ -1254,6 +1254,36 @@ Block 0.
   next, round 2: the pick passed as the caller said it, the stage notes, and the scenarios still
   failing (f06, f09, f25, f26, f27, f28) diagnosed from the new records, the two rounds then
   measured together against f-dev-4 re-scored.
+- 2026-11-17: rule F amended by the lead after f-dev-5 was read and before any later result: (M7) a
+  check, `stage_note`, fails a turn whose heard text holds a stage note or markup (a parenthesis or
+  bracket holding Latin letters in a reply in Arabic script, one that opens a stage word in any
+  language, «انتظار» among them, or a "<" opening a tag), in its own code beside the guard's rule
+  it measures: the agent is voice only and only spoken words score, and f-dev-5's callers heard
+  «(Waiting for user response)» (f10 p2, f27 p3) and `<action tool="book_trip"/>` (f26 p2), which
+  no check failed on its own. Scanned over every heard text of f-dev-4 and f-dev-5, it fails only
+  the 12 spoken notes and tags and nothing else; every one is in a play that already failed, so
+  f-dev-4 stays 9 of 28 and f-dev-5 20.
+- 2026-11-17: run F's second round of fixes, each from a cause a skeptic upheld (a workflow: an
+  analyst for each scenario still failing in f-dev-5, a skeptic for each, the fixes grouped by
+  scenarios fixed an hour), built by two builders, each track reviewed by two lenses and its
+  findings fixed. The flight app's texts (no setting, as round 1; the prompt's version
+  2026-11-17.3): a pick passed in the kind the caller said it (a part of the day as its part, a
+  comparison of when it leaves as the earliest or the latest, a number only for a number or order
+  word said or the only flight listed, a time only for a time said), in both instruction files, the
+  pick schema's descriptions and `_CHOICE`; the pick examples copied from dev lines replaced
+  (D-011: "the cheaper one", "the morning one", «حقت الصبح», «الثانية», and "the second" near h01's
+  line in 7.2), and the test that holds it now reads every string of every dev turn and the pick
+  schema; the MSA twin of the departure question «متى تودّ السفر؟», MSA from the first reply to an
+  MSA caller; a search in the same reply once the caller said where and when, with no question to
+  confirm and the defaults never asked (round 1's wording had missed 7 first searches in 75,
+  against none in f-dev-4); the first outbound listing opens with its day and weekday, a return
+  listing as before; the cabins' say waits for the caller. The library, three settings off by
+  default (GP-18; characterization tests hold the old behavior), which the flight app turns on
+  unless set: `guard.question_stop_drops_calls` (f27's search on days nobody said, run after a
+  question stop), `guard.drop_stage_notes` (the stage notes and tags as a leak of reasoning,
+  D-089's stop) and `llm.max_requests_per_turn` (4 in the app, in place of turn.py's fixed 3: f26's
+  refused booking then its pick and its read-back); run F's cost estimate counts the app's 4. The
+  two rounds are measured together against f-dev-4 re-scored (13 of 28) by the next pass, f-dev-6.
 
 ## Decision log
 
@@ -1273,3 +1303,7 @@ Block 0.
   kept rule (every check in 2 of 3 plays; no dev scenario that passed fails, violations zero in
   every play; L's targets in all three), its held-out read the eighth M9 read; F.3 reads run F in
   place of "run S and run A scenarios"; `language_switch` is row 2.5's, landed with D-103.
+- 2026-11-17: the lead ruled that a run F fix needing library behavior lands as a library setting
+  off by default, turned on by the flight app alone (GP-18), so D-085's question limit, D-089's
+  leak rule and the turn's request cap stay as approved for every other app and team; the three
+  settings are the owner's to keep or turn off (`for_the_app`, one line each).

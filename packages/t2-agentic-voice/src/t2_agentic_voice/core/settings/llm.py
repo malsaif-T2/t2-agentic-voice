@@ -29,8 +29,8 @@ ReasoningEffort = Literal["low", "medium", "high"]
 
 class LlmSettings(Group):
     """The chat model the talker writes its replies with: the adapter, the model, how much it
-    reasons, the most it may write, how long a request may take, and whether each request opens
-    with a line of its own."""
+    reasons, the most it may write, how long a request may take, whether each request opens
+    with a line of its own, and the most requests a turn."""
 
     provider: LlmProvider = Field(
         default="groq",
@@ -76,5 +76,14 @@ class LlmSettings(Group):
             "on openai/gpt-oss-120b with one app's system prompt, 3 of the 8 requests it served "
             "from its cache took 1.03, 1.25 and 5.71 s to the first token, while 12 requests with "
             "a first line of their own all took 0.15 to 0.30 s (2026-11-07, D-072)."
+        ),
+    )
+    max_requests_per_turn: int = Field(
+        default=3,
+        ge=2,
+        le=5,
+        description=(
+            "The most model requests one turn makes: each but the last offers the agent's "
+            "tools, the last none, so the turn ends in words."
         ),
     )

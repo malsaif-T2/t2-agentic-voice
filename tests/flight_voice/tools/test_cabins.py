@@ -116,3 +116,14 @@ def test_the_talker_sees_the_leg_and_the_pick_as_choose_flight_shows_it() -> Non
     choice = json.loads(json.dumps(dict(schema.parameters)))["properties"]["choice"]
     assert choice == json.loads(json.dumps(dict(chooses.parameters)))["properties"]["choice"]
     assert choice["description"].startswith("The caller's pick, as they said it; never a flight")
+    assert "nor the time or number of the flight it means" in choice["description"]
+    assert "a part of the day goes as part_of_day" in choice["description"]
+    assert choice["description"].endswith("the only flight listed as its number.")  # f10
+
+
+def test_the_cabins_say_waits_for_the_callers_cabin() -> None:
+    """f28 p3: the reply asked which cabin, answered for the caller and changed it."""
+    assert SAY["cabins"].endswith(
+        "Then wait for their answer; call change_trip only for a cabin the caller asked for."
+    )
+    assert "To change the cabin" not in SAY["cabins"]

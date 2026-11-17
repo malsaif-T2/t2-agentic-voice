@@ -16,13 +16,20 @@ a2-dev saw too («…حالياً.We need to respond accordingly.…»).
   glued sentence that is neither (the model starting its answer again, «…بالضبط؟وش …») is
   said: the clause splitter cuts it there (domain/text/clauses.py), and the question limit
   counts its question.
+- **Stage notes and tags** (`guard.drop_stage_notes`, off by default; run F's f-dev-5 said
+  «…تسافر؟(Waiting for user response)(Waiting)…», then a search of a day nobody said). On, a
+  leak also begins at a parenthesis or bracket glued to a sentence's end with a capital Latin
+  letter after it, in a reply in Arabic script; in any language, at one anywhere that opens a
+  stage word (`STAGE_WORDS`, in any case); and at a "<" that opens a tag (`TAGS`, or a tool's or
+  an action's name, after "<" or "</"). Arabic in parentheses («(الأرخص)») never begins one.
 - **What goes.** From a leak's first character, every piece of the model's text in that request
   goes, unspoken and unblocked; what came before it is said. The reply then stops as a blocked
   clause's `drop_rest` stops it (agent/turn.py): the model's stream is closed, no tool of that
   request runs and no request follows. What the model wrote is kept without the leak, so no
   later request reads it.
-- **As it streams** (`text`): the text after a possible beginning is held until it is one or
-  cannot be (a few characters: the longest opening), so the clause before it is never held.
+- **As it streams** (`text`): the text after a possible beginning (with stage notes on, each
+  parenthesis, bracket and "<" too) is held until it is one or cannot be (a few characters: the
+  longest opening), so the clause before it is never held.
   `close` gives what is held at the end of a request's text, when it is none; each request of
   the reply's is read on its own, so one's first sentence is never glued to the last's.
 - **The count.** `logged` writes `talker_reasoning_dropped` with the call, the turn and the
@@ -36,6 +43,7 @@ runs' stored replies will show if it happens (the owner's "lists plus a model's 
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from typing import Final
 
 from t2_agentic_voice.core.events import CallId, TurnId
@@ -67,12 +75,33 @@ TELLS: Final = (
     "I should",
 )
 _LONGEST: Final = max(len(tell) for tell in TELLS)
+# The words a stage note opens with, in a parenthesis or bracket (`guard.drop_stage_notes`): what
+# the model waits for or did, never words said to the caller.
+STAGE_WORDS: Final = (
+    "Waiting",
+    "Awaiting",
+    "Wait for",
+    "Pause",
+    "Silence",
+    "No output",
+    "No reply",
+    "No response",
+    "No further",
+    "No answer",
+    "Listening",
+    "Thinking",
+    "انتظار",  # intiZaar, waiting: «[انتظار رد العميل]»
+)
+# The tags a model writes in place of a call, beside each tool's and action's name.
+TAGS: Final = ("action", "data")
+BRACKETS: Final = "(["
+_NOTES: Final = tuple(f"{b}{word.casefold()}" for b in BRACKETS for word in STAGE_WORDS)
 # A sentence's start: the text's first character that is no space, or one after a sentence's
 # end mark (the clause splitter's), glued (group `glued`, the mark after a letter, a digit or a
-# letter's mark) or after spaces.
-_START = re.compile(
-    rf"(?:^\s*|{AFTER_WORD}(?P<glued>[{SENTENCE_ENDS}])|[{SENTENCE_ENDS}]\s+)(?=\S)"
-)
+# letter's mark) or after spaces; with stage notes, each parenthesis, bracket and "<" too.
+_ENDS = rf"^\s*|{AFTER_WORD}(?P<glued>[{SENTENCE_ENDS}])|[{SENTENCE_ENDS}]\s+"
+_START = re.compile(rf"(?:{_ENDS})(?=\S)")
+_NOTE_START = re.compile(rf"(?:{_ENDS}|(?=[(\[<]))(?=\S)")
 
 
 def _latin_capital(char: str) -> bool:
@@ -80,15 +109,27 @@ def _latin_capital(char: str) -> bool:
 
 
 class LeakedReasoning:
-    """The leak check of one reply, in a language written in Arabic script when `arabic` (the
-    module's docstring)."""
+    """The leak check of one reply, in a language written in Arabic script when `arabic`; with
+    `stage_notes`, a stage note or a tag of `TAGS` or `names` (the agent's tools and actions)
+    is one too (the module's docstring)."""
 
-    def __init__(self, *, arabic: bool) -> None:
-        self._arabic = arabic
+    def __init__(
+        self, *, arabic: bool, stage_notes: bool = False, names: Sequence[str] = ()
+    ) -> None:
+        self._arabic, self._stage_notes, self._names = arabic, stage_notes, tuple(names)
+        self._start = _NOTE_START if stage_notes else _START
+        tags = (f"<{end}{name.casefold()}" for end in ("", "/") for name in (*TAGS, *names))
+        self._notes = (*_NOTES, *tags) if stage_notes else ()
+        self._longest_note = max((len(note) for note in self._notes), default=0)
         self._text = ""  # all the text fed, held part and leak included
         self._given = 0  # how much of it was given
         self.found = False  # a leak began: nothing more of the model's text is said
         self.dropped = 0  # the characters dropped from the leak on
+
+    def anew(self, *, arabic: bool) -> LeakedReasoning:
+        """A new check, for a reply that moved to another language, with this one's stage notes
+        and tags."""
+        return LeakedReasoning(arabic=arabic, stage_notes=self._stage_notes, names=self._names)
 
     def text(self, piece: str) -> str:
         """`piece`, with the text held before it, less what is held now and what is a leak."""
@@ -112,7 +153,7 @@ class LeakedReasoning:
         # that character (at the text's beginning while it holds only spaces), so the text
         # streamed is read as it is in one piece.
         back = len(self._text[: self._given].rstrip())
-        for start in _START.finditer(self._text, max(0, back - 1)):
+        for start in self._start.finditer(self._text, max(0, back - 1)):
             at = start.end()
             if at < self._given:
                 continue
@@ -131,6 +172,8 @@ class LeakedReasoning:
     def _leaks(self, sentence: str, *, glued: bool) -> bool | None:
         """Whether `sentence`, the text from a sentence's start, is a leak; None while too
         little of it has come to tell."""
+        if self._notes and sentence[:1] in (*BRACKETS, "<"):
+            return self._note(sentence, glued=glued)
         openings = TELLS if glued else ROLES
         if any(sentence.startswith(opening) for opening in openings):
             return True
@@ -139,6 +182,16 @@ class LeakedReasoning:
         if len(sentence) < _LONGEST and any(o.startswith(sentence) for o in openings):
             return None
         return False
+
+    def _note(self, sentence: str, *, glued: bool) -> bool | None:
+        """Whether `sentence`, from a parenthesis, a bracket or a "<", opens a stage note or a
+        tag; None while too little of it has come to tell."""
+        if glued and self._arabic and sentence[0] in BRACKETS and _latin_capital(sentence[1:2]):
+            return True
+        head = sentence[: self._longest_note].casefold()
+        if any(head.startswith(note) for note in self._notes):
+            return True
+        return None if any(note.startswith(head) for note in self._notes) else False
 
     def logged(self, *, call_id: CallId, turn_id: TurnId) -> None:
         """Log `talker_reasoning_dropped` when a leak was found, by its count alone."""

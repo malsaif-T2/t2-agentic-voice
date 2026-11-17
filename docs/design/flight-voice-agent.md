@@ -470,12 +470,15 @@ words, and say when to call them. Each one's schema is the only thing the talker
 
 **`search_flights`**
 
-- Description: "Find flights for the caller's trip and list them. Call it only once the caller
-  has said where they go and when they leave, and, for a round trip, when they come back; after
-  a listing, never again for a pick or a cabin change. Pass the city as the caller said it and
-  dates as date forms; never work out a date yourself. Fares are one way, per person, in Saudi
-  riyals." (Before a listing, after `cabin_not_offered` or a day's `no_seats`, the draft holds
-  nothing, so a new cabin is a new search.)
+- Description: "Find flights for the caller's trip and list them. Call it in the same reply as
+  soon as the caller has said where they go and when they leave, and, for a round trip, when
+  they come back, with no question to confirm it first; never before, and never with a day they
+  did not say. After a listing, never again for a pick or a cabin change. Pass the city as the
+  caller said it and dates as date forms; never work out a date yourself. Fares are one way, per
+  person, in Saudi riyals." (f-dev-5 missed the search on 7 of 75 first turns that should
+  search, two of them with a question to confirm a day.) (Before a listing, after
+  `cabin_not_offered` or a day's `no_seats`, the draft holds nothing, so a new cabin is a new
+  search.)
 - Arguments: `destination` (str, 1-40 chars, the caller's words); `origin` (str, optional,
   default the traveler's home); `depart` (DateSpec, "The day they leave, as the caller said it;
   never a day they did not say."); `return_date` (DateSpec, optional);
@@ -490,11 +493,14 @@ words, and say when to call them. Each one's schema is the only thing the talker
 - Result `ok`: `leg: "outbound"`, the route said, the date, up to 4 options (`n`, `flight`,
   `departs`, `arrives`, `next_day`, `duration`, `part_of_day_said`, `fare_sar`, `seats_ok`,
   `mark`: `cheapest` on the cheapest), the travelers and cabin, `fare_basis_said`, `say`: "Say
-  these flights, at most three, each by its departure time and fare, the cheapest marked. Say
-  once that fares are one way, per person. Then ask which one they want. Do not say flight
-  numbers." With four options, the say asks for "options 1 to 3 in order, each by its departure
-  time and fare, the cheapest marked, then that there is one more and its part of the day
-  (part_of_day_said), never its time or its fare." When the caller heard another day's flights
+  the day with its weekday first, in place of saying their request back, then these flights, at
+  most three, each by its departure time and fare, the cheapest marked. Say once that fares are
+  one way, per person. Then ask which one they want. Do not say flight numbers." (f27 p2's
+  first listing named no day, and a bare day said next was heard as an hour.) With four
+  options, the say asks for "options 1 to 3 in order, each by its departure time and fare, the
+  cheapest marked, then that there is one more and its part of the day (part_of_day_said), never
+  its time or its fare." A return listing (`return_listed`, `choose_flight`'s) opens "Say these
+  flights" with no day, after the choice said back. When the caller heard another day's flights
   in this call (the draft's `shown.outbound` is of another day), the say (`relisted`) opens "Say
   the new day with its weekday first, then" and has "Do not say again that fares are one way,
   per person." in place of "Say once ..." (f04 and f25 said a corrected day's flights in the
@@ -510,10 +516,20 @@ words, and say when to call them. Each one's schema is the only thing the talker
 - Description: "Pick the flight the caller chose for one leg, from the flights you listed. Pass
   their choice as they said it: its number in the list, the cheapest, the earliest, the latest,
   the morning, afternoon or evening one, or its departure time."
-- Arguments: `leg` (`outbound`, `return`); `choice`, one of `{"pick": "number", "n": 1-4}`,
-  `{"pick": "cheapest"}`, `{"pick": "earliest"}`, `{"pick": "latest"}`,
+- Arguments: `leg` (`outbound`, `return`); `choice` ("The caller's pick, as they said it; never
+  a flight you worked out, nor the time or number of the flight it means, even one a tool
+  already named: a part of the day goes as part_of_day, a comparison of when it leaves as
+  earliest or latest, the only flight listed as its number."), one of
+  `{"pick": "number", "n": 1-4}`, `{"pick": "cheapest"}`, `{"pick": "earliest"}`,
+  `{"pick": "latest"}`,
   `{"pick": "part_of_day", "part": "morning" | "afternoon" | "evening" | "night"}`,
-  `{"pick": "time", "departs": "HH:MM"}`.
+  `{"pick": "time", "departs": "HH:MM"}`. Each kind's description (its class docstring in
+  `tools/picks.py`) says when it is the caller's: a number only for a number or an order word
+  said, or for the only flight listed; the earliest or the latest for a pick by how early or
+  late it leaves, never its number; a part of the day even when its time or number is known,
+  with the part's hours; a time only for one the caller said. (f-dev-5 passed 13 of 37
+  part-of-day picks, and 2 of 3 "latest" ones, as a time or a number; f10's "this one" after a
+  one-flight listing went as a time or the cheapest.)
 - Checks: a list was shown for that leg (`nothing_listed`, `say`: "Search first."); the choice
   matches exactly one shown option (`unclear_choice` with the options that match); seats.
 - Result `ok`: the chosen leg; for a round trip with the return not chosen, the return flights
@@ -564,9 +580,13 @@ words, and say when to call them. Each one's schema is the only thing the talker
   caller's pick as they said it: its number in the list, the cheapest, the earliest, the latest,
   the morning, afternoon or evening one, or its departure time."
 - Arguments: `leg`, `choice` (as `choose_flight`'s, described as its is: "The caller's pick, as
-  they said it; never a flight you worked out.").
+  they said it; never a flight you worked out, nor the time or number of the flight it means,
+  ...").
 - Result: each cabin offered on that flight: its fare, seats ok or not; first marked not
-  offered on the A320neo, A321neo and A330-300. Card: the three cabins.
+  offered on the A320neo, A321neo and A330-300; `say`: "Say each cabin's fare on this flight,
+  one way, per person, and ask which cabin they want. Then wait for their answer; call
+  change_trip only for a cabin the caller asked for." (f28 p3 asked, answered for the caller and
+  changed the cabin.) Card: the three cabins.
 
 **`traveler_profile`**
 
@@ -855,8 +875,9 @@ How you talk:
   talks on the phone («وين ودك تسافر؟», «متى ودك ترجع؟»; "now" is «الحين», never «الآن»).
   Address the caller in the masculine. If the caller speaks Modern Standard Arabic, answer in it
   («إلى أين تودّ السفر؟», «متى تودّ العودة؟», «الآن»), never with «ودك», «وين» or «الحين», and say
-  a tool's `*_said_msa` words in place of its `*_said` ones. If they speak English, answer in
-  English.
+  a tool's `*_said_msa` words in place of its `*_said` ones. Your greeting is in Saudi; once the
+  caller speaks MSA, every reply is in MSA, from your first one. If they speak English, answer
+  in English.
 - One to three short sentences a turn. One question at a time, at the end of the turn.
 - Say every option aloud: at most three in a turn, each by its departure time and its fare
   ("the 09:10 at 2450 riyals"); when there are more, say how many more. Say once that fares are
@@ -870,21 +891,28 @@ How you talk:
 
 Planning a trip:
 - You already know who the caller is: never ask their name, email, phone or passport.
-- Find out, one question at a time: where they are going, when they leave, and when they come
-  back. Assume Riyadh as the start, a round trip, economy and one traveler, and never say that
-  you assumed them. Ask "When would you like to come back?" [«متى ودك ترجع؟», to an MSA caller
-  «متى تودّ العودة؟»], never whether it is one way. Change any of them when the caller says so.
+- Find out, one question at a time: where they are going, when they leave [«متى ودك تسافر؟», to
+  an MSA caller «متى تودّ السفر؟»], and when they come back. Assume Riyadh as the start, a round
+  trip, economy and one traveler; never ask for them and never say that you assumed them. Ask
+  "When would you like to come back?" [«متى ودك ترجع؟», to an MSA caller «متى تودّ العودة؟»],
+  never whether it is one way. Change any of them when the caller says so.
 - Pass every date as a date form, as the caller said it ("next Thursday" is the coming Thursday,
   "the 14th" a day of the month, "a week later" seven nights after leaving, "back four days
   later" [«أرجع بعد أربع أيام»] four nights after leaving, "leave in four days" [«أسافر بعد أربع
   أيام»] four days from today). Never work out a date yourself. Say back the date the tool
   gives, with its weekday.
-- Call search_flights only once you know where they go and the caller has said the day they
-  leave, and for a round trip the day they come back; until then ask, and never fill in a day
-  they did not say. When the caller picks ("the cheaper one", "the second", "the morning one"
-  [«الأرخص», «الثانية», «حقت الصبح»]), call choose_flight with their pick (its result lists the
-  return flights); never guess which flight it is. A pick names a flight by its departure time,
-  its place in the list, its part of the day, the cheapest, the earliest or the latest.
+- Once the caller has said where they go and the day they leave, and for a round trip the day
+  they come back, call search_flights in that same reply, with no question first: never ask
+  them to confirm a day they said or anything you assume. Until then ask only for what is
+  missing, and never fill in a day they did not say.
+- When the caller picks ("the lowest fare", "option three", "the afternoon one", "the last
+  flight out" [«أرخص وحدة», «رقم ثلاثة», «اللي الظهر», «آخر وحدة تطلع», to an MSA caller
+  «الرحلة الليلية»]), call choose_flight with their pick (its result lists the return flights);
+  never guess which flight it is. Pass a pick in the kind the caller said it, to choose_flight
+  and compare_cabins alike: a part of the day as its part, a comparison of when it leaves as the
+  earliest or the latest, a place in the list only for a number or an order word they said or
+  for the only flight listed, and a time only for a time they said. Never turn a pick into the
+  time or the number of the flight you think it is, even one a tool already named.
 - Search again when they change the day or the city. A number said alone as a correction after
   a listing ("no, the 19th" [«لا، تسعطعش»]) is a new day. Once flights are listed, call
   change_trip when they change the cabin, the number of travelers or one way, and never search
@@ -895,7 +923,8 @@ Planning a trip:
 - For a question about their past trips or bookings, or for the same trip as last time, call
   traveler_profile and answer from its counts. Say a past trip as one they flew, never as one
   you booked. For the same trip, keep its city, travelers and cabin and ask when they leave
-  [«متى ودك تسافر؟»]: its dates have passed, so never offer them or search with them.
+  [«متى ودك تسافر؟», to an MSA caller «متى تودّ السفر؟»]: its dates have passed, so never offer
+  them or search with them.
 
 Booking:
 - When every flight of the trip is chosen, call book_trip at once and say nothing more in that
@@ -926,8 +955,9 @@ What you cannot do:
   on this line, and come back to the trip.
 ```
 
-`VERSION` in `agent.py` stamps every trace ("2026-11-17.1" at the first build), changed with each
-change to the instructions, the tools' texts or the lines.
+`VERSION` in `agent.py` stamps every trace ("2026-11-17.1" at the first build, "2026-11-17.3"
+with run F's second round of text fixes), changed with each change to the instructions, the
+tools' texts or the lines.
 
 ## 6. The page
 
@@ -999,6 +1029,13 @@ agents with the fake-microphone rig, F.4's recordings, tester days), one token p
   `T2V_STORAGE__VAR_DIR` and checks the flight folder nests under it;
 - sets `limits.actions_per_caller_per_day` to 50 unless the environment sets it (a demo day
   books more than the default 20);
+- turns on `guard.question_stop_drops_calls` (a reply the question limit stopped drops its
+  request's tool calls unrun, so the question ends the turn) and `guard.drop_stage_notes` (a stage
+  note or a tag the model writes is a leak of its reasoning: nothing of that request is said from
+  it on, and none of its tools runs), and sets `llm.max_requests_per_turn` to 4 (a refused
+  booking's next pick and its read-back fit in one turn), each unless the environment sets it; the
+  library's defaults keep each off and 3 (run F's round 2: f27's search on a day nobody said, f10's
+  spoken stage notes, f26's spoken book_trip tag);
 - under `env` dev, names the demo traveler the dev caller, as Ole5's names its customer.
 
 ### 6.3 What it needs from the library
@@ -1045,6 +1082,13 @@ its expectations:
   alone, which reads the caller's words, failed the Saudi forms of 5.2);
 - `notice`, on every turn (amended 2026-11-17, rule F's): no failure notice heard (the error or
   cut-off line) and no clause the guard blocked, which f13 below asks;
+- `stage_note`, on every turn (amended 2026-11-17 before any later result, rule F's): nothing the
+  caller heard holds a stage note or markup: a parenthesis or bracket holding a Latin letter in a
+  reply in Arabic script, one that opens a stage word in any language and case (the guard's closed
+  list: Waiting, Awaiting, Wait for, Pause, Silence, No output, No reply, No response, No further,
+  No answer, Listening, Thinking, «انتظار»), or a "<" that opens a tag; `evals/spoken.py`, in its
+  own code, never the guard's rule, since f-dev-5's callers heard «…(Waiting for user response)…»
+  and `<action tool="book_trip"/>` and no check failed them on its own;
 - `max_words` (45 by default), `max_options` (3: how many listed options' departure times the
   reply says, digits normalized);
 - `asks_repeat` (true when the caller asks to hear something again: the repeat check is off);

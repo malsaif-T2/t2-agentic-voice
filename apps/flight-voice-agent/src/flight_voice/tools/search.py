@@ -63,11 +63,12 @@ from flight_voice.trip import LegKind, Shown, TripBook, TripDraft
 
 SEARCH_FLIGHTS: Final = "search_flights"
 DESCRIPTION: Final = (
-    "Find flights for the caller's trip and list them. Call it only once the caller has said "
-    "where they go and when they leave, and, for a round trip, when they come back; after a "
-    "listing, never again for a pick or a cabin change. Pass the city as the caller said it and "
-    "dates as date forms; never work out a date yourself. Fares are one way, per person, in "
-    "Saudi riyals."
+    "Find flights for the caller's trip and list them. Call it in the same reply as soon as the "
+    "caller has said where they go and when they leave, and, for a round trip, when they come "
+    "back, with no question to confirm it first; never before, and never with a day they did not "
+    "say. After a listing, never again for a pick or a cabin change. Pass the city as the caller "
+    "said it and dates as date forms; never work out a date yourself. Fares are one way, per "
+    "person, in Saudi riyals."
 )
 _CITY: Final = "The city as the caller said it, in their words."
 _ORIGIN: Final = "The city they leave from, only when it is not Riyadh."

@@ -351,10 +351,20 @@ def test_the_interruption_and_word_defaults_are_plan_005s() -> None:
 
 def test_every_timing_or_size_setting_has_its_unit_in_its_name() -> None:
     """The design's 7.3: `_ms` or `_s`, `_mb` for a size, or the thing counted for a count
-    (`_words`, `_tokens`, `_digits`, `_threads`, and the window a cap counts over, `_per_day`:
-    the design's 7.6 names); only a ratio from 0 to 1 has none."""
+    (`_words`, `_tokens`, `_digits`, `_threads`, and the window a cap counts over, `_per_day`
+    or `_per_turn`: the design's 7.6 names); only a ratio from 0 to 1 has none."""
     numbers = [loc for loc, kind in fields() if kind in (int, float)]
-    units = ("_ms", "_s", "_mb", "_words", "_tokens", "_digits", "_threads", "_per_day")
+    units = (
+        "_ms",
+        "_s",
+        "_mb",
+        "_words",
+        "_tokens",
+        "_digits",
+        "_threads",
+        "_per_day",
+        "_per_turn",
+    )
     unnamed = [loc for loc in numbers if not loc[-1].endswith(units) and loc not in RATIOS]
     assert numbers and unnamed == []
 

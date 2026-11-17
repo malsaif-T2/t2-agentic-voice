@@ -1133,12 +1133,12 @@ The defaults below are the agent's starting values, to be measured in the milest
 | top level | `env` (required) | — |
 | `groq` | `api_key` (required for Groq adapters), `api_key_file`, `base_url`, `timeout_s` | — |
 | `stt` | `provider` (groq), `model` (`whisper-large-v3`, chosen by the M1 baseline: D-025), `timeout_s` (6), `no_speech_max` (0.55) and `caption_filter` (true), the filter for text from silence (D-063, D-068); `live_language` (`session`; or `auto`, `classified` or `detected`: D-066, D-086, D-038) and `detect_from_s` (1.2), its classifier, `classifier` (`silero`; or `ecapa`), `classifier_dir` (none), `classifier_from_s` (2.0), `classifier_min_share` (0.7) and `classifier_threads` (2), registered for run H | M1, M3, plan 007 |
-| `llm` | `provider` (groq), `model` (openai/gpt-oss-120b), `reasoning_effort` (medium: D-074), `max_output_tokens`, `timeout_s` (8), `vary_first_line` (true: D-072) | M4 |
+| `llm` | `provider` (groq), `model` (openai/gpt-oss-120b), `reasoning_effort` (medium: D-074), `max_output_tokens`, `timeout_s` (8), `vary_first_line` (true: D-072), `max_requests_per_turn` (3, from 2 to 5; the flight app's 4) | M4 |
 | `tts` | `provider` (groq), `languages` (a map from language to `{model, voice}`; models `canopylabs/orpheus-arabic-saudi` and `canopylabs/orpheus-v1-english`; voices chosen in M2), `timeout_s`, `cache_phrases` (true), `cache_clauses` (true, the owner's ruling of 2026-11-12) and `clause_cache_mb` (512), the clause cache (D-087) | M2, M5 |
 | `turns` | `vad_confidence`, `vad_start_ms`, `vad_stop_ms` (200), `smart_turn` (true), `smart_turn_threshold` (0.5), `complete_hold_ms` (600, the hold after Smart Turn's "complete": D-067), `max_silence_ms` (fallback end of turn) | M2, M3 |
 | `interruptions` | `mode` (two_step, by the owner's ruling: D-068; or drop), `duck_level` (0.25), `first_window_ms` (750), `min_words` (2), `short_words` (2), `short_s` (1.2), `own_words_s` (5) (D-061) | M3 (from the M1 overlap data) |
 | `words` | `stop`, `wait`, `repeat`, `backchannel`, `no` (M3, D-062); `yes`, `send`, `vocabulary`: additions to the declaration | M3 to M5 |
-| `guard` | `id_patterns` ([]), `min_id_digits` (3), `on_block` (`drop_rest`; or `drop_clause`), `remove_stray_script` (true: section 8.2, D-084), `questions_per_reply` (1; none in code for no limit: section 8.2, D-085) | M4, M5 |
+| `guard` | `id_patterns` ([]), `min_id_digits` (3), `on_block` (`drop_rest`; or `drop_clause`), `remove_stray_script` (true: section 8.2, D-084), `questions_per_reply` (1; none in code for no limit: section 8.2, D-085), `question_stop_drops_calls` (false) and `drop_stage_notes` (false: section 8.2; the flight app turns both on) | M4, M5 |
 | `limits` | `max_call_s` (600), `idle_s`, `max_live_calls`, `max_live_calls_per_caller` (1), `calls_per_caller_per_day`, `max_abandoned_threads` | M6 |
 | `server` | `public_url`, `allowed_origins` ([]), `ice_servers` ([]), `turn_secret`, `turn_ttl_s`, `dev_page` (false), `drain_timeout_s` | M2, M6 |
 | `join` | `keys` (a key-ID-to-secret map), `keys_file`, `current_kid`, `ttl_s` (60), `max_clock_skew_s` (30) | M2 |
@@ -1204,7 +1204,12 @@ language, or from any sentence that begins with a speaker's label ("User:"), not
 the model's text is said: the clause before it is, the model's stream is closed, and the reply
 stops as the question limit stops one (agent/leaked_reasoning.py). The clause splitter cuts a
 glued sentence it lets through into a clause of its own, so the question limit counts its
-question.
+question. With `guard.drop_stage_notes` (off by default; run F's f-dev-5 said "(Waiting for user
+response)" glued to a question, and the search after it ran), a stage note or a tag is a leak
+too: in a reply in Arabic, a parenthesis or bracket glued to a sentence's end with a capital
+Latin letter after it; in any language, one that opens a stage word ("(Waiting", "[No output");
+and a "<" that opens a tag ("<action", "<data", or a tool's or an action's name). Arabic in
+parentheses never is.
 
 The guard checks each clause before it goes to TTS, as the filter left it: a stray character
 cannot hide a claim phrase or split an ID.
@@ -1243,7 +1248,9 @@ runtime's templates and fixed phrases (a progress line, a notice, a read-back an
 question) neither count nor stop. The limit judges each clause as it comes, before the guard,
 so the clauses it drops are neither said nor blocked, and no phrase is spoken in their place. A
 tool call in the same request still runs, and its result is kept, but no request follows it,
-as none follows `drop_rest`; an action called there is still read back. It never changes a
+as none follows `drop_rest`; an action called there is still read back. With
+`guard.question_stop_drops_calls` (off by default), none of that request's calls runs, an
+action's among them, so the question the caller heard ends the turn. It never changes a
 clause's text, holds text back, asks a model, changes a tool call or changes what the model is
 sent. `guard.questions_per_reply`, 1 by default, raises the limit; None, in code, removes it.
 

@@ -148,7 +148,7 @@ Speech-to-text: the adapter, the Whisper model, how long a request may take, the
 
 ## `llm`
 
-The chat model the talker writes its replies with: the adapter, the model, how much it reasons, the most it may write, how long a request may take, and whether each request opens with a line of its own.
+The chat model the talker writes its replies with: the adapter, the model, how much it reasons, the most it may write, how long a request may take, whether each request opens with a line of its own, and the most requests a turn.
 
 | Variable | Type | Default | Unit | Description |
 | --- | --- | --- | --- | --- |
@@ -158,6 +158,7 @@ The chat model the talker writes its replies with: the adapter, the model, how m
 | `T2V_LLM__MAX_OUTPUT_TOKENS` | integer | `1024` | — | The most tokens one model request may write, its reasoning included: a spoken reply is one to three short sentences, or every step of a procedure. |
 | `T2V_LLM__TIMEOUT_S` | number | `8` | seconds | The longest one model request may take before it is a timeout. |
 | `T2V_LLM__VARY_FIRST_LINE` | true or false | `true` | — | Whether each request's system message opens with a line new on every request, so no two requests share a prefix the provider has cached. Groq's cache can be slow: on openai/gpt-oss-120b with one app's system prompt, 3 of the 8 requests it served from its cache took 1.03, 1.25 and 5.71 s to the first token, while 12 requests with a first line of their own all took 0.15 to 0.30 s (2026-11-07, D-072). |
+| `T2V_LLM__MAX_REQUESTS_PER_TURN` | integer | `3` | — | The most model requests one turn makes: each but the last offers the agent's tools, the last none, so the turn ends in words. |
 
 ## `tts`
 
@@ -234,6 +235,8 @@ The output guard: what counts as an ID, and what a clause that speaks one with n
 | `T2V_GUARD__CLAIMS` | JSON object from one of ar, en to JSON list of text | `{}` | — | Phrases added to each language's default list of what claims any action, as a JSON object from a language's code to a list: {"ar": ["..."]}. A value replaces the map. |
 | `T2V_GUARD__REMOVE_STRAY_SCRIPT` | true or false | `true` | — | Whether each character of a script none of the agent's languages writes (a Chinese character in an Arabic reply), and each pictograph, is taken out of what the talker writes, its tool calls' arguments included, before the guard reads it, and a digit of another script written as its ASCII digit; the voice, the captions, the history, the trace and the events then hold the text without it. Off: kept as written. |
 | `T2V_GUARD__QUESTIONS_PER_REPLY` | integer, or unset | `1` | — | The most questions one spoken reply of the talker's may ask the caller: the reply stops before the next one, which is not said, nor anything after it. A question is a clause that ends with a question mark. None, given in code: no limit. |
+| `T2V_GUARD__QUESTION_STOP_DROPS_CALLS` | true or false | `false` | — | Whether a reply the question limit stopped also drops the tool calls of the request it stopped in: on, none of them runs, so the question the caller heard ends the turn; off, they run and are kept, as before. |
+| `T2V_GUARD__DROP_STAGE_NOTES` | true or false | `false` | — | Whether a stage note or a tag the model writes into its answer counts as its reasoning, so nothing of that request is said from it on and none of its tools runs: in a reply in Arabic script, a parenthesis or bracket glued to a sentence's end with a capital Latin letter after it; in any language, one that opens a stage word ("(Waiting", "[No output"); and a "<" that opens a tag ("<action", "<data", or a tool's or an action's name). Arabic in parentheses never counts. Off: none counts. |
 
 ## `session`
 

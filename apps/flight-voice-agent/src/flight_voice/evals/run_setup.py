@@ -12,10 +12,10 @@ model's price and limits, and the dry estimate of the run's most spend.
   them) or `--price` and `--limits`; a model with neither is refused.
 - **A play's settings** (`play_settings`): the run's, a call that needs `language_switch` under
   `stt.live_language = "detected"` (D-103).
-- **The dry estimate** (`most_usd`): for each play, each turn's most talker requests
-  (`TALKER_REQUESTS`, the library's most a turn), an overlap's request for each turn said over
-  the agent, and the yes rule's check for each turn that may answer a read-back (one said over
-  it, or after a turn whose outcome is a read-back or an ask-again), each reading the input
+- **The dry estimate** (`most_usd`): for each play, each turn's most talker requests (the
+  settings' `llm.max_requests_per_turn`, the app's 4), an overlap's request for each turn said
+  over the agent, and the yes rule's check for each turn that may answer a read-back (one said
+  over it, or after a turn whose outcome is a read-back or an ask-again), each reading the input
   budget and writing its model's most.
 """
 
@@ -49,7 +49,6 @@ INPUT_BUDGET: Final = 8000  # tokens a request is budgeted to read: the prompt, 
 APP: Final = Path("apps") / "flight-voice-agent"
 CALLS: Final = APP / "evals" / "calls"  # under the run's tree
 HISTORY: Final = APP / "evals" / "history.jsonl"
-TALKER_REQUESTS: Final = 3  # the most model requests the talker sends a turn (agent/turn.py's)
 OVERLAP: Final = uncertain_overlap_request("-", "-")
 CHECK: Final = consent_check_request("-", "-", "-")
 OUTPUT_BUDGET: Final = 1024  # a request that names no most, as `PacedChat` budgets it
@@ -179,7 +178,7 @@ def asks(scenario: Scenario, settings: VoiceSettings) -> tuple[tuple[str, int, i
     )
     llm = settings.llm
     return (
-        (llm.model, TALKER_REQUESTS * len(said), llm.max_output_tokens),
+        (llm.model, llm.max_requests_per_turn * len(said), llm.max_output_tokens),
         (OVERLAP.model, over, OVERLAP.max_output_tokens or OUTPUT_BUDGET),
         (CHECK.model, answers, CHECK.max_output_tokens or OUTPUT_BUDGET),
     )

@@ -26,7 +26,8 @@ of an earlier reply unless the turn `asks_repeat` or the reply is a read-back sa
 heard or not). `card`, a card shown (`shows_card`); `progress`, a fixed phrase heard
 (`hears_progress`); `notice`, on every turn, no failure notice heard (the error or cut-off line,
 `failure_notices`) and no clause the guard blocked (rule F's amendment of 2026-11-17; the flight
-spec's f13).
+spec's f13); `stage_note`, on every turn (rule F's amendment of 2026-11-17 on stage notes),
+nothing heard holds a stage note or markup (spoken.py's `stage_note`, never the guard's rule).
 
 **The play's checks:** `failure`, the play ran to its end; `violations`, none (rules A to C and
 the yes rule: zero in every play is the hard constraint); `booked`, one booking when a turn's
@@ -53,7 +54,7 @@ from flight_voice.airline.profile import TRAVELER
 from flight_voice.airline.schedule import flights
 from flight_voice.evals.call import PlayRead, TurnRead
 from flight_voice.evals.scenarios import Args, ReadBack, Scenario, Turn, held_register
-from flight_voice.evals.spoken import failure_notices, form, register_held
+from flight_voice.evals.spoken import failure_notices, form, register_held, stage_note
 
 _DATES: Final[TypeAdapter[DateSpec]] = TypeAdapter(DateSpec)
 _ARABIC: Final = re.compile(r"[؀-ۿ]")
@@ -201,6 +202,8 @@ def turn_checks(
         yield "progress"
     if read.blocked or any(c.phrase and form(c.text) in failure_notices() for c in read.heard):
         yield "notice"
+    if stage_note(said(read.heard)):
+        yield "stage_note"
 
 
 def _cut_repeated(read: TurnRead, cut: TurnRead | None) -> bool:

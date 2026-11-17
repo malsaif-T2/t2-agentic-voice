@@ -297,7 +297,12 @@ us to …»). Where a sentence glued so begins with a capital Latin letter in a 
 or with one of the reasoning's openings ("We need", "According to", "The user", …) in any
 language, or any sentence begins with a speaker's label ("User:"), nothing of the model's text
 from there on is said, and the reply stops as the question limit stops one. A glued sentence
-that only starts the answer again is said, cut into a clause of its own.
+that only starts the answer again is said, cut into a clause of its own. With
+`T2V_GUARD__DROP_STAGE_NOTES=true` (off by default), a stage note or a tag is one too: in a reply
+in Arabic, a parenthesis or bracket glued to a sentence's end with a capital Latin letter after
+it; in any language, one that opens a stage word ("(Waiting", "[No output"); and a "<" that
+opens a tag ("<action", "<data", or one of your tools' or actions' names). Arabic in
+parentheses is said.
 
 ### The ID rule
 
@@ -506,5 +511,7 @@ the talker, whose request finds no entry either and fails the test.
 | `T2V_GUARD__ON_BLOCK` | `drop_rest` | What a blocked clause drops: the rest of the reply, or only it (`drop_clause`) |
 | `T2V_GUARD__REMOVE_STRAY_SCRIPT` | true | Whether a script none of the agent's languages writes, and each emoji, is taken out of what the talker writes before the guard reads it |
 | `T2V_GUARD__QUESTIONS_PER_REPLY` | 1 | The most questions one reply asks the caller: the reply stops before the next, which is not said, nor anything after it ([writing-for-voice.md](writing-for-voice.md), "One question at a time"); None, in code, for no limit |
+| `T2V_GUARD__QUESTION_STOP_DROPS_CALLS` | false | Whether a reply the question limit stopped also drops its request's tool calls and actions unrun, so the question ends the turn |
+| `T2V_GUARD__DROP_STAGE_NOTES` | false | Whether a stage note or a tag the model writes is a leak of its reasoning, never said |
 
 Every setting is in the generated [settings reference](../generated/settings.md).
