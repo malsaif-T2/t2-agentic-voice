@@ -1619,7 +1619,13 @@ declares the agent chosen and, for the lean one, registers its booking check's o
 (`AgentSpeechEnded`, `UserTurnEnded`, `CallEnded`). Its settings path turns on
 `guard.plain_speech`, `guard.drop_stage_notes`, `guard.question_stop_drops_calls` and four model
 requests a turn, as the scripted agent's does, and not the yes held over a read-back, which it
-has none of. Its name is `flight-lean`, so its traces and its runtime's folder are its own.
+has none of: it turns on `interruptions.answer_yes_over_question` instead (D-116), so a yes
+said over its closing question ("Shall I book it?", «أحجزها لك؟») is answered once the reply
+ends, unless the caller said other words after it, and adds the booking's send words
+(`booking/lines.py`'s `SEND_WORDS`: «احجزها», «احجز», "book it", "confirm" and the like) to
+`words.send`, so «إي احجزها» and «نعم، احجزها» there are that yes too; each unless the
+environment sets it. Its name is `flight-lean`, so its traces and its runtime's folder are its
+own.
 
 **What stays in code, and nothing more.**
 
@@ -1633,7 +1639,9 @@ has none of. Its name is `flight-lean`, so its traces and its runtime's folder a
    played at least up to the total (where the total ends, over the text's length, is at most its
    `played_fraction`); and the caller spoke after that reply (a turn heard after it ended, or,
    for a reply cut short, a later turn heard before it ended: a turn that cuts a reply can end
-   before the reply's end is told). The check reads the call's events,
+   before the reply's end is told; or a later turn heard before it ended whose speech began once
+   the part that states the total had played, as `UserTurnEnded.reply_played` says: a yes over
+   the closing question, answered once the reply ends, D-116). The check reads the call's events,
    kept per call and dropped at `CallEnded` as the trip book drops a trip (a call held in text
    reads them from `TextCall.emitted`); the tools mark the trip each time they write it, so a
    total said before a change never books the changed trip. When the check fails, `book_trip`
@@ -1715,10 +1723,18 @@ read-back's flights, days, travelers and cabin, for the demo traveler alone, non
 `reference`; and on each turn `language`, `register`, `stage_note`, `notice`, `max_words` and
 `repeat`. Not used: `calls`, `args`, `outcome`, `own_summary`, `said_any`, `said_none`,
 `max_options`, `card`, `progress` and `cut_repeat`. Measured, never pass or fail: the caller
-turns and the seconds until the booking, and the words the agent said. A turn said `when =
-"read_back"` or `"closing_question"` (moments of the library's read-back) is said right after the
-agent's reply, once it is silent, so it answers the reply that states the total: words said over
-a reply that goes on are settled by the voice layer and never answered. A scenario whose
+turns and the seconds until the booking, and the words the agent said. The library's read-back
+moments become the lean agent's: a turn said `when = "closing_question"` is said over the last
+clause of the reply before it, its question, once every clause before it has played and those
+clauses stated the trip's total (by the booking check's `stated_at`, the total priced from the
+play's trip; `TextCall`'s `during="agent_speaking"`), and the call is then moved on until that
+reply has ended and the turn was answered, or 2 s passed, so a yes there (f22's «إي», f01's
+«إي احجزها») is said where a caller says it and answered as the library answers it (D-116);
+when the reply has ended first, or none came, or the total is said in the question's own clause
+or not at all, it is said once the agent is silent, so the play never measures a refusal the
+agent did not cause. A turn said `when = "read_back"` is said right after the agent's reply,
+once it is silent: a yes over a summary that goes on is never answered. A stop at either moment
+stops the reply playing. A scenario whose
 `asked_again` only makes sense for the read-back counts on its booking alone. The run, its
 scorecard and its history line name the agent (`scripted` or `lean`), so the two compare by
 scenario.

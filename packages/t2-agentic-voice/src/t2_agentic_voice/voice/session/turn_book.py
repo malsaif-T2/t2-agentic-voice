@@ -42,6 +42,7 @@ from t2_agentic_voice.voice.session.books import CallBooks
 from t2_agentic_voice.voice.session.heard import heard_words
 from t2_agentic_voice.voice.session.io import CallSetup
 from t2_agentic_voice.voice.session.playback import Playback, Reply
+from t2_agentic_voice.voice.session.reply_played import played_before
 from t2_agentic_voice.voice.session.report import TurnLog
 from t2_agentic_voice.voice.session.session_events import (
     AgentAudio,
@@ -154,7 +155,7 @@ class TurnBook:
         if turn.dropped:
             self.ended(turn, "dropped")
         else:
-            self._events.heard(turn.turn_id, turn.heard)
+            self._events.heard(turn.turn_id, turn.heard, played_before(self._playback, turn))
         return turn, heard
 
     def held(self, event: Transcribed) -> HeardWords | None:

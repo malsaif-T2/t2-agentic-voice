@@ -3,8 +3,8 @@ real session, talker, guard and tools, a fake model, no key and no network): a o
 Jeddah found, its first flight chosen, said with its total and booked on the caller's yes, the
 booking check reading the call's own events (`TextCall.emitted`); a `book_trip` called before
 the summary books nothing; and run F's lean play (evals/lean_call.py) of the same call, its
-read-back's moment said right after the reply, scored by its outcomes with every kept check
-holding, its measures read, and a booking claimed before the store held one counted."""
+closing question's moment said over the reply's question, scored by its outcomes with every kept
+check holding, its measures read, and a booking claimed before the store held one counted."""
 
 from __future__ import annotations
 
@@ -156,7 +156,7 @@ def _played(llm: FunctionLLM) -> lean_call.LeanRead:
 
 def test_run_fs_lean_play_scores_the_call_by_its_outcomes() -> None:
     scenario = Scenario.model_validate(SCENARIO)
-    assert lean_call.lean_turns(scenario).turns[2].when is None
+    assert lean_call.lean_turns(scenario).turns[2].when == "closing_question"  # over it
     read = _played(talker())
     assert read.failure is None and read.violations == () and read.drops == 0
     assert len(read.made) == 1 and (read.booked_turns, read.booked_index) == (3, 2)

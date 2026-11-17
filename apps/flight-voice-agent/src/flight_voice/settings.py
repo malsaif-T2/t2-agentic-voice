@@ -19,12 +19,18 @@ default (persona.py's `Names`).
 - **turns on** `guard.question_stop_drops_calls`, `guard.drop_stage_notes` and
   `guard.plain_speech` (`GUARD_ON`), sets `llm.max_requests_per_turn` to 4 (`REQUESTS_PER_TURN`),
   and, for the scripted agent alone, turns on `interruptions.yes_over_read_back`
-  (`YES_OVER_READ_BACK`), each unless the environment sets it (run F's rounds 2 and 3): a
+  (`YES_OVER_READ_BACK`), for the lean agent alone `interruptions.answer_yes_over_question`
+  (`YES_OVER_QUESTION`), each unless the environment sets it (run F's rounds 2 and 3): a
   question the limit stopped ends the turn with no call of its request run, a stage note or a
   tag the model writes is never said, nor a clause that is not speech, its request tried once
   more (D-111), a refused booking's next pick and its read-back fit in one turn, and a yes over
   the read-back books once its summary has played (D-108, the owner's "Any yes books"); the lean
-  agent has no read-back to hold a yes over (`for_the_app`'s `agent`);
+  agent has no read-back to hold a yes over, so a yes over its closing question ("Shall I book
+  it?") is answered once the reply ends instead (D-116; `for_the_app`'s `agent`);
+- **for the lean agent alone, adds the booking's send words** (booking/lines.py's `SEND_WORDS`:
+  «احجزها», «احجز», "book it", "confirm" and the like) to `words.send` unless the environment sets
+  it, so «إي احجزها» or «نعم، احجزها» said over its closing question is the yes D-116 answers, as
+  over the scripted agent's read-back, which declares them as its action's own;
 - **under `env` dev alone**, names the demo traveler the test console's dev caller, so a call the
   console starts is the traveler's, as a page's call is;
 - **refuses a name that breaks the lines' rule** (persona.py's `breaking`), naming its setting.
@@ -53,10 +59,12 @@ from t2_agentic_voice import (
     ServerSettings,
     StorageSettings,
     VoiceSettings,
+    WordSettings,
 )
 
 from flight_voice.airline.bookings import Mode
 from flight_voice.airline.system import SLOW_S, ProfileMode, SearchMode, live_today
+from flight_voice.booking.lines import SEND_WORDS
 from flight_voice.persona import Names, breaking
 from flight_voice.traveler import demo_caller
 
@@ -71,6 +79,7 @@ ACTIONS_PER_DAY: Final = 50
 GUARD_ON: Final = ("question_stop_drops_calls", "drop_stage_notes", "plain_speech")
 REQUESTS_PER_TURN: Final = 4
 YES_OVER_READ_BACK: Final = "yes_over_read_back"
+YES_OVER_QUESTION: Final = "answer_yes_over_question"
 # The agent the app serves: today's scripted one, or the lean one beside it (D-113).
 AgentKind = Literal["scripted", "lean"]
 AGENTS: Final[tuple[AgentKind, ...]] = ("scripted", "lean")
@@ -227,9 +236,10 @@ def load(env_file: Path | None = None) -> Settings:
 def for_the_app(voice: VoiceSettings, *, agent: AgentKind = "scripted") -> VoiceSettings:
     """`voice` as the app runs `agent`: its folder nested (`APP_FOLDER`), its bookings a caller
     a day `ACTIONS_PER_DAY`, the guard's `GUARD_ON` on, its most requests a turn
-    `REQUESTS_PER_TURN` and, for the scripted agent alone (the lean one has no read-back),
-    `YES_OVER_READ_BACK` on, each unless set, and under `env` dev alone the demo traveler the
-    test console's dev caller; every other setting as it was."""
+    `REQUESTS_PER_TURN`, for the scripted agent `YES_OVER_READ_BACK` on and for the lean one
+    (which has no read-back) `YES_OVER_QUESTION`, with the booking's `SEND_WORDS` its `words.send`,
+    each unless set, and under `env` dev alone the demo traveler the test console's dev caller;
+    every other setting as it was."""
     storage = StorageSettings.model_validate(
         voice.storage.model_dump() | {"var_dir": voice.storage.var_dir / APP_FOLDER}
     )
@@ -240,9 +250,14 @@ def for_the_app(voice: VoiceSettings, *, agent: AgentKind = "scripted") -> Voice
         )
     if on := {name: True for name in GUARD_ON if name not in voice.guard.model_fields_set}:
         update["guard"] = GuardSettings.model_validate(voice.guard.model_dump() | on)
-    if agent == "scripted" and YES_OVER_READ_BACK not in voice.interruptions.model_fields_set:
+    yes = YES_OVER_READ_BACK if agent == "scripted" else YES_OVER_QUESTION
+    if yes not in voice.interruptions.model_fields_set:
         update["interruptions"] = InterruptionSettings.model_validate(
-            voice.interruptions.model_dump() | {YES_OVER_READ_BACK: True}
+            voice.interruptions.model_dump() | {yes: True}
+        )
+    if agent == "lean" and "send" not in voice.words.model_fields_set:
+        update["words"] = WordSettings.model_validate(
+            voice.words.model_dump() | {"send": SEND_WORDS}
         )
     if "max_requests_per_turn" not in voice.llm.model_fields_set:
         update["llm"] = LlmSettings.model_validate(

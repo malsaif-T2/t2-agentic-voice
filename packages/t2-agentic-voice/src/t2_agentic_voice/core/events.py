@@ -101,9 +101,15 @@ class CallEnded(Event):
 
 
 class UserTurnEnded(_TurnEvent):
-    """The caller finished a turn, and `heard` is its transcript (empty when nothing was heard)."""
+    """The caller finished a turn, and `heard` is its transcript (empty when nothing was heard).
+    For a turn whose speech began over a reply of the agent's (while it played, or just after it
+    ended), `reply_played` is what of that reply had played whole by then, its clauses' text
+    joined as that reply's `AgentSpeechEnded.text` is (empty when none had); None for a turn
+    begun while the agent was silent. Its words may come before that reply's `AgentSpeechEnded`
+    (D-116)."""
 
     heard: str
+    reply_played: str | None = None
 
 
 class Interrupted(Event):

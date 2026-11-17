@@ -55,7 +55,10 @@ class WordSettings(Group):
     backchannel: WordLists = _additions("listening sounds, after which the agent goes on")
     no: WordLists = _additions("no words, which a short output never holds")
     yes: WordLists = _additions("yes words, which the yes rule reads")
-    send: WordLists = _additions("send words, which a yes over the closing question needs")
+    send: WordLists = _additions(
+        "send words, which a yes over the closing question needs, and which a yes over any "
+        "reply's question may be (interruptions.answer_yes_over_question)"
+    )
     vocabulary: tuple[_Term, ...] = Field(
         default=(),
         description=(

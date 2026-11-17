@@ -14,7 +14,9 @@ and O2).
 
 `yes_over_read_back` (D-108, off by default) is what a yes said over an action's read-back does:
 here because the read-back is a reply, and a yes over it is speech over a reply that the session
-takes, under `two_step` only.
+takes, under `two_step` only. `answer_yes_over_question` (D-116, off by default) is the same ruling
+for any reply that ends with a question: a bare yes said over that question, which the agent's
+voice goes on over, is answered once the reply ends.
 """
 
 from __future__ import annotations
@@ -100,5 +102,18 @@ class InterruptionSettings(Group):
             "bare yes over the closing question books too, as khalas beside a yes or a send "
             "word does: the owner's 'Any yes books' (D-108). Off: a yes over the summary counts "
             "for nothing, and over the closing question a yes needs a send word."
+        ),
+    )
+    answer_yes_over_question: bool = Field(
+        default=False,
+        description=(
+            "Whether a yes said over the question that ends any reply of the agent's (a yes or "
+            "a send word among only yes words, send words and fillers, never the agent's own "
+            "words heard back, begun once every clause before the question played, or in the "
+            "0.3 s after the reply ended), which the agent's voice goes on over, is answered as "
+            "the caller's next turn once the reply's tail and the speech detector's lag have "
+            "passed, never when the reply was stopped or other words were said after it: the "
+            "owner's 'Any yes books' for agents with no read-back (D-116). An action's "
+            "read-back keeps its own rule (yes_over_read_back). Off: such a yes is not answered."
         ),
     )

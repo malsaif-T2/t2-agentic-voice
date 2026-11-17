@@ -17,10 +17,11 @@ there books only once the summary played whole (D-108). A **stop** (`stop = true
 client's Stop, `after_s` after the moment `at` names began: `TextCall` has no public wait for a
 moment without words, so the moment is read as the reply before it being written
 (`agent_speaking`, `read_back`, `closing_question`) or its words handed (`tool_running`), and
-`after_s` counts from there. A write or a last reply still running after `limit_s` on the wall
-clock, a moment the call waits for in vain, or the play's whole limit passed leave the play
-`stuck` (a provider's error: `provider`); what it did is still read, as it stands, for the turns
-said before.
+`after_s` counts from there. A play may say its turns its own way (`say`, handed the turn said
+before each: the lean play's, lean_call.py). A write or a last reply still running after
+`limit_s` on the wall clock, a moment the call waits for in vain, or the play's whole limit
+passed leave the play `stuck` (a provider's error: `provider`); what it did is still read, as it
+stands, for the turns said before.
 
 **What a turn did** (`TurnRead`): its reply's clauses, those heard and those the guard blocked,
 its tool calls and cards; as it stood when the caller next spoke, whether the read-back the
@@ -32,10 +33,10 @@ words confirmed the booking and how its write ended, its sending line and then i
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Coroutine, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date
-from typing import Final, Literal
+from typing import Any, Final, Literal
 
 from pydantic import JsonValue
 from t2_agentic_voice import ProviderError, VoiceAgent, VoiceSettings
@@ -59,6 +60,8 @@ ClockKind = Literal["virtual", "system"]
 CallFactory = Callable[..., TextCall]
 # Builds the agent a play measures, over its airline and trip book: the app's own.
 AgentOf = Callable[[Airline, TripBook], VoiceAgent]
+# Says a turn of a play, given the turn said before it (None for none): `say_turn` by default.
+Say = Callable[[TextCall, Turn, TextTurn | None], Coroutine[Any, Any, TextTurn]]
 
 
 def airline_for(scenario: Scenario) -> Airline:
@@ -175,7 +178,8 @@ class _Saying:
         )
 
 
-async def _say(call: TextCall, turn: Turn) -> TextTurn:
+async def say_turn(call: TextCall, turn: Turn, before: TextTurn | None = None) -> TextTurn:
+    """`turn` said when it says (the module's docstring); `before` is not read here."""
     text = turn.says or ""
     if turn.when == "tool_running":
         return await call.user(text, at="tool_running")
@@ -189,9 +193,11 @@ def _next_runs_a_tool(turns: Sequence[Turn], n: int) -> bool:
     return (after.at if after.stop else after.when) == "tool_running"
 
 
-async def _said_all(call: TextCall, turns: Sequence[Turn], limit_s: float, saying: _Saying) -> None:
-    """Each of `turns` said, or a stop made, when it says (the module's docstring), kept in
-    `saying` as it is, so a play that stops partway keeps the turns said before."""
+async def _said_all(
+    call: TextCall, turns: Sequence[Turn], limit_s: float, saying: _Saying, say: Say
+) -> None:
+    """Each of `turns` said by `say`, or a stop made, when it says (the module's docstring),
+    kept in `saying` as it is, so a play that stops partway keeps the turns said before."""
     answering: tuple[int, asyncio.Task[TextTurn]] | None = None
     try:
         for n, turn in enumerate(turns):
@@ -204,10 +210,11 @@ async def _said_all(call: TextCall, turns: Sequence[Turn], limit_s: float, sayin
                 if turn.when is None:
                     await settle(call, list(saying.said.values()), limit_s, last=False)
                 saying.look()
+                last = list(saying.said.values())[-1] if saying.said else None
                 if _next_runs_a_tool(turns, n):
-                    answering = (n, asyncio.create_task(_say(call, turn)))
+                    answering = (n, asyncio.create_task(say(call, turn, last)))
                     continue
-                saying.said[n] = await _say(call, turn)
+                saying.said[n] = await say(call, turn, last)
             if answering is not None:
                 earlier, task = answering
                 answering = None
@@ -235,10 +242,12 @@ async def play(
     clock: ClockKind = "system",
     limit_s: float = LIMIT_S,
     whole_s: float | None = None,
+    say: Say = say_turn,
 ) -> PlayRead:
     """One play of `scenario`: a call of `agent` over a new airline and trip book on `llm`,
-    with `settings`, each turn said when it says, within `whole_s` in all (`TURN_S` a turn when
-    None); what each did read once the call settled, or as it stood when it could not go on."""
+    with `settings`, each turn said when it says (by `say`), within `whole_s` in all (`TURN_S` a
+    turn when None); what each did read once the call settled, or as it stood when it could not
+    go on."""
     airline, trips = airline_for(scenario), TripBook()
     expected = {
         n: read_back_values(t.read_back, scenario.today)
@@ -261,7 +270,7 @@ async def play(
             failure: Stuck | None = None
             try:
                 async with asyncio.timeout(limit):
-                    await _said_all(held, scenario.turns, limit_s, saying)
+                    await _said_all(held, scenario.turns, limit_s, saying, say)
             except (AssertionError, TimeoutError):  # a wait given up on, or the talker's
                 failure = "stuck"
             except ProviderError:

@@ -97,6 +97,9 @@ smoke play is still the first dev scenario, so no held-out call is played but in
 booking made or not, its flights, days, travelers and cabin, the reference, the violations, the
 language, register, stage notes, notices, length and repeats), not the scripted agent's tools and
 lines; it reports, beside them, the caller turns and the seconds until the booking and the words
-the agent said. A turn said over the read-back's summary or its closing question is said right
-after the lean agent's reply, which has no read-back. The run, its scorecard and its history line
-name the agent, so the two compare by scenario (section 13 of the build spec).
+the agent said. The lean agent has no read-back: a turn said over the closing question is said
+over its reply's last clause, the question, once the clauses before it stated the total (a
+yes there is answered once the reply ends, D-116; else it is said after the reply), and one
+said over the summary right after its reply. The
+run, its scorecard and its history line name the agent, so the two compare by scenario (section
+13 of the build spec).
