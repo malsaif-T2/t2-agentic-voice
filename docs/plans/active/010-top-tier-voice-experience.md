@@ -1346,6 +1346,10 @@ Block 0.
   no read-back), after round 3's fixes land.
 - 2026-11-17: the owner split the laptop's lock: spending practice runs take a run lock of their own,
   still one at a time; test jobs and gates keep the test lock; a timing run takes both.
+- 2026-11-17: the owner ruled that the lean agent's span of days runs up to two months ("Yes, two
+  months", over the 14 days first built): up to 14 days the span is given day by day, longer week
+  by week (the Saudi week, each week's days with a flight and its cheapest day) with the two
+  cheapest days, so the tool result stays short; its card shows only days the result holds.
 
 ## Decision log
 

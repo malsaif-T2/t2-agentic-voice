@@ -73,13 +73,41 @@ def test_a_long_span_shows_its_cheapest_days_on_the_card() -> None:
     assert found.card is not None and len(found.card.rows) == 8
 
 
+def test_a_span_past_two_weeks_is_given_week_by_week() -> None:
+    found = LeanCall().find(
+        destination="Dubai", depart={"first": "2026-11-20", "last": "2026-12-19"}
+    )
+    answer = data(found)
+    assert answer["days"] == [] and answer["no_flight_days"] == []
+    weeks = answer["weeks"]
+    assert len(weeks) == 5 and weeks[0]["first"]["date"] == "2026-11-20"
+    assert weeks[0]["last"]["date"] == "2026-11-21"  # Friday and Saturday end the Saudi week
+    assert weeks[1]["first"]["date"] == "2026-11-22" and weeks[-1]["last"]["date"] == "2026-12-19"
+    for week in weeks:
+        assert 1 <= week["days_with_flights"] <= 7
+        assert week["first"]["date"] <= week["cheapest"]["date"] <= week["last"]["date"]
+    lowest = sorted((w["cheapest"] for w in weeks), key=lambda d: (d["lowest_fare"], d["date"]))
+    assert answer["cheapest"][0] == lowest[0] and len(answer["cheapest"]) == 2
+    assert answer["cheapest_days"] == [d["date"] for d in answer["cheapest"]]
+    # The card: each week's cheapest day, the two cheapest marked, no day the result lacks.
+    assert found.card is not None and len(found.card.rows) == 5 and card_passes(found)
+    assert sum(r.mark == "best" for r in found.card.rows) == 2
+
+
+def test_two_months_is_the_longest_span() -> None:
+    answer = data(
+        LeanCall().find(destination="Dubai", depart={"first": "2026-11-20", "last": "2027-01-20"})
+    )
+    assert answer["status"] == "days" and len(answer["weeks"]) == 10
+
+
 def test_each_date_the_window_refuses_names_the_window() -> None:
     call = LeanCall()
     cases: dict[str, dict[str, Any]] = {
         "past": {"depart": "2026-11-15"},
         "beyond_window": {"depart": "2027-03-17"},
         "return_before_departure": {"depart": OUT, "return_date": "2026-11-18"},
-        "span_too_long": {"depart": {"first": "2026-11-20", "last": "2026-12-04"}},
+        "span_too_long": {"depart": {"first": "2026-11-20", "last": "2027-01-21"}},
     }
     for problem, dates in cases.items():
         answer = data(call.find(destination="Jeddah", **dates))

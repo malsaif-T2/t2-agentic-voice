@@ -16,9 +16,11 @@ have one). Then:
   options, in one assignment, and is marked for the booking check; a search with no return
   makes it one way. Its card is the outbound segment; the return segment's comes once the
   outbound is chosen (choose.py).
-- **A span** (span.py): each day with its weekday, its flight count and its lowest fare; the
-  route's daily departure times, the days with no flight and the two cheapest days. Nothing is
-  written to the trip. Its card is the outbound segment's calendar of days.
+- **A span** (span.py), of up to two months: the route's daily departure times and the two
+  cheapest days with their fares; for two weeks or less each day with its weekday, its flight
+  count and its lowest fare and the days with no flight, for longer each week's days with a
+  flight and its cheapest day. Nothing is written to the trip. Its card is the outbound
+  segment's calendar of days.
 
 A search that does not answer is a `ToolError` that says it failed, never "no flights".
 """
@@ -61,8 +63,8 @@ DESCRIPTION: Final = (
 _CITY: Final = "The city they go to, in any language, or its code."
 _ORIGIN: Final = "The city they leave from; Riyadh unless they said another."
 _DEPART: Final = (
-    "The day they leave, YYYY-MM-DD, from the calendar; or a span of at most 14 days they asked "
-    "about without naming one day."
+    "The day they leave, YYYY-MM-DD, from the calendar; or a span of at most two months they "
+    "asked about without naming one day."
 )
 _RETURN: Final = "The day they come back, YYYY-MM-DD; null for one way or not said yet."
 _CABIN: Final = "economy, business or first; the trip's own (economy at first) when not said."

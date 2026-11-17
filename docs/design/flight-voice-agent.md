@@ -1639,17 +1639,19 @@ has none of. Its name is `flight-lean`, so its traces and its runtime's folder a
 would mislead: a full flight, a route not served, a date outside the window):
 
 - `find_flights` (`lean/find.py`, `span.py`) takes a city in any language or its code (Riyadh
-  the start unless another), the day they leave as an ISO date or a span of at most 14 days
-  (`{"first", "last"}`), the return day or null (one way, or not said yet), and the cabin and the
+  the start unless another), the day they leave as an ISO date or a span of at most two months, 62
+  days (`{"first", "last"}`, the owner's ruling of 2026-11-17), the return day or null (one way, or not said yet), and the cabin and the
   travelers (the trip's own, economy and one at first). A day gives the route in the caller's
   register (`route`, with `route_msa` beside a Saudi reply's), `fares_are: "one way, per
   person"`, and the outbound flights with the return day's in the same shape: each a stable id
   (`T2-401-2026-11-19`), its name and aircraft (said only when asked, as the card shows them),
   its times, its length, its fare per person, `seats_ok`, `nonstop` and `part_of_day`, with
   `count`, `first_departs`, `last_departs` and `cheapest_id`; the trip takes
-  the route, the days and the options; its card is the outbound segment. A span gives each day's
-  weekday, flight count and lowest fare, the daily departure times, the days with no flight and
-  the two cheapest days, writes nothing, and its card is the outbound segment's calendar. Its
+  the route, the days and the options; its card is the outbound segment. A span gives the daily
+  departure times and the two cheapest days with their fares; up to 14 days each day's weekday,
+  flight count and lowest fare and the days with no flight, for longer week by week (the Saudi
+  week, each week's days with a flight and its cheapest day), so the result stays short; it
+  writes nothing, and its card is the outbound segment's calendar. Its
   refusals are data: `not_served` with the cities, `date_problem` naming the window,
   `cabin_not_offered`, `no_flights` with the nearest days.
 - `choose_flights` (`lean/choose.py`) takes `outbound_id`, `return_id`, `cabin` and `travelers`,
@@ -1680,7 +1682,8 @@ reads every date from it, never a day the caller did not say, and searches a spa
 about. The defaults (Riyadh, economy, one traveler) never asked and said in the summary; the
 return asked only when not said. A day listed briefly (its count, its first and last departures,
 the cheapest by time and fare; the others only when asked; "one way, per person" once a call), a
-span by its departures and its two cheapest days. The pick resolved by the model, asked with the
+span by its departures and its two cheapest days (a span past two weeks, given week by week, by
+its two cheapest days and an offer to look at a week). The pick resolved by the model, asked with the
 fares only when truly unclear. The trip confirmed in one sentence (the route, each leg's day and
 time, the cabin, the travelers, the total), booked only after any yes, a change confirmed again.
 Facts only from tool results of this call; a reference only when asked. The Saudi and MSA
