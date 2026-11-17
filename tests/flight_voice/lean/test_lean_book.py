@@ -52,7 +52,8 @@ def test_a_trip_changed_after_the_booking_is_answered_with_the_trip_booked() -> 
     assert call.draft.chosen_outbound is not None and call.draft.chosen_outbound.flight != 101
     again = call.book()
     answer = data(again)
-    assert answer["status"] == "already_booked" and answer["reference_if_asked"] == booked["reference_if_asked"]
+    assert answer["status"] == "already_booked"
+    assert answer["reference_if_asked"] == booked["reference_if_asked"]
     assert answer["outbound"] == booked["outbound"] and answer["outbound"]["id"] == f"T2-101-{OUT}"
     assert again.card is not None and made.card is not None
     assert again.card.rows == made.card.rows  # the booked trip's times, never the new pick's
