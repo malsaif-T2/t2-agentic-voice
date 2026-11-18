@@ -1726,6 +1726,17 @@ would mislead: a full flight, a route not served, a date outside the window):
   `incomplete`, `refused` (the store's reason), `unknown` (a write that did not answer and was
   not found by its request ID) or `already_booked` (the booking and the trip as it was booked,
   never the call's trip changed since, but for its reference).
+- `booking_link` (`lean/booking_link.py`, plan 011, D-126) is the real network's in place of
+  `book_trip`, registered there alone: it takes nothing and books nothing. A trip still lacking
+  something is `incomplete` with what is `missing`; a complete one (a one-way trip its outbound,
+  a round trip both legs) is `ready`, each leg's airline, flight (`flight_said`, with the
+  airline's name), day, time and price, and a note: say the link to book it is ready and the
+  flight to pick, the price confirmed on the airline's site, never the link read out, never
+  booked. Its card is the trip's review card with one link per leg (`flight_data/links.py`'s
+  `leg_link`: the Google Flights search for that leg, one way, filtered to its airline(s)).
+  It declares `LEAN_CLAIMS` and no result of it is done, so the guard holds every booking claim.
+  The real instructions offer the link after the trip's summary ("Want the link to book it?",
+  «تبي رابط الحجز؟») and call it on any yes.
 - `traveler_profile` is today's tool.
 
 **The prompt** (`lean/instructions/en.md` and `ar-SA.md`, about 30 lines each, filled by

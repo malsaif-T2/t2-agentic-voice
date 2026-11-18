@@ -204,7 +204,7 @@ def test_the_recorded_source_is_served_offline_with_no_booking(
     app = server.make_app(load())
     runtime = _Runtime.built[-1]
     names = [t.name for t in runtime.agent.tools]
-    assert names == ["find_flights", "choose_flights", "traveler_profile"]
+    assert names == ["find_flights", "choose_flights", "booking_link", "traveler_profile"]
     assert "Riyadh Air" in runtime.agent.vocabulary.terms
     with TestClient(app):
         assert closed == []

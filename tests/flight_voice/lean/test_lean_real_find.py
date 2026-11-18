@@ -257,6 +257,7 @@ def test_the_real_line_does_not_book() -> None:
     assert [t.name for t in lean_tools(call.deps)] == [
         "find_flights",
         "choose_flights",
+        "booking_link",  # the link to book it on the airline's site, in place of book_trip
         "traveler_profile",
     ]
     assert data(run(book_trip(call.deps), "en")) == NOT_BOOKABLE

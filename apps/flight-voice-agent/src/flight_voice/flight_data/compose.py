@@ -5,7 +5,8 @@ speech-to-text terms (`REAL_TERMS`) and how the Saudi carriers' codes are said
 
 `lean_deps` gives the mock airline's own deps for `mock` (lean/deps.py's `mock_deps`), and for
 `recorded` or `serpapi` the real network's: its source, its places, a trip book from Riyadh, a
-booking check, `bookable` false (no `book_trip`), its terms and its codes said. The mock airline
+booking check, `bookable` false (no `book_trip`; `booking_link` gives the link to book on the
+airline's site), its terms and its codes said. The mock airline
 is kept on both, for the traveler's profile.
 
 - `recorded`: the SerpApi adapter over a replay of `flight_data_fixtures` (the app's own
