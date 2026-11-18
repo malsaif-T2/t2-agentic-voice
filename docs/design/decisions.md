@@ -4359,3 +4359,10 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   flights, with ids to choose; a span's result says how to book one of its days, and
   `choose_flights` with nothing listed says to search the day first (the owner's call of
   2026-11-18, where Saad listed a day's flights from a span and could not book any).
+- **The section held too.** With the register held, an `ar-SA` reply's language section asks
+  for it in every reply (`HELD_SAUDI_SECTION`, agent/prompt.py), never "unless the caller
+  speaks MSA", and the flight app's Arabic instructions say to speak the register that section
+  names, the same in every reply, in place of the caller's own: both invited a change mid-call.
+  The Najdi lines also say «فيه», «عندنا» and «اللي» in place of «يوجد», «لدينا» and «الذي», with
+  a listing written for them, and never to repeat the caller's words back (the owner's calls of
+  2026-11-18: "it actually isn't Najdi and feels unnatural").

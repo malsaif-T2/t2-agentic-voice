@@ -152,11 +152,14 @@ def test_the_saudi_file_keeps_the_register_lines() -> None:
     for line in (
         '"now" is «الحين», never «الآن»',
         # f-dev-lean-3: MSA callers answered «ما فيه… تبي» on a turn with no tool.
-        "Answer in the caller's own register",
-        "To a caller who speaks Modern Standard Arabic, speak MSA in every reply, a short one too",
+        # The owner, 2026-11-18: the register held for the call, never changed in it.
+        "Speak the register the last section of these instructions names, the same in every "
+        "reply of the call",
+        "In Modern Standard Arabic, keep every reply in MSA, a short one too",
+        # The owner, 2026-11-18: the Najdi replies did not sound Najdi.
+        "say «فيه» and «عندنا», never «يوجد» or «لدينا», «اللي», never «الذي» or «التي»",
+        "Never repeat the caller's words back to them",
         "never with «ودك», «وين», «تبي», «اللي», «ما فيه», «أبشر» or «الحين»",
-        "Your greeting is in Saudi; once the caller speaks MSA, every reply is in MSA, from your "
-        "first one.",
         "say a result's `route_msa`, `trip_msa` and `fares_are_msa` in place of the field beside "
         "each",
         # f-dev-lean-3: «ستطعش» (the 16th) said after a day's times, taken for a time.

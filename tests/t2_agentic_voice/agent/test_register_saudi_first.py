@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 from t2_agentic_voice.agent.language import MSA_WORDS, call_register, register_of
-from t2_agentic_voice.agent.prompt import LANGUAGE_SECTIONS, MSA_SECTION
+from t2_agentic_voice.agent.prompt import HELD_SAUDI_SECTION, LANGUAGE_SECTIONS, MSA_SECTION
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.conversation import Conversation, PastTurn, TalkerTurn
 from t2_agentic_voice.core.settings.words import WordSettings
@@ -119,3 +119,14 @@ def test_the_talker_asks_for_the_register_read_saudi_first() -> None:
     saudi, msa = LANGUAGE_SECTIONS["ar-SA"], MSA_SECTION
     assert _system_prompts(first, *turns) == [saudi, msa, msa]
     assert _system_prompts(VoiceSettings(env="test"), *turns) == [msa, msa, msa]  # as before
+
+
+def test_the_talker_asks_for_the_register_held_in_every_reply() -> None:
+    """A register held for the call (D-125): the same section on every turn, whatever is said;
+    the Saudi one never invites MSA."""
+    turns = ("السلام عليكم", "أريد السفر إلى جدة", "هل توجد رحلة؟")
+    saudi, msa = WordSettings(fixed_register="saudi"), WordSettings(fixed_register="msa")
+    for words, section in ((saudi, HELD_SAUDI_SECTION), (msa, MSA_SECTION)):
+        settings = VoiceSettings(env="test", words=words)
+        assert _system_prompts(settings, *turns) == [section] * len(turns), section
+    assert "unless" not in HELD_SAUDI_SECTION

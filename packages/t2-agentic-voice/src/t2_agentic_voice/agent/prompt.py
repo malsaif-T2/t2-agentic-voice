@@ -20,7 +20,8 @@ in order, and nothing else:
    (`language_section`): Modern Standard Arabic when their words hold no Saudi or Gulf dialect
    form (`MSA_SECTION`; agent/language.py's `register_of`), else the tag's section, which asks
    for the Saudi register unless the caller speaks MSA, as an `ar` reply's does
-   (`LANGUAGE_SECTIONS`).
+   (`LANGUAGE_SECTIONS`). With the register held for the whole call (`words.fixed_register`),
+   an `ar-SA` reply's section asks for that register in every reply (`HELD_SAUDI_SECTION`).
 
 Every request that follows a tool result of the turn ends with a short system line of its own
 naming the reply's language (`reply_line`, in the section's register), so the last thing the
@@ -115,6 +116,11 @@ MSA_SECTION = (
     "word. Keep product names as the caller says them."
 )
 MSA_REPLY_LINE = f"Reply in Modern Standard Arabic, the caller's register, {_WHATEVER}"
+# The section of an `ar-SA` reply when the call is held in the Saudi register (D-125).
+HELD_SAUDI_SECTION = (
+    "Reply in Arabic, in the Saudi dialect, in every reply of the call, whatever register the "
+    "caller speaks. Keep product names as the caller says them."
+)
 # What the last request of a turn, which offers no tool, opens its line with: told nothing, the
 # model sometimes writes a tool call the request did not offer, which Groq refuses (run K, D-075).
 NO_MORE_TOOLS = "You have no more tools in this turn: answer now from the results above."
@@ -125,9 +131,13 @@ FIRST_LINE = "Request {id}."
 _IDS = itertools.count(secrets.randbits(32))
 
 
-def language_section(language: LanguageTag, register: Register = "saudi") -> str:
-    """The language section of a reply in `language` to a caller whose Arabic is in `register`
-    (the module's docstring)."""
+def language_section(
+    language: LanguageTag, register: Register = "saudi", *, held: bool = False
+) -> str:
+    """The language section of a reply in `language` to a caller whose Arabic is in `register`,
+    `held` for the whole call or not (the module's docstring)."""
+    if held and (language, register) == ("ar-SA", "saudi"):
+        return HELD_SAUDI_SECTION
     return MSA_SECTION if (language, register) == ("ar-SA", "msa") else LANGUAGE_SECTIONS[language]
 
 
@@ -140,18 +150,24 @@ def reply_line(language: LanguageTag, register: Register = "saudi", *, last: boo
 
 
 def compose_prompt(
-    agent: VoiceAgent, *, language: LanguageTag, today: date, register: Register = "saudi"
+    agent: VoiceAgent,
+    *,
+    language: LanguageTag,
+    today: date,
+    register: Register = "saudi",
+    held: bool = False,
 ) -> str:
     """The system prompt `agent`'s talker is given for a reply in `language` on `today` to a
-    caller whose Arabic is in `register` (the module's docstring). ValueError for a language the
-    agent does not speak, or an agent with no instructions."""
+    caller whose Arabic is in `register`, `held` for the whole call or not (the module's
+    docstring). ValueError for a language the agent does not speak, or an agent with no
+    instructions."""
     if language not in {each.tag for each in agent.languages}:
         raise ValueError("the agent does not speak that language")
     instructions = agent.instructions
     if instructions is None:
         raise ValueError("the agent declares no instructions, so it runs no talker")
     team = instructions if isinstance(instructions, str) else instructions[language]
-    section = language_section(language, register)
+    section = language_section(language, register, held=held)
     acts = any(isinstance(tool, Action) for tool in agent.tools)
     rules = f"{RULES}\n{ACTION_RULES}" if acts else RULES
     return "\n\n".join((f"{rules}\nToday is {today.isoformat()}.", team.strip(), section))
