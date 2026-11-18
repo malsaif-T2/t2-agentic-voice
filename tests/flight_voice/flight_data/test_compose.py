@@ -1,20 +1,28 @@
 """The real network's parts built from the settings (flight_data/compose.py): the recorded
 source over the fixtures with no cache, the live one behind the cache (none at 0) and recording
 when asked, the mock refused here, the places and the Saudi codes said, and the real terms held
-within the mock's Whisper bytes, so every command word stays in the prompt.
-
-The lean agent's deps per source (`lean_deps`), the server booting offline on recorded and the
-lifespan closing the source join with block A (plan 011's B3)."""
+within the mock's Whisper bytes, so every command word stays in the prompt; and the lean
+agent's deps for each source (`lean_deps`): the mock's own, which book, or the real network's,
+which do not. The server booting on recorded is test_server_lean.py's."""
 
 from __future__ import annotations
 
 import asyncio
+from datetime import date
 from pathlib import Path
 from typing import Any, Literal
 
 import pytest
 from flight_voice.flight_data.cache import CachedFlightData
-from flight_voice.flight_data.compose import REAL_TERMS, real_data, real_places, real_pronounce
+from flight_voice.flight_data.compose import (
+    REAL_TERMS,
+    lean_deps,
+    real_data,
+    real_places,
+    real_pronounce,
+)
+from flight_voice.flight_data.mock import MockFlightData
+from flight_voice.flight_data.places import Directory
 from flight_voice.flight_data.serpapi import SerpApiFlightData
 from flight_voice.flight_data.settings import FlightDataFields
 from flight_voice.persona import TERMS, Names
@@ -22,6 +30,7 @@ from pydantic import SecretStr
 from t2_agentic_voice.languages import whisper_prompt
 
 from tests.flight_voice.flight_data.serpapi_support import FIXTURES, query
+from tests.flight_voice.tools.tool_support import airline
 
 
 def _fields(**values: Any) -> FlightDataFields:
@@ -82,3 +91,30 @@ def test_the_real_terms_fit_in_the_mocks_whisper_bytes(language: Literal["ar", "
     mocked = whisper_prompt((*TERMS, airline), language)
     prompt = whisper_prompt((*REAL_TERMS, airline), language)
     assert prompt.of - prompt.kept <= mocked.of - mocked.kept  # no command word lost
+
+
+def _day() -> date:
+    return date(2026, 11, 18)
+
+
+def test_the_lean_deps_on_the_mock_are_the_mocks_and_book() -> None:
+    deps = lean_deps(_fields(), airline(), Names(), today=_day)
+    assert isinstance(deps.data, MockFlightData)
+    assert (deps.bookable, deps.network, deps.terms) == (True, "mock", None)
+    assert deps.today() == _day()
+
+
+@pytest.mark.parametrize("source", ["recorded", "serpapi"])
+def test_the_lean_deps_off_the_mock_are_the_real_networks_and_do_not_book(source: str) -> None:
+    fields = _fields(
+        flight_data=source,
+        flight_data_fixtures=FIXTURES,
+        serpapi_key=SecretStr("made-up-serpapi-key-zq9"),
+    )
+    deps = lean_deps(fields, airline(), Names(), today=_day)
+    assert deps.data.name == source
+    assert isinstance(deps.places, Directory) and deps.trips.home.code == "RUH"
+    assert (deps.bookable, deps.network, deps.terms) == (False, "real", REAL_TERMS)
+    assert set(deps.pronounce) == {"SV", "XY", "F3", "RX"}
+    assert deps.today() == _day()
+    asyncio.run(deps.data.aclose())

@@ -3,7 +3,8 @@ default; a source the settings cannot run refused by `load` as one Configuration
 its settings, never an IndexError (serpapi with no key, the scripted agent off the mock,
 recorded with today live); the key never shown; the flight data read alone for the smoke run;
 the re-exports of settings.py; and `for_the_app` adding no send words and no yes over the
-question for a lean agent that cannot book."""
+question for a lean agent that cannot book, which `load` passes for every source but the
+mock."""
 
 from __future__ import annotations
 
@@ -129,3 +130,14 @@ def test_a_lean_agent_that_cannot_book_gets_no_send_words_or_yes_over_its_questi
     assert linking.guard.plain_speech and linking.llm.max_requests_per_turn == 4
     scripted = for_the_app(voice, bookable=False)
     assert scripted.interruptions.yes_over_read_back  # the scripted agent's own, as before
+
+
+def test_load_books_on_the_mock_alone(environment: pytest.MonkeyPatch) -> None:
+    environment.setenv("FLIGHT_VOICE_AGENT", "lean")
+    on_mock = load().voice
+    assert on_mock.words.send and getattr(on_mock.interruptions, YES_OVER_QUESTION)
+    environment.setenv("FLIGHT_VOICE_FLIGHT_DATA", "recorded")
+    environment.setenv("FLIGHT_VOICE_TODAY", "2026-11-18")
+    on_recorded = load().voice
+    assert on_recorded.words.send == {}
+    assert not getattr(on_recorded.interruptions, YES_OVER_QUESTION)

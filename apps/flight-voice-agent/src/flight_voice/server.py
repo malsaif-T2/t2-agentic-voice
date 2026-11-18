@@ -10,8 +10,9 @@ beside it (lean/agent.py, D-113, its booking check observing each call's `AgentS
 `UserTurnEnded` and `CallEnded`, and its calendar's day each `CallStarted`), over the mock
 airline, kept in memory and reset to its seed at each start, its modes and today the settings'
 (for the lean agent, today as the server starts, the day its calendar is written for, kept; its
-flight source the mock behind the flight data port, lean/deps.py, closed as the app's lifespan
-ends, after the router's); each call's trip is kept in one trip book, dropped as the call ends
+flight source the one `FLIGHT_VOICE_FLIGHT_DATA` names, the mock behind the flight data port by
+default, flight_data/compose.py's `lean_deps`, closed as the app's lifespan ends, after the
+router's); each call's trip is kept in one trip book, dropped as the call ends
 (`CallEnded`). Every join token the token route mints names the demo
 traveler (traveler.py), whatever the request says. There is no echo: the mock airline needs no
 outside service, and the library's runtime needs the Groq key for its chat model and voices
@@ -65,9 +66,9 @@ from flight_voice import LOGGERS
 from flight_voice.agent import declare
 from flight_voice.airline.bookings import BookingStore
 from flight_voice.airline.system import Airline
+from flight_voice.flight_data.compose import lean_deps
 from flight_voice.lean.agent import OBSERVED, calendar_watch
 from flight_voice.lean.agent import declare as declare_lean
-from flight_voice.lean.deps import mock_deps
 from flight_voice.routes import api_router
 from flight_voice.settings import AppSettings, Settings, load
 from flight_voice.traveler import demo_caller
@@ -177,7 +178,7 @@ def make_app(settings: Settings) -> FastAPI:
     if settings.app.agent == "lean":
         day = settings.app.today_source()()  # the calendar's, kept as the airline's today
         airline = airline_of(settings.app, today=lambda: day)
-        deps = mock_deps(airline, names, today=lambda: day)
+        deps = lean_deps(settings.app, airline, names, today=lambda: day)
         agent = declare_lean(deps, names)
         ended: Callable[[CallEnded], Awaitable[None]] = deps.trips.call_ended
         observers += [(kind, deps.check.observed) for kind in OBSERVED]

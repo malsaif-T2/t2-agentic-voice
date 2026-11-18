@@ -20,22 +20,22 @@ re-exports it and its constants (`AgentKind`, `AGENTS`, `PREFIX`, ...).
   process a folder and both servers start with `--env-file .env`;
 - **books up to 50 a caller a day** (`ACTIONS_PER_DAY`) unless the environment sets
   `limits.actions_per_caller_per_day`: a demo day books more than the library's default;
-- **turns on** `guard.question_stop_drops_calls`, `guard.drop_stage_notes`, `guard.plain_speech`
-  and `guard.retry_claims` (`GUARD_ON`), sets `llm.max_requests_per_turn` to 4
-  (`REQUESTS_PER_TURN`), and, for the scripted agent alone, `interruptions.yes_over_read_back`
-  (`YES_OVER_READ_BACK`), for the lean agent alone `interruptions.answer_yes_over_question`
-  (`YES_OVER_QUESTION`), each unless the environment sets it (run F's rounds 2 and 3): a
-  question the limit stopped ends the turn with no call of its request run, a stage note or a
-  tag the model writes is never said, nor a clause that is not speech or a booking's claim the
-  guard held back, its request tried once more (D-111, lean/book.py), a refused booking's next
-  pick and its read-back fit in one turn, and a yes over the read-back books once its summary
-  has played (D-108, the owner's "Any yes books"); the lean agent has no read-back to hold a
-  yes over, so a yes over its closing question ("Shall I book it?") is answered once the reply
-  ends instead (D-116; `for_the_app`'s `agent`);
-- **for the lean agent alone, adds the booking's send words** (booking/lines.py's `SEND_WORDS`:
-  «احجزها», «احجز», "book it", "confirm" and the like) to `words.send` unless the environment sets
-  it, so «إي احجزها» or «نعم، احجزها» said over its closing question is the yes D-116 answers, as
-  over the scripted agent's read-back, which declares them as its action's own;
+- **turns on** `guard.question_stop_drops_calls`, `guard.drop_stage_notes`, `guard.plain_speech` and
+  `guard.retry_claims` (`GUARD_ON`), sets `llm.max_requests_per_turn` to 4 (`REQUESTS_PER_TURN`),
+  and, for the scripted agent alone, `interruptions.yes_over_read_back` (`YES_OVER_READ_BACK`), for
+  the lean agent on the mock alone (the one that books) `interruptions.answer_yes_over_question`
+  (`YES_OVER_QUESTION`), each unless the environment sets it (run F's rounds 2 and 3): a question
+  the limit stopped ends the turn with no call of its request run, a stage note or a tag the model
+  writes is never said, nor a clause that is not speech or a booking's claim the guard held back,
+  its request tried once more (D-111, lean/book.py), a refused booking's next pick and its read-back
+  fit in one turn, and a yes over the read-back books once its summary has played (D-108, the
+  owner's "Any yes books"); the lean agent has no read-back to hold a yes over, so a yes over its
+  closing question ("Shall I book it?") is answered once the reply ends instead (D-116;
+  `for_the_app`'s `agent`);
+- **for the lean agent on the mock alone, adds the booking's send words** (booking/lines.py's
+  `SEND_WORDS`: «احجزها», «احجز», "book it", "confirm" and the like) to `words.send` unless the
+  environment sets it, so «إي احجزها» or «نعم، احجزها» said over its closing question is the yes
+  D-116 answers, as over the scripted agent's read-back, which declares them as its action's own;
 - **reads a caller as Saudi first**, the app's forms added (caller_register.py), unless set;
 - **speaks in Groq's Orpheus voices** (the owner, 2026-11-18) and says numbers, times and dates
   in the caller's register (D-107), each unless the environment sets it (app_voice.py);
@@ -258,7 +258,8 @@ def load(env_file: Path | None = None) -> Settings:
     source = refused_source(app)
     if source is not None:
         raise source
-    return Settings(app=app, voice=for_the_app(voice, agent=app.agent))
+    bookable = app.flight_data == "mock"
+    return Settings(app=app, voice=for_the_app(voice, agent=app.agent, bookable=bookable))
 
 
 class _FlightDataOnly(FlightDataFields):
