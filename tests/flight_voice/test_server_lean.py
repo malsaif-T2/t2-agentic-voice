@@ -4,7 +4,8 @@ the lean agent's settings path (the guard's rules and four requests a turn on, n
 a read-back it has none of, a bare yes over its closing question answered once the reply ends:
 D-116, unless the environment sets it), and its booking check observing each call's events
 beside the trip book's end of call, its flight source closed as the app ends; its airline
-keeping the day its calendar was written for, and a call on a stale calendar logged. The runtime is a fake that keeps what it was given."""
+keeping the day its calendar was written for, and a call on a stale calendar logged. The
+runtime is a fake that keeps what it was given."""
 
 from __future__ import annotations
 
