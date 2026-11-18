@@ -156,7 +156,7 @@ def test_no_retry_after_a_500_that_came_late() -> None:
     clock = Clock()
 
     async def late(request: httpx.Request) -> httpx.Response:
-        clock.now += 6.5  # 13 s of deadline, 6.5 left: under RETRY_LEFT_S
+        clock.now += 4.5  # 8 s of deadline, 3.5 left: under RETRY_LEFT_S
         return httpx.Response(500)
 
     wire = Wire(late, answering())

@@ -34,8 +34,8 @@ def test_the_mock_is_the_default_and_every_setting_has_one(
 ) -> None:
     app = load().app
     assert app.flight_data == "mock" and app.serpapi_key is None
-    assert (app.flight_data_deadline_s, app.flight_data_span_days) == (13.0, 14)
-    assert (app.flight_data_span_concurrency, app.flight_data_span_deadline_s) == (14, 12.0)
+    assert (app.flight_data_deadline_s, app.flight_data_span_days) == (8.0, 14)
+    assert (app.flight_data_span_concurrency, app.flight_data_span_deadline_s) == (14, 8.0)
     assert (app.flight_data_cache_s, app.serpapi_deep_search) == (600.0, False)
     assert app.flight_data_fixtures is None and app.flight_data_record_to is None
 

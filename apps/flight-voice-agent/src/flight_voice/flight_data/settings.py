@@ -44,11 +44,11 @@ class FlightDataFields(BaseSettings):
         description="Whether SerpApi searches as Google Flights' page does (deep_search), slower.",
     )
     flight_data_deadline_s: float = Field(
-        default=13.0,
+        default=8.0,
         gt=0,
         le=30,
-        description="How long one day's search may take, its retry included; the read timeout "
-        "is one second less.",
+        description="How long one search (a day, or a span's calendar) may take, its retry "
+        "included; the read timeout is one second less. Phase 0's searches took 1.1 to 4.1 s.",
     )
     flight_data_span_days: int = Field(
         default=14, ge=1, le=62, description="The most days of a span searched day by day."
@@ -57,10 +57,11 @@ class FlightDataFields(BaseSettings):
         default=14, ge=1, le=16, description="The days of a span searched at once."
     )
     flight_data_span_deadline_s: float = Field(
-        default=12.0,
+        default=8.0,
         gt=0,
         le=30,
-        description="How long a whole span may take; a day not answered by then is unknown.",
+        description="How long a span read day by day may take; a day not answered by then is "
+        "unknown.",
     )
     flight_data_cache_s: float = Field(
         default=600.0,

@@ -61,7 +61,8 @@ log = get_logger(__name__)
 
 BASE_URL: Final = "https://serpapi.com"
 HOLD_OFF_S: Final = 300.0
-RETRY_LEFT_S: Final = 7.0
+# Phase 0 (2026-11-18): a day took 1.1-4.1 s, so a retry needs about 4 s of the 8 s left.
+RETRY_LEFT_S: Final = 4.0
 RETRY_PAUSE_S: Final = 0.25
 LAST_DAY_DAYS: Final = 330
 LIMITS: Final = httpx.Limits(
@@ -100,10 +101,10 @@ class SerpApiFlightData:
         self,
         key: SecretStr,
         *,
-        deadline_s: float = 13.0,
+        deadline_s: float = 8.0,
         span_days: int = 14,
         span_concurrency: int = 14,
-        span_deadline_s: float = 12.0,
+        span_deadline_s: float = 8.0,
         deep_search: bool = False,
         transport: httpx.AsyncBaseTransport | None = None,
         clock: Callable[[], float] = time.monotonic,
