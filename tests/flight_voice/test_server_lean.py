@@ -147,6 +147,14 @@ def test_the_lean_agent_reads_the_bookings_send_words_unless_the_environment_set
     assert load().voice.words.send == {"en": ("go on then",)}
 
 
+def test_the_lean_agents_model_requests_are_the_librarys_but_four_a_turn() -> None:
+    # No MSA line ends a turn's first request: the call's register reads a Saudi greeting with
+    # no dialect word («السلام عليكم», «هلا») as MSA, so one would push Saudi callers to MSA.
+    library = VoiceSettings(env="test").llm.model_dump()
+    lean = for_the_app(VoiceSettings(env="test"), agent="lean").llm.model_dump()
+    assert lean == library | {"max_requests_per_turn": 4}
+
+
 def test_another_agent_is_refused_naming_its_setting(environment: pytest.MonkeyPatch) -> None:
     environment.setenv("FLIGHT_VOICE_AGENT", "clever")
     with pytest.raises(ConfigurationError, match="FLIGHT_VOICE_AGENT"):

@@ -13,7 +13,15 @@ has one form. In that register:
 - a date written as ISO writes it, "2026-12-17", is said with its weekday and month, never its
   year: «الخميس سبعطعش ديسمبر»; a date that does not exist is read as digits;
 - every other number is said in the register's words (`speak_digits` with the register:
-  «ألفين وأربع مية وخمسين» for 2450 in Saudi), and IDs digit by digit as before.
+  «ألفين وأربع مية وخمسين» for 2450 in Saudi), and IDs digit by digit as before; an amount
+  whose thousands a space parts ("total 3 080", "1 140 riyals") is one number, as with a
+  comma: the model writes one so now and then (run F's f09, f-dev-lean-4), and its total was
+  said "three zero eight zero". Only an amount: one group of one to three digits, with no
+  leading zero and no letter or digit glued before it, a space (a no-break, thin or narrow
+  no-break one too), then exactly three digits with no digit or group after them, and riyals
+  right after it («ريال», "SAR") or a total a few words before it («المجموع», «الإجمالي»).
+  A flight's name ("T2 401"), a reference read in groups ("482 913"), a phone number and two
+  numbers side by side are read as before.
 
 With the setting's default, `as_written`, none of this runs: a text is said by `speak_digits`
 alone, as it always was (num2words' MSA, a time read as two runs of digits).
@@ -40,6 +48,31 @@ _DATE = re.compile(
     rf"{_FREE_BEFORE}(?P<year>{DIGIT}{{4}})-(?P<month>{DIGIT}{{2}})-(?P<day>{DIGIT}{{2}})"
     rf"{_FREE_AFTER}"
 )
+
+
+# A space between a number's thousands (a space, a no-break space, a thin space, a narrow
+# no-break space), and a number so parted (the module's docstring): one group, its first digit
+# no zero, glued to no letter or digit, before exactly three digits.
+_GAP = "[ \u00a0\u2009\u202f]"
+_SPACED = re.compile(
+    rf"(?<![^\W_])(?<!{DIGIT}{_GAP})(?![0\u0660\u06f0]){DIGIT}{{1,3}}{_GAP}{DIGIT}{{3}}"
+    rf"(?!{_GAP}?{DIGIT})"
+)
+# An amount's marks: riyals right after it («ريال», «ريالات» too), or a total up to
+# three words of letters before it (al-majmuu', al-ijmaali).
+_RIYALS_AFTER = re.compile(r"\s*(?:(?:riyals?|sar|sr)(?![^\W_])|ريال|ر\.س)", re.IGNORECASE)
+_TOTAL_BEFORE = re.compile(
+    r"(?:(?<![^\W_])total|مجموع|إجمالي)(?:\W+[^\W\d_]+){0,3}\W*$", re.IGNORECASE
+)
+
+
+def _joined(match: re.Match[str]) -> str:
+    """A number its thousands a space parts, the space a comma when it is an amount (the
+    module's docstring); else as it was."""
+    text = match.string
+    if _RIYALS_AFTER.match(text, match.end()) or _TOTAL_BEFORE.search(text[: match.start()]):
+        return re.sub(_GAP, ",", match.group())
+    return match.group()
 
 
 def _number(match: re.Match[str], group: str) -> int:
@@ -73,4 +106,5 @@ def speak_text(text: str, *, language: LanguageTag, register: Register | None = 
 
     dated = _DATE.sub(said_date, text)
     timed = _TIME.sub(said_time, dated)
-    return speak_digits(timed, language=language, register=arabic)
+    joined = _SPACED.sub(_joined, timed)
+    return speak_digits(joined, language=language, register=arabic)

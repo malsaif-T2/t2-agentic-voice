@@ -956,7 +956,7 @@ What v1 must already have for it, all built for M3 to M5 anyway:
   - `knowledge_tool(kb, description=..., progress=...)` returns a read tool. It does one search per question, gives the talker the top `limit` passages whole to write its own spoken answer from (D-071), with every step of the best passage, and shows no card (D-075).
   - Both are optional: a team can write its own tool instead.
   - A generic Qdrant adapter comes later. Ole5's stays in the app until a second team needs one.
-- **The language switch** is the library's own read tool, `switch_language` (`actions/language_tool.py`, D-038's amendment). Under `stt.live_language = "detected"`, or `hinted` or `single` where it holds (D-115, D-117), the talker of an agent of two languages or more is given it, unless the agent declares a tool of that name. The model calls it when the caller asks for another language in words the short list of switch requests misses; the rest of that reply is in the new language, the talker gives `LanguageMoved`, and the session moves the call. A team declares nothing for it.
+- **The language switch** is the library's own read tool, `switch_language` (`actions/language_tool.py`, D-038's amendment). Under `stt.live_language = "detected"`, or `hinted` or `single` where it holds (D-115, D-117), the talker of an agent of two languages or more is given it, unless the agent declares a tool of that name. The model calls it when the caller asks for another language in words the short list of switch requests misses; the rest of that reply is in the new language, the talker gives `LanguageMoved`, and the session moves the call, the reply already in that language or not (a turn in the other language is answered in it before any switch; run F's f10), unless the call is held in it already. A team declares nothing for it.
 
 ### 6.4 Tools and confirmed actions
 
@@ -1231,7 +1231,10 @@ response)" glued to a question, and the search after it ran), a stage note or a 
 too: in a reply in Arabic, a parenthesis or bracket glued to a sentence's end with a capital
 Latin letter after it; in any language, one that opens a stage word ("(Waiting", "[No output");
 and a "<" that opens a tag ("<action", "<data", or a tool's or an action's name). Arabic in
-parentheses never is. With `guard.plain_speech` (off by default; D-111, after the owner's English
+parentheses never is. In a reply in Arabic, a sentence that opens as the reasoning does ("We
+need", "The user") after text written in Arabic script is one after a space too, not only glued
+(run F's f25 said an English self-check after «حجزت الرحلة بنجاح.»); an English reply, under an
+Arabic tag too, keeps the glued rule alone, as "Let me check" is speech there. With `guard.plain_speech` (off by default; D-111, after the owner's English
 call of 2026-11-17 said markdown, zero-width spaces and a broken note whole), a run of dots
 after a sentence's mark is taken out and one after a word made one ellipsis before the leak
 check, so two questions glued by dots are two sentences; a clause under half letters, marks or

@@ -6,9 +6,13 @@ under `guard.drop_stage_notes`; run F's f-dev-5, where a Saudi question was said
 - **On**: in a reply in Arabic script, a parenthesis or bracket glued to a sentence's end with a
   capital Latin letter after it begins a leak; in any language, one that opens a stage word,
   glued or not, in any case; and a "<" that opens a tag (`TAGS`, a tool's or an action's name,
-  "</" too). Arabic in parentheses, a Latin word in a parenthesis not glued, an English
-  parenthesis that opens no stage word and a "<" before no tag are said, however the text is
-  cut into pieces.
+  "</" too); and in a reply in Arabic script, a sentence that opens as the reasoning does
+  ("We need") after an Arabic sentence, after a space too, the reply's earlier request's
+  sentence too (run F's f25). Arabic in parentheses, a Latin word in a parenthesis not glued,
+  an English parenthesis that opens no stage word, a "<" before no tag, a Latin name after an
+  Arabic sentence and an English "Let me check" after a space, under an Arabic tag too (a
+  caller who speaks English on a call that did not move), are said, however the text is cut
+  into pieces.
 - **In the talker**: what came before the note is said, the request's tool does not run and no
   request follows; a tag of the agent's own tool is found; a reply moved to another language
   keeps the setting (`anew`)."""
@@ -59,6 +63,22 @@ CASES = [
     ("Held.</data>", False, "Held."),
     ('Done. <hold_seat seat="12A">', False, "Done. "),
     ("Press <Enter> twice, then wait.", False, None),
+    # f-dev-lean-4, f25: Hajazt ar-riHla bi-najaaH (I booked the trip), then the model's English
+    # self-check after a space, said whole; in Arabic it never is speech.
+    (
+        "حجزت الرحلة بنجاح. We need to check if everything follows guidelines. Thus it is fine.",
+        True,
+        "حجزت الرحلة بنجاح. ",
+    ),
+    # tamm al-Hajz. T2 Air tirHab bik (it is booked. T2 Air welcomes you): a name, no tell.
+    ("تم الحجز. T2 Air ترحب بك.", True, None),
+    ("Sure. Let me check the flights for you.", False, None),
+    # An English reply under the call's ar-SA tag: no Arabic sentence before the tell, so it is
+    # speech, at the reply's start too.
+    ("Sure. Let me check the flights for you.", True, None),
+    ("Let me book that for you.", True, None),
+    # «جدة» (jidda, Jeddah), an Arabic word quoted in an English reply: still English.
+    ("Your flight to «جدة» is chosen. Let me read it back.", True, None),
 ]
 TURN = TalkerTurn(turn_id=1, words="أبي أروح جدة", language="ar-SA")  # abi aruuH jidda
 
@@ -80,6 +100,17 @@ def test_a_stage_note_or_a_tag_is_a_leak_only_with_the_setting(
     assert _streamed(on, text, size) == (text if given is None else given)
     assert on.found is (given is not None)
     assert on.dropped == (0 if given is None else len(text) - len(given))
+
+
+def test_a_tell_after_a_space_reads_the_replys_earlier_requests_too() -> None:
+    # f25's shape over two requests of one reply: the Arabic sentence ends the first.
+    leak = LeakedReasoning(arabic=True, stage_notes=True)
+    assert _streamed(leak, "حجزت الرحلة بنجاح.", 3) == "حجزت الرحلة بنجاح."
+    assert (_streamed(leak, "We need to check the rules.", 3), leak.found) == ("", True)
+    english = LeakedReasoning(arabic=True, stage_notes=True)
+    assert _streamed(english, "Sure.", 3) == "Sure."
+    said_whole = "Let me check the flights."
+    assert (_streamed(english, said_whole, 3), english.found) == (said_whole, False)
 
 
 def test_a_check_made_anew_for_another_language_keeps_the_stage_notes() -> None:

@@ -84,8 +84,10 @@ class LeanCall:
 
 
 def ids(result: ToolResult, leg: str = "outbound") -> list[str]:
-    """The ids of a leg's options in a `find_flights` result."""
-    return [o["id"] for o in data(result)[leg]["options"]]
+    """The ids of a leg's options in a `find_flights` result, or listed in a `choose_flights`
+    one (a round trip's return, once the outbound is chosen)."""
+    answer = data(result)
+    return [o["id"] for o in answer.get("listed", answer)[leg]["options"]]
 
 
 def chosen_trip(tag: Tag = "en", **found: Any) -> LeanCall:
@@ -93,6 +95,7 @@ def chosen_trip(tag: Tag = "en", **found: Any) -> LeanCall:
     flight each way."""
     call = LeanCall(tag)
     listed = call.find(destination="Jeddah", depart=OUT, return_date=BACK, **found)
-    picked = call.choose(outbound_id=ids(listed)[0], return_id=ids(listed, "return")[0])
+    out = call.choose(outbound_id=ids(listed)[0])
+    picked = call.choose(return_id=ids(out, "return")[0])
     assert data(picked)["missing"] == []
     return call

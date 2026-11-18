@@ -5,6 +5,8 @@ Every text here is written for the test."""
 from __future__ import annotations
 
 import pytest
+from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.domain.text.arabic_numbers import Register
 from t2_agentic_voice.domain.text.speaking import speak_digits
 from t2_agentic_voice.domain.text.spoken_text import speak_text
 
@@ -27,6 +29,51 @@ def test_with_no_register_the_tag_chooses_it() -> None:
 def test_an_english_reply_has_one_form_and_keeps_num2words_numbers() -> None:
     said = speak_text("The 09:10 at 2450 riyals.", language="en", register="saudi")
     assert said == "The nine ten in the morning at two thousand four hundred and fifty riyals."
+
+
+def test_an_amount_whose_thousands_a_space_parts_is_one_number() -> None:
+    # Run F's f09 (f-dev-lean-4): "total 3 080." was said "three zero eight zero".
+    for gap in (" ", "\u00a0", "\u2009", "\u202f"):
+        said = speak_text(f"total 3{gap}080.", language="en")
+        assert said == "total three thousand and eighty.", repr(gap)
+    # f26 and f07 (riyals after it); al-majmuu' (the total); bi-3080 riyaal (for 3080 riyals)
+    cases: list[tuple[str, str, LanguageTag]] = [
+        ("the total is 5 140 SAR.", "the total is 5140 SAR.", "en"),
+        ("the 5th at 1 140 riyals", "the 5th at 1140 riyals", "en"),
+        ("flight T2 102 at 1 140 riyals", "flight T2 102 at 1140 riyals", "en"),
+        ("المجموع 3 080", "المجموع 3080", "ar-SA"),
+        ("بـ 3 080 ريال", "بـ 3080 ريال", "ar"),
+    ]
+    for spaced, whole, tag in cases:
+        assert speak_text(spaced, language=tag) == speak_text(whole, language=tag), spaced
+
+
+@pytest.mark.parametrize("language", ["en", "ar-SA", "ar"])
+@pytest.mark.parametrize(
+    "text",
+    [
+        "T2 401",  # a flight's name as the tools write it, never "T two thousand four hundred"
+        "your flight is T2 102.",
+        "the reference is 482 913.",  # a reference read in groups, beside no amount
+        "flights 101 102",  # two numbers side by side
+        "total 1 234 567",  # more than one group
+        "call 800 123 456",
+        "050 123 4567",  # a leading zero
+        "total 3 0800",  # a group of four
+    ],
+)
+def test_a_space_before_three_digits_parts_no_thousands_outside_an_amount(
+    text: str, language: LanguageTag
+) -> None:
+    # Read as before: each run of digits on its own, in the tag's register.
+    register: Register | None = {"en": None, "ar-SA": "saudi", "ar": "msa"}[language]
+    said = speak_digits(text, language=language, register=register)
+    assert speak_text(text, language=language) == said
+
+
+def test_a_time_before_three_digits_is_said_as_a_time() -> None:
+    said = speak_text("at 09:10 219 riyals", language="en")
+    assert said == "at nine ten in the morning two hundred and nineteen riyals"
 
 
 def test_an_iso_date_is_said_with_its_weekday_never_its_year() -> None:

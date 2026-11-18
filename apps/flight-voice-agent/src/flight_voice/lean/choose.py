@@ -2,7 +2,9 @@
 the model resolved itself from the options it was given ("the most expensive", "the one at
 400", "the last one", "the morning one"), and a changed cabin or traveler count.
 
-Every argument is optional: `outbound_id`, `return_id`, `cabin`, `travelers`. In order:
+Every argument is optional: `outbound_id`, `return_id`, `cabin`, `travelers`, and `list_leg`,
+a leg whose flights the caller asks to hear, listed without choosing (the way back's before the
+way out is chosen: a caller may ask about it first, and is answered). In order:
 nothing listed yet is `nothing_listed`; a cabin the route does not sell is `cabin_not_offered`;
 a changed cabin or traveler count prices the chosen flights again, and a chosen flight with no
 seats then is unchosen, named in `lost` by its departure time and listed again; an id not among
@@ -12,12 +14,17 @@ data. An error writes nothing.
 
 It returns the trip so far (`TripSoFar`): the route and the trip's kind, each with its MSA form
 beside a Saudi reply's, each chosen leg with its day, times, length, nonstop and fare, the
-travelers, the cabin, `missing` (the legs still to choose, each listed again in `listed`: on a
-round trip the return's, once the outbound is chosen) and, when complete, `total` (each leg's
-fare times the travelers), the one total the agent says. The call's trip is written once, its
-last step, and marked for the booking check. Its card: a leg still to
-choose in its segment, the other leg's pick kept beside it (the return's on a round trip once
-the outbound is chosen); the whole trip and its total in the review segment once complete.
+travelers, the cabin, `missing` (the legs still to choose, the first of them listed again in
+`listed`, one leg at a time: on a round trip the outbound's until it is chosen, then the
+return's, which find.py gives by its day alone; `list_leg`'s leg in its place when given), a
+`note` when a leg listed has a full flight, as find.py's, and, when complete, `total` (each
+leg's fare times the travelers), the one total the agent says. It books nothing, and its
+description says so: told only that it "returns the trip", the model read a chosen trip with its
+total as one booked and said «حجزت لك» before `book_trip` (f-dev-lean-4, f01 and f30, the run's
+three violations). The call's trip is written once, its last step, and marked for the booking
+check. Its card: a leg still to choose in its segment, the other leg's pick kept beside it (the
+return's on a round trip once the outbound is chosen); the whole trip and its total in the
+review segment once complete.
 """
 
 from __future__ import annotations
@@ -39,6 +46,7 @@ from flight_voice.lean.results import (
     LegList,
     _Data,
     day_of,
+    full_note,
     lean_result,
     leg_list,
     leg_options,
@@ -56,13 +64,19 @@ from flight_voice.trip import LegKind, Shown, TripBook, TripDraft, changed
 CHOOSE_FLIGHTS: Final = "choose_flights"
 DESCRIPTION: Final = (
     "Choose the caller's flights by their ids from the options you were given, and change the "
-    "cabin or the number of travelers. Pass only what the caller chose or changed. It returns "
-    "the trip so far, and its total once every flight is chosen."
+    "cabin or the number of travelers. Pass only what the caller chose or changed, or list_leg "
+    "alone for a leg's flights the caller asks about. It returns the trip so far, the next "
+    "leg's flights to choose from, and its total once every flight is chosen. It books "
+    "nothing: book_trip books."
 )
 _OUT: Final = "The id of the outbound flight the caller chose."
 _BACK: Final = "The id of the return flight the caller chose."
 _CABIN: Final = "The new cabin, only when the caller changed it."
 _TRAVELERS: Final = "The new number of travelers, 1 to 9, only when the caller changed it."
+_LIST: Final = (
+    "A leg whose flights the caller asks to hear, listed without choosing one: the return's "
+    "too before the outbound is chosen."
+)
 LEGS: Final[tuple[LegKind, ...]] = ("outbound", "return")
 
 
@@ -106,6 +120,7 @@ class TripSoFar(_Data):
     total: int | None = None
     lost: tuple[Lost, ...] | None = None
     listed: dict[LegKind, LegList] | None = None
+    note: str | None = None
 
 
 class _Picking:
@@ -177,6 +192,7 @@ def choose_flights(airline: Airline, trips: TripBook, check: BookingCheck) -> To
         return_id: Annotated[str | None, Field(max_length=40, description=_BACK)] = None,
         cabin: Annotated[Cabin | None, Field(description=_CABIN)] = None,
         travelers: Annotated[int | None, Field(ge=1, le=9, description=_TRAVELERS)] = None,
+        list_leg: Annotated[LegKind | None, Field(description=_LIST)] = None,
     ) -> ToolResult:
         tag: Tag = ctx.language
         draft = trips.get(ctx.call_id)
@@ -205,7 +221,7 @@ def choose_flights(airline: Airline, trips: TripBook, check: BookingCheck) -> To
             made = made.choose(leg, Leg(flight=one.flight, day=one.day))
         trips.put(ctx.call_id, made)
         check.mark(ctx.call_id, made)
-        return _so_far(_Picking(airline, made, tag), lost, to)
+        return _so_far(_Picking(airline, made, tag), lost, to, list_leg)
 
     return choose
 
@@ -215,8 +231,11 @@ def _departs(leg: Leg) -> str:
     return departure_of(Shown(n=1, flight=leg.flight, day=leg.day)).departs_at.strftime("%H:%M")
 
 
-def _so_far(picking: _Picking, lost: list[tuple[LegKind, Leg | None]], to: Code) -> ToolResult:
-    """The trip so far to `to` and its card (the module's docstring)."""
+def _so_far(
+    picking: _Picking, lost: list[tuple[LegKind, Leg | None]], to: Code, asked: LegKind | None
+) -> ToolResult:
+    """The trip so far to `to`, the leg `asked` about listed, and its card (the module's
+    docstring)."""
     draft, tag = picking.draft, picking.tag
     route = (draft.origin, to)
     missing = tuple(leg for leg in LEGS if leg in draft.missing())
@@ -227,7 +246,7 @@ def _so_far(picking: _Picking, lost: list[tuple[LegKind, Leg | None]], to: Code)
     )
     listed = {
         leg: leg_list(shown[0].day, picking.built(shown), tag)
-        for leg in missing
+        for leg in (missing[:1] if asked is None else (asked,))
         if (shown := draft.shown(leg))
     }
     said, msa = route_said(route, tag)
@@ -245,6 +264,7 @@ def _so_far(picking: _Picking, lost: list[tuple[LegKind, Leg | None]], to: Code)
         total=None if missing else draft.total(picking.airline.today()),
         lost=gone or None,
         listed=listed or None,
+        note=full_note(listed.values(), draft.travelers, draft.cabin),
     )
     return lean_result(answer, _card(picking, missing, route))
 

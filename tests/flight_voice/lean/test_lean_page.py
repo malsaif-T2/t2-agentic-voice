@@ -33,9 +33,8 @@ def _marks(segment: dict[str, Any]) -> list[str | None]:
 def test_the_lean_cards_fill_the_three_segments_then_the_booking(tmp_path: Path) -> None:
     lean = LeanCall()
     found = lean.find(destination="Jeddah", depart=OUT, return_date=BACK)
-    outs, backs = ids(found), ids(found, "return")
-    picked = lean.choose(outbound_id=outs[1])
-    complete = lean.choose(return_id=backs[0])
+    picked = lean.choose(outbound_id=ids(found)[1])
+    complete = lean.choose(return_id=ids(picked, "return")[0])
     lean.said(f"Riyadh to Jeddah and back, economy, one traveler, {lean.total()} riyals in all.")
     lean.heard("yes")
     booked = lean.book()

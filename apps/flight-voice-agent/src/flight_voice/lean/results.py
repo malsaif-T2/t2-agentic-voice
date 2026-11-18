@@ -19,7 +19,7 @@ the cheapest with seats marked) and the trip draft's (`Shown`), all in departure
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from datetime import date
 from typing import Final, Literal
 
@@ -162,6 +162,14 @@ def leg_list(day: date, built: Built, tag: Tag) -> LegList:
         cheapest_id=cheapest,
         options=built.data,
     )
+
+
+def full_note(listed: Iterable[LegList], travelers: int, cabin: Cabin) -> str | None:
+    """The note on a full flight among the legs `listed`, whichever tool lists them: only when
+    one is (the module's docstring)."""
+    if all(o.seats_ok for leg in listed for o in leg.options):
+        return None
+    return f"A flight with seats_ok false has no seats for {travelers} in {cabin}."
 
 
 def lean_result(answer: BaseModel | dict[str, JsonValue], card: Card | None = None) -> ToolResult:

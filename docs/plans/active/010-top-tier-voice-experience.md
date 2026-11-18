@@ -1452,6 +1452,13 @@ Block 0.
   9.7 / 18.9), English 4.8 % against 3.7 %; one live timeout in 292. It clears the bar (at least
   250 ms faster at p50, no more than 2 points worse in either language), so the streaming port is
   built, off by default, and turned on only after a live check.
+- 2026-11-18: the lean agent's second round of fixes merged (e3c2688): choose_flights books
+  nothing and the Saudi words for a choice replace «حجزت لك» (f-dev-lean-4's three violations),
+  round-trip returns listed once the outbound is chosen or when asked, the booking check reads
+  "3 080", the switch to Arabic moves the call (a library bug), and the owner's ruling of
+  2026-11-18 on the reference ("saying the reference unasked is fine, it is not a hard
+  requirement"): the booking gives it again, and run F's lean `reference` fails only a turn that
+  asks for it and is not answered with it, an amendment registered before any result of it.
 - 2026-11-17: the text-to-speech candidates for the owner's pick by ear (D-114, branch
   `plan-010-tts`): `tts.provider` takes `elevenlabs`, `groq` and `telnyx`, each speaking the
   provider's default voices with `tts.languages` unset. The owner picked ElevenLabs v4 Turbo in

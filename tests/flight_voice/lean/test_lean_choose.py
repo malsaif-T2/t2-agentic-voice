@@ -1,16 +1,18 @@
 """The lean agent's `choose_flights` (flight_voice/lean/choose.py): the picks the model resolved,
 by id, give the trip so far (each leg's day, times, length, nonstop and fare, as `book_trip`
-gives them back too, what is missing, listed again, and
+gives them back too, what is missing, the first of it listed again, one leg at a time, and
 the total once complete), the return segment's card with the outbound pick kept beside it, then
 the review card; a changed traveler count or cabin prices the trip again, and a leg it leaves
-with no seats is lost by its departure time and listed again; and each refusal, written nowhere:
-nothing listed yet, an id not listed, a flight with no seats, a cabin not sold."""
+with no seats is lost by its departure time and listed again; it says it books nothing; and each
+refusal, written nowhere: nothing listed yet, an id not listed, a flight with no seats, a cabin
+not sold."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from flight_voice.lean.choose import chosen_legs
+from flight_voice.lean.choose import DESCRIPTION, chosen_legs
+from flight_voice.lean.results import option_id
 from flight_voice.tools.cards import TRIP_EN
 
 from tests.flight_voice.lean.lean_support import BACK, OUT, LeanCall, chosen_trip, ids
@@ -18,8 +20,11 @@ from tests.flight_voice.tools.tool_support import card_passes, data
 
 
 def _found(call: LeanCall) -> tuple[list[str], list[str]]:
+    """The outbound's ids find_flights gave, and the return's the trip lists, which
+    choose_flights gives once the outbound is chosen."""
     listed = call.find(destination="Jeddah", depart=OUT, return_date=BACK)
-    return ids(listed), ids(listed, "return")
+    code = call.airline.code
+    return ids(listed), [option_id(code, s.flight, s.day) for s in call.draft.shown_return]
 
 
 def test_the_outbound_chosen_lists_the_return_and_shows_its_segment() -> None:
@@ -52,9 +57,10 @@ def test_both_legs_chosen_give_the_total_and_the_review() -> None:
 
 def test_a_chosen_leg_keeps_its_length_and_nonstop_for_the_booking_too() -> None:
     call = LeanCall()
-    listed = data(call.find(destination="Jeddah", depart=OUT, return_date=BACK))
-    out, back = listed["outbound"]["options"][0], listed["return"]["options"][1]
-    answer = data(call.choose(outbound_id=out["id"], return_id=back["id"]))
+    out = data(call.find(destination="Jeddah", depart=OUT, return_date=BACK))["outbound"]
+    out = out["options"][0]
+    back = data(call.choose(outbound_id=out["id"]))["listed"]["return"]["options"][1]
+    answer = data(call.choose(return_id=back["id"]))
     booked: dict[str, Any] = dict(chosen_legs(call.airline, call.draft, "en"))  # book_trip's
     for leg, option in (("outbound", out), ("return", back)):
         assert answer[leg]["duration"] == option["duration"] == booked[leg]["duration"]
@@ -83,9 +89,46 @@ def test_a_cabin_that_leaves_no_seats_loses_the_legs_and_lists_them_again() -> N
         {"leg": "outbound", "departs": "06:00"},
         {"leg": "return", "departs": "07:45"},
     ]
-    assert set(answer["listed"]) == {"outbound", "return"}
+    assert set(answer["listed"]) == {"outbound"}  # one leg at a time: the return after it
     assert all(not o["seats_ok"] for o in answer["listed"]["outbound"]["options"])
     assert (call.draft.cabin, call.draft.travelers) == ("business", 9)
+
+
+def test_a_change_before_any_pick_lists_the_outbound_alone() -> None:
+    # As find_flights gives it: both days listed again brought back the two-day listing.
+    call = LeanCall()
+    _found(call)
+    answer = data(call.choose(travelers=2))
+    assert answer["missing"] == ["outbound", "return"] and set(answer["listed"]) == {"outbound"}
+
+
+def test_the_way_back_is_listed_before_the_way_out_when_asked() -> None:
+    # A caller may ask about the way back first; leg by leg stays the default.
+    call = LeanCall()
+    _, backs = _found(call)
+    answer = data(call.choose(list_leg="return"))
+    assert answer["missing"] == ["outbound", "return"] and set(answer["listed"]) == {"return"}
+    assert [o["id"] for o in answer["listed"]["return"]["options"]] == backs
+    assert call.draft.chosen_outbound is None and call.draft.chosen_return is None
+    picked = data(call.choose(return_id=backs[1]))  # then picked first, too
+    assert picked["missing"] == ["outbound"] and set(picked["listed"]) == {"outbound"}
+    assert "list_leg" in DESCRIPTION
+
+
+def test_a_full_flight_of_the_leg_listed_is_noted() -> None:
+    # Run F's f08: the return day from Doha has T2 254 with no seat, listed after the pick.
+    call = LeanCall()
+    found = call.find(destination="Doha", depart=OUT, return_date=BACK)
+    assert "note" not in data(found)  # the outbound's flights all have seats
+    answer = data(call.choose(outbound_id=ids(found)[0]))
+    full = [o["id"] for o in answer["listed"]["return"]["options"] if not o["seats_ok"]]
+    assert full == ["T2-254-2026-11-21"] and "seats_ok false" in answer["note"]
+    assert "note" not in data(chosen_trip().choose())  # nothing listed, no note
+
+
+def test_choosing_says_it_books_nothing() -> None:
+    # f-dev-lean-4, f01 and f30: a trip chosen with its total read as booked («حجزت لك»).
+    assert "It books nothing: book_trip books." in DESCRIPTION
 
 
 def test_an_id_not_listed_is_refused_with_the_others_and_writes_nothing() -> None:

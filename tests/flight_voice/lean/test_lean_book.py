@@ -1,6 +1,6 @@
 """The lean agent's `book_trip` (flight_voice/lean/book.py): it books the trip chosen so far
 only once the booking check holds, for the verified traveler alone, and returns its status and
-total alone, never the reference (asked for, it is the profile's), with the review card marked
+total, never the reference but where it is (the profile's), with the review card marked
 booked with its reference; and, writing nothing, it answers a trip not complete, a trip not
 confirmed (its one fixed `say`), a booking already made (told whole as it was booked, though the
 trip changed since, but for its reference), a refusal of
@@ -35,9 +35,10 @@ def test_an_agreed_trip_is_booked_once_and_answered_with_its_total_alone() -> No
     total = call.total()
     made = call.book()
     answer = data(made)
-    assert answer == {"status": "booked", "total": total}
+    # The owner, 2026-11-18: the reference said unasked is fine, so the booking gives it.
     (booking,) = call.airline.bookings.made
-    assert booking.traveler_id == "T-0001" and booking.reference not in json.dumps(answer)
+    assert answer == {"status": "booked", "total": total, "reference": booking.reference}
+    assert booking.traveler_id == "T-0001"
     assert [leg.flight for leg in booking.legs] == [101, 102] and booking.total_sar == total
     card = made.card
     assert card is not None and card.slot == "review" and card.title.startswith(TRIP_EN)
@@ -47,10 +48,9 @@ def test_an_agreed_trip_is_booked_once_and_answered_with_its_total_alone() -> No
     told = data(again)
     assert told["status"] == "already_booked" and told["total"] == total
     assert told["route"] == "Riyadh to Jeddah" and told["trip"] == "round trip"
-    assert booking.reference not in json.dumps(told)
-    # Every number the card shows is in what the model was given, but the reference.
-    assert ids_pass(card.texts(), (json.dumps(told), booking.reference))
-    assert not ids_pass(card.texts(), (json.dumps(told),))
+    assert told["reference"] == booking.reference
+    # Every number the card shows is in what the model was given.
+    assert ids_pass(card.texts(), (json.dumps(told),))
     assert len(call.airline.bookings.writes) == 1
 
 
@@ -128,5 +128,6 @@ def test_a_late_write_is_looked_up_and_a_lost_one_is_unknown(
 def chosen_trip_on(call: LeanCall) -> LeanCall:
     """`call` with the Jeddah trip found and the first flight each way chosen."""
     listed = call.find(destination="Jeddah", depart=OUT, return_date="2026-11-21")
-    call.choose(outbound_id=ids(listed)[0], return_id=ids(listed, "return")[0])
+    out = call.choose(outbound_id=ids(listed)[0])
+    call.choose(return_id=ids(out, "return")[0])
     return call

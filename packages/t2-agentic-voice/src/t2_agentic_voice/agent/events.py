@@ -98,8 +98,9 @@ class ReadBackRequested(_Event):
 
 
 class LanguageMoved(_Event):
-    """The talker's `switch_language` tool (actions/language_tool.py) moved the reply into
-    `language`: the rest of it is said in that language, and the session moves the call to it
+    """The talker's `switch_language` tool (actions/language_tool.py) switched to `language`:
+    the rest of the reply is said in that language, which it may be in already, and the session
+    moves the call to it, unless the call is held in it already
     (voice/session/call_language.py)."""
 
     language: LanguageTag

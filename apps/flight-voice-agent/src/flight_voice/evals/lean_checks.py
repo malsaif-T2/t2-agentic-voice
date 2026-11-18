@@ -211,6 +211,14 @@ def lean_turn_checks(scenario: Scenario, n: int, reads: Sequence[TurnRead | None
         yield "stage_note"
 
 
+def lean_reference_checks(scenario: Scenario, read: PlayRead) -> list[Failed]:
+    """`reference` for the lean agent: a turn that asks for the booking's reference and is not
+    answered with it fails; a reference said unasked does not (the owner, 2026-11-18: "saying
+    the reference unasked is fine, it is not a hard requirement")."""
+    found = reference_checks(scenario, read)
+    return [f for f in found if f.turn is not None and scenario.turns[f.turn - 1].asks_reference]
+
+
 def lean_failures(scenario: Scenario, read: PlayRead) -> tuple[Failed, ...]:
     """Every kept check one lean play of `scenario` failed (the module's docstring)."""
     found: list[Failed] = []
@@ -219,7 +227,7 @@ def lean_failures(scenario: Scenario, read: PlayRead) -> tuple[Failed, ...]:
     if read.violations or lean_violations(read):
         found.append(Failed("violations"))
     found += [Failed(name) for name in lean_booking_checks(scenario, read)]
-    found += reference_checks(scenario, read)
+    found += lean_reference_checks(scenario, read)
     for n in range(len(scenario.turns)):
         found += [Failed(name, n + 1) for name in lean_turn_checks(scenario, n, read.turns)]
     return tuple(found)

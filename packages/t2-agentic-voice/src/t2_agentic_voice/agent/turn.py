@@ -38,8 +38,12 @@ turn and the call as it was heard to the events the session plays, within the re
   results are kept for the call's next `KEPT_TURNS` turns, which the heard history does not
   hold. Once the library's `switch_language` tool (actions/language_tool.py) moved the reply
   into another of the agent's languages, the rest of the turn is in it: the system prompt, the
-  line after the results, the clauses' tag, the leak check and the tools' context, and
-  `LanguageMoved` tells the session.
+  line after the results, the clauses' tag, the leak check and the tools' context. Each switch
+  the tool made tells the session (`LanguageMoved`), the reply already in that language or not:
+  a turn in the other language is answered in it before any switch (agent/language.py), so
+  told only of a reply that moved, the session kept a call the caller asked to move in its old
+  language, and a short turn after it was answered in that one (run F's f10, f-dev-lean-4). The
+  session moves nothing when the call is held in that language already (call_language.py).
 - **Actions** (the design's 6.4 and 8.2). A request offers the agent's actions beside its tools
   (agent/prompt.py's `tool_definitions`). Rule C: once the model calls an action in a request,
   its text after the call is dropped, unspoken and unblocked, with what the splitter held. The
@@ -265,6 +269,7 @@ class Turn:
                 self._moved(moved)  # the rest of the reply, in the language the caller asked for
                 prompt = compose_prompt(self.agent, language=moved, today=today, register=register)
                 messages[0] = ChatMessage.system(prompt)
+            if moved is not None:  # the call too, unless it is held in it (the module's docstring)
                 yield LanguageMoved(language=moved)
             if self.tools.plan is not None:  # read back: nothing more of the model this turn
                 yield ReadBackRequested(plan=self.tools.plan)

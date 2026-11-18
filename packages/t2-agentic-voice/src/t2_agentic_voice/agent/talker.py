@@ -18,12 +18,12 @@ the output guard blocked (`ClauseBlocked`, never spoken: the session speaks the 
 `error` notice in its place and emits `GuardBlocked` with its `reason`, and the talker keeps a
 developer note); an action's read-back to say (`ReadBackRequested`, the reply's last event
 before its end: the session reads it back and asks; nothing the talker gives confirms it);
-the reply moved into another of the agent's languages by the `switch_language` tool
-(`LanguageMoved`, after the tool's result: its later clauses in that language, and the
-session moves the call); each model request as it goes and as it ends (`ModelRequested`,
-`ModelReplied`, for the call's usage and the turn's times); and the reply's end (`ReplyDone`),
-after its last clause and its work, with how many of the talker's clauses it left unsaid once it
-stopped before a question past its limit (`unsaid_clauses`, agent/question_limit.py, D-085). A
+a switch of the `switch_language` tool (`LanguageMoved`, after the tool's result: the reply's
+later clauses in that language, and the session moves the call, unless it is held in it);
+each model request as it goes and as it ends (`ModelRequested`, `ModelReplied`, for the call's
+usage and the turn's times); and the reply's end (`ReplyDone`), after its last clause and its
+work, with how many of the talker's clauses it left unsaid once it stopped before a question
+past its limit (`unsaid_clauses`, agent/question_limit.py, D-085). A
 `ProviderError` from the model is raised from the stream instead, after any clause already
 given, for the session to say the `error` notice: no event says it.
 

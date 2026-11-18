@@ -32,9 +32,13 @@ RULES = (
     "any yes is a yes",
     "say how many flights there are, the first and last departure times, and the cheapest",
     "each flight said once; name the others only when asked",
+    # f-dev-lean-4: 54 of 98 listings said the cheapest's time twice, it being the first or last.
+    "when the cheapest is the first or the last, give its fare with that time",
     # f-dev-lean-3: both days of a round trip listed in one reply, and one pick taken for both.
     "On a round trip, give the way out and ask which they want. Once it is chosen, "
     "choose_flights lists the way back",
+    # Leg by leg is the default, never a rule: a caller who asks about the way back first hears it.
+    "When the caller asks about the way back first, list it with choose_flights' list_leg.",
     "for the leg they picked, or both when they plainly pick both",
     "when two flights fit it alike, take one and say which",
     "Say once in the call what `fares_are` says.",
@@ -57,7 +61,14 @@ RULES = (
     "Never use a day the caller did not say",
     "call find_flights with that span",
     "never ask for these, and say them in the summary",
-    "Say a reference only when the caller asks for it",
+    "the booking just made gives its own reference",
+    # f-dev-lean-4, f10: «كمل معي عربي» answered in Arabic, the call never moved, so the short
+    # yes after it was answered under the English tag.
+    "When the caller asks to go on in Arabic or in English, call switch_language if you have "
+    "it, even when you answer in that language already, then answer in it.",
+    # f-dev-lean-4, f20: asked for the reference of the booking just made, the model said it
+    # had none.
+    "or the reference of an earlier booking, call traveler_profile",
 )
 
 
@@ -151,8 +162,23 @@ def test_the_saudi_file_keeps_the_register_lines() -> None:
         # f-dev-lean-3: «ستطعش» (the 16th) said after a day's times, taken for a time.
         "A Saudi caller says 11 to 19 the Najdi way, ending in «طعش»; a bare number said to name "
         "or correct a day is that day of the month, not a time.",
+        # f-dev-lean-4, f01 and f30: «حجزت لك» said of a trip only chosen, the run's three
+        # violations; and «أبغى أحجز؟» for "shall I book it?" in 6 plays.
+        "until then a flight is chosen («اخترت لك رحلة الصبح»، «رحلتك من الرياض لجدة…»), and a "
+        "booking word («حجزت», «تم الحجز») comes once book_trip has booked.",
+        "«تبيني أحجزها؟»",
+        "«هل أحجزها لك؟»",
+        # f-dev-lean-4, f16 and f32: the failure section's one example was Saudi.
+        "to an MSA caller «لم أستطع التحقق الآن، هل أعيد المحاولة؟»",
     ):
         assert line in text
+
+
+def test_the_english_file_keeps_its_digits_over_its_own_spoken_history() -> None:
+    # f-dev-lean-4: 12 of 102 English replies wrote numbers in words, each after a reply whose
+    # history held its numbers as they were said.
+    text = instructions(Names(), TODAY)["en"]
+    assert "in digits, as the tools give them, even where your earlier replies show them in" in text
 
 
 def _bare(text: str) -> str:
