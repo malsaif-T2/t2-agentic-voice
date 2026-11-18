@@ -1,0 +1,47 @@
+{
+ "params": {
+  "engine": "google_flights_calendar",
+  "type": "2",
+  "departure_id": "RUH",
+  "arrival_id": "DXB,DWC",
+  "date_range_start": "2026-11-19",
+  "date_range_end": "2027-01-15",
+  "travel_class": "1",
+  "adults": "1",
+  "currency": "SAR",
+  "gl": "sa",
+  "hl": "en"
+ },
+ "status": 200,
+ "body": {
+  "search_metadata": {
+   "id": "6afddb02101391fd4f560eea",
+   "status": "Success",
+   "json_endpoint": "https://serpapi.com/searches/VIr4g3J7DDNpJYLlTpxpkAT8NyToRR5Uuj6axPQfbgY/6afddb02101391fd4f560eea.json",
+   "markdown_endpoint": "https://serpapi.com/searches/VIr4g3J7DDNpJYLlTpxpkAT8NyToRR5Uuj6axPQfbgY/6afddb02101391fd4f560eea.md",
+   "created_at": "2026-11-18 17:06:10 UTC",
+   "processed_at": "2026-11-18 17:06:10 UTC",
+   "google_flights_calendar_url": "https://www.google.com/travel/flights?tfs=CBwQARoWagcIARIDUlVIcgsIARIHRFhCLERXQ0ABSAFwAYIBCwj___________8BmAEC&tfu=KgIIAw&hl=en&gl=sa&curr=SAR",
+   "raw_html_file": "https://serpapi.com/searches/VIr4g3J7DDNpJYLlTpxpkAT8NyToRR5Uuj6axPQfbgY/6afddb02101391fd4f560eea.html",
+   "prettify_html_file": "https://serpapi.com/searches/VIr4g3J7DDNpJYLlTpxpkAT8NyToRR5Uuj6axPQfbgY/6afddb02101391fd4f560eea.prettify",
+   "total_time_taken": 1.18
+  },
+  "search_parameters": {
+   "engine": "google_flights_calendar",
+   "hl": "en",
+   "gl": "sa",
+   "type": "2",
+   "departure_id": "RUH",
+   "arrival_id": "DXB,DWC",
+   "date_range_start": "2026-11-19",
+   "date_range_end": "2027-01-15",
+   "travel_class": 1,
+   "currency": "SAR",
+   "adults": 1
+  },
+  "search_information": {
+   "flights_results_state": "Fully empty"
+  },
+  "error": "Google Flights Calendar hasn't returned any results for this query."
+ }
+}

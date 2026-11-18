@@ -1,0 +1,921 @@
+{
+ "params": {
+  "engine": "google_flights",
+  "type": "2",
+  "departure_id": "RUH",
+  "arrival_id": "CAI",
+  "outbound_date": "2026-11-26",
+  "travel_class": "1",
+  "adults": "1",
+  "currency": "SAR",
+  "gl": "sa",
+  "hl": "en",
+  "stops": "2"
+ },
+ "status": 200,
+ "body": {
+  "search_metadata": {
+   "id": "6afddaef2c7c69bf2bbd0b0f",
+   "status": "Success",
+   "json_endpoint": "https://serpapi.com/searches/wU7grKEaV6neVdzJNdAYLri7-CLxxtIDDYrkvS1OCOw/6afddaef2c7c69bf2bbd0b0f.json",
+   "markdown_endpoint": "https://serpapi.com/searches/wU7grKEaV6neVdzJNdAYLri7-CLxxtIDDYrkvS1OCOw/6afddaef2c7c69bf2bbd0b0f.md",
+   "created_at": "2026-11-18 17:05:51 UTC",
+   "processed_at": "2026-11-18 17:05:51 UTC",
+   "google_flights_url": "https://www.google.com/travel/flights?hl=en&gl=sa&curr=SAR&tfs=CBwQAhogEgoyMDI2LTExLTI2KAFqBwgBEgNSVUhyBwgBEgNDQUlAAUgBcAGYAQI&tfu=EgIIAQ",
+   "raw_html_file": "https://serpapi.com/searches/wU7grKEaV6neVdzJNdAYLri7-CLxxtIDDYrkvS1OCOw/6afddaef2c7c69bf2bbd0b0f.html",
+   "prettify_html_file": "https://serpapi.com/searches/wU7grKEaV6neVdzJNdAYLri7-CLxxtIDDYrkvS1OCOw/6afddaef2c7c69bf2bbd0b0f.prettify",
+   "total_time_taken": 6.45
+  },
+  "search_parameters": {
+   "engine": "google_flights",
+   "hl": "en",
+   "gl": "sa",
+   "type": "2",
+   "departure_id": "RUH",
+   "arrival_id": "CAI",
+   "outbound_date": "2026-11-26",
+   "travel_class": 1,
+   "adults": 1,
+   "stops": 2,
+   "currency": "SAR"
+  },
+  "best_flights": [
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 12:20"
+      },
+      "arrival_airport": {
+       "name": "Cairo International Airport",
+       "id": "CAI",
+       "time": "2026-11-26 14:20"
+      },
+      "duration": 180,
+      "airline": "Flynas",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+      "travel_class": "Economy",
+      "flight_number": "XY 267"
+     }
+    ],
+    "total_duration": 180,
+    "carbon_emissions": {
+     "typical_for_this_route": 125000
+    },
+    "price": 619,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+    "booking_token": "WyJDalJJYVd0V056Vk9PRmRRWWxsQlIxWkdjSGRDUnkwdExTMHRMUzB0TFMxdmVXRjBPVUZCUVVGQlIzSTVNblpaUTNwRVF6WkJFZ1ZZV1RJMk54b0xDTXpqQXhBQ0dnTlRRVkk0SEhEeGdBRT0iLFtbIlJVSCIsIjIwMjYtMTEtMjYiLCJDQUkiLG51bGwsIlhZIiwiMjY3Il1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 16:10"
+      },
+      "arrival_airport": {
+       "name": "Cairo International Airport",
+       "id": "CAI",
+       "time": "2026-11-26 18:20"
+      },
+      "duration": 190,
+      "airplane": "Airbus A320",
+      "airline": "Nile Air",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/NP.png",
+      "travel_class": "Economy",
+      "flight_number": "NP 252",
+      "legroom": "28 in",
+      "extensions": [
+       "Below average legroom (28 in)",
+       "Carbon emissions estimate: 140 kg"
+      ]
+     }
+    ],
+    "total_duration": 190,
+    "carbon_emissions": {
+     "this_flight": 141000,
+     "typical_for_this_route": 125000,
+     "difference_percent": 13
+    },
+    "price": 706,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/NP.png",
+    "booking_token": "WyJDalJJYVd0V056Vk9PRmRRWWxsQlIxWkdjSGRDUnkwdExTMHRMUzB0TFMxdmVXRjBPVUZCUVVGQlIzSTVNblpaUTNwRVF6WkJFZ1ZPVURJMU1ob0xDS2VuQkJBQ0dnTlRRVkk0SEhEM2tnRT0iLFtbIlJVSCIsIjIwMjYtMTEtMjYiLCJDQUkiLG51bGwsIk5QIiwiMjUyIl1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 03:25"
+      },
+      "arrival_airport": {
+       "name": "Cairo International Airport",
+       "id": "CAI",
+       "time": "2026-11-26 05:30"
+      },
+      "duration": 185,
+      "airplane": "Airbus A320",
+      "airline": "flyadeal",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/F3.png",
+      "travel_class": "Economy",
+      "flight_number": "F3 607",
+      "legroom": "28 in",
+      "extensions": [
+       "Below average legroom (28 in)",
+       "In-seat USB outlet",
+       "Carbon emissions estimate: 136 kg"
+      ],
+      "overnight": true,
+      "often_delayed_by_over_30_min": true
+     }
+    ],
+    "total_duration": 185,
+    "carbon_emissions": {
+     "this_flight": 136000,
+     "typical_for_this_route": 125000,
+     "difference_percent": 9
+    },
+    "price": 739,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/F3.png",
+    "booking_token": "WyJDalJJYVd0V056Vk9PRmRRWWxsQlIxWkdjSGRDUnkwdExTMHRMUzB0TFMxdmVXRjBPVUZCUVVGQlIzSTVNblpaUTNwRVF6WkJFZ1ZHTXpZd054b0xDS3pCQkJBQ0dnTlRRVkk0SEhEdm1RRT0iLFtbIlJVSCIsIjIwMjYtMTEtMjYiLCJDQUkiLG51bGwsIkYzIiwiNjA3Il1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 23:55"
+      },
+      "arrival_airport": {
+       "name": "Cairo International Airport",
+       "id": "CAI",
+       "time": "2026-11-27 01:50"
+      },
+      "duration": 175,
+      "airplane": "Airbus A320",
+      "airline": "Air Cairo",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SM.png",
+      "travel_class": "Economy",
+      "flight_number": "SM 470",
+      "extensions": [
+       "Carbon emissions estimate: 140 kg"
+      ]
+     }
+    ],
+    "total_duration": 175,
+    "carbon_emissions": {
+     "this_flight": 141000,
+     "typical_for_this_route": 125000,
+     "difference_percent": 13
+    },
+    "price": 748,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SM.png",
+    "booking_token": "WyJDalJJYVd0V056Vk9PRmRRWWxsQlIxWkdjSGRDUnkwdExTMHRMUzB0TFMxdmVXRjBPVUZCUVVGQlIzSTVNblpaUTNwRVF6WkJFZ1ZUVFRRM01Cb0xDTERJQkJBQ0dnTlRRVkk0SEhEZm13RT0iLFtbIlJVSCIsIjIwMjYtMTEtMjYiLCJDQUkiLG51bGwsIlNNIiwiNDcwIl1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 13:00"
+      },
+      "arrival_airport": {
+       "name": "Cairo International Airport",
+       "id": "CAI",
+       "time": "2026-11-26 15:00"
+      },
+      "duration": 180,
+      "airplane": "Boeing 737",
+      "airline": "EgyptAir",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/MS.png",
+      "travel_class": "Economy",
+      "flight_number": "MS 652",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "In-seat USB outlet",
+       "On-demand video",
+       "Carbon emissions estimate: 155 kg"
+      ],
+      "often_delayed_by_over_30_min": true
+     }
+    ],
+    "total_duration": 180,
+    "carbon_emissions": {
+     "this_flight": 155000,
+     "typical_for_this_route": 125000,
+     "difference_percent": 24
+    },
+    "price": 834,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/MS.png",
+    "booking_token": "WyJDalJJYVd0V056Vk9PRmRRWWxsQlIxWkdjSGRDUnkwdExTMHRMUzB0TFMxdmVXRjBPVUZCUVVGQlIzSTVNblpaUTNwRVF6WkJFZ1ZOVXpZMU1ob0xDTWlMQlJBQ0dnTlRRVkk0SEhEVHJRRT0iLFtbIlJVSCIsIjIwMjYtMTEtMjYiLCJDQUkiLG51bGwsIk1TIiwiNjUyIl1dXQ=="
+   }
+  ],
+  "other_flights": [
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 05:30"
+      },
+      "arrival_airport": {
+       "name": "Queen Alia International Airport",
+       "id": "AMM",
+       "time": "2026-11-26 08:05"
+      },
+      "duration": 155,
+      "airplane": "Airbus A320neo",
+      "airline": "Royal Jordanian",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/RJ.png",
+      "travel_class": "Economy",
+      "flight_number": "RJ 735",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "Wi-Fi for a fee",
+       "In-seat USB outlet",
+       "On-demand video",
+       "Carbon emissions estimate: 117 kg"
+      ]
+     },
+     {
+      "departure_airport": {
+       "name": "Queen Alia International Airport",
+       "id": "AMM",
+       "time": "2026-11-26 12:20"
+      },
+      "arrival_airport": {
+       "name": "Cairo International Airport",
+       "id": "CAI",
+       "time": "2026-11-26 12:55"
+      },
+      "duration": 95,
+      "airplane": "Embraer 195 E2",
+      "airline": "Royal Jordanian",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/RJ.png",
+      "travel_class": "Economy",
+      "flight_number": "RJ 503",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "Wi-Fi for a fee",
+       "In-seat USB outlet",
+       "Stream media to your device",
+       "Carbon emissions estimate: 84 kg"
+      ]
+     }
+    ],
+    "layovers": [
+     {
+      "duration": 255,
+      "name": "Queen Alia International Airport",
+      "id": "AMM"
+     }
+    ],
+    "total_duration": 505,
+    "carbon_emissions": {
+     "this_flight": 202000,
+     "typical_for_this_route": 125000,
+     "difference_percent": 62
+    },
+    "price": 585,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/RJ.png",
+    "booking_token": "WyJDalJJYVd0V056Vk9PRmRRWWxsQlIxWkdjSGRDUnkwdExTMHRMUzB0TFMxdmVXRjBPVUZCUVVGQlIzSTVNblpaUTNwRVF6WkJFZ3RTU2pjek5YeFNTalV3TXhvTENJVEpBeEFDR2dOVFFWSTRISERuZVE9PSIsW1siUlVIIiwiMjAyNi0xMS0yNiIsIkFNTSIsbnVsbCwiUkoiLCI3MzUiXSxbIkFNTSIsIjIwMjYtMTEtMjYiLCJDQUkiLG51bGwsIlJKIiwiNTAzIl1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 12:30"
+      },
+      "arrival_airport": {
+       "name": "Queen Alia International Airport",
+       "id": "AMM",
+       "time": "2026-11-26 15:05"
+      },
+      "duration": 155,
+      "airplane": "Embraer 195 E2",
+      "airline": "Royal Jordanian",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/RJ.png",
+      "travel_class": "Economy",
+      "flight_number": "RJ 733",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "Wi-Fi for a fee",
+       "In-seat USB outlet",
+       "Stream media to your device",
+       "Carbon emissions estimate: 139 kg"
+      ]
+     },
+     {
+      "departure_airport": {
+       "name": "Queen Alia International Airport",
+       "id": "AMM",
+       "time": "2026-11-26 18:20"
+      },
+      "arrival_airport": {
+       "name": "Cairo International Airport",
+       "id": "CAI",
+       "time": "2026-11-26 18:55"
+      },
+      "duration": 95,
+      "airplane": "Airbus A320neo",
+      "airline": "Royal Jordanian",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/RJ.png",
+      "travel_class": "Economy",
+      "flight_number": "RJ 505",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "Wi-Fi for a fee",
+       "In-seat USB outlet",
+       "Stream media to your device",
+       "Carbon emissions estimate: 65 kg"
+      ]
+     }
+    ],
+    "layovers": [
+     {
+      "duration": 195,
+      "name": "Queen Alia International Airport",
+      "id": "AMM"
+     }
+    ],
+    "total_duration": 445,
+    "carbon_emissions": {
+     "this_flight": 205000,
+     "typical_for_this_route": 125000,
+     "difference_percent": 64
+    },
+    "price": 585,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/RJ.png",
+    "booking_token": "WyJDalJJYVd0V056Vk9PRmRRWWxsQlIxWkdjSGRDUnkwdExTMHRMUzB0TFMxdmVXRjBPVUZCUVVGQlIzSTVNblpaUTNwRVF6WkJFZ3RTU2pjek0zeFNTalV3TlJvTENJVEpBeEFDR2dOVFFWSTRISERuZVE9PSIsW1siUlVIIiwiMjAyNi0xMS0yNiIsIkFNTSIsbnVsbCwiUkoiLCI3MzMiXSxbIkFNTSIsIjIwMjYtMTEtMjYiLCJDQUkiLG51bGwsIlJKIiwiNTA1Il1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 20:25"
+      },
+      "arrival_airport": {
+       "name": "Queen Alia International Airport",
+       "id": "AMM",
+       "time": "2026-11-26 23:00"
+      },
+      "duration": 155,
+      "airplane": "Airbus A320neo",
+      "airline": "Royal Jordanian",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/RJ.png",
+      "travel_class": "Economy",
+      "flight_number": "RJ 731",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "Wi-Fi for a fee",
+       "In-seat USB outlet",
+       "On-demand video",
+       "Carbon emissions estimate: 117 kg"
+      ]
+     },
+     {
+      "departure_airport": {
+       "name": "Queen Alia International Airport",
+       "id": "AMM",
+       "time": "2026-11-27 07:05"
+      },
+      "arrival_airport": {
+       "name": "Cairo International Airport",
+       "id": "CAI",
+       "time": "2026-11-27 07:40"
+      },
+      "duration": 95,
+      "airplane": "Airbus A320neo",
+      "airline": "Royal Jordanian",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/RJ.png",
+      "travel_class": "Economy",
+      "flight_number": "RJ 501",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "Wi-Fi for a fee",
+       "In-seat USB outlet",
+       "On-demand video",
+       "Carbon emissions estimate: 70 kg"
+      ]
+     }
+    ],
+    "layovers": [
+     {
+      "duration": 485,
+      "name": "Queen Alia International Airport",
+      "id": "AMM"
+     }
+    ],
+    "total_duration": 735,
+    "carbon_emissions": {
+     "this_flight": 188000,
+     "typical_for_this_route": 125000,
+     "difference_percent": 50
+    },
+    "price": 585,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/RJ.png",
+    "booking_token": "WyJDalJJYVd0V056Vk9PRmRRWWxsQlIxWkdjSGRDUnkwdExTMHRMUzB0TFMxdmVXRjBPVUZCUVVGQlIzSTVNblpaUTNwRVF6WkJFZ3RTU2pjek1YeFNTalV3TVJvTENJVEpBeEFDR2dOVFFWSTRISERuZVE9PSIsW1siUlVIIiwiMjAyNi0xMS0yNiIsIkFNTSIsbnVsbCwiUkoiLCI3MzEiXSxbIkFNTSIsIjIwMjYtMTEtMjciLCJDQUkiLG51bGwsIlJKIiwiNTAxIl1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 20:10"
+      },
+      "arrival_airport": {
+       "name": "Cairo International Airport",
+       "id": "CAI",
+       "time": "2026-11-26 22:15"
+      },
+      "duration": 185,
+      "airplane": "Airbus A321",
+      "airline": "Nesma Airlines",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/NE.png",
+      "travel_class": "Economy",
+      "flight_number": "NE 165",
+      "legroom": "28 in",
+      "extensions": [
+       "Below average legroom (28 in)",
+       "Carbon emissions estimate: 152 kg"
+      ]
+     }
+    ],
+    "total_duration": 185,
+    "carbon_emissions": {
+     "this_flight": 152000,
+     "typical_for_this_route": 125000,
+     "difference_percent": 22
+    },
+    "price": 705,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/NE.png",
+    "booking_token": "WyJDalJJYVd0V056Vk9PRmRRWWxsQlIxWkdjSGRDUnkwdExTMHRMUzB0TFMxdmVXRjBPVUZCUVVGQlIzSTVNblpaUTNwRVF6WkJFZ1ZPUlRFMk5Sb0xDT1NtQkJBQ0dnTlRRVkk0SEhEbGtnRT0iLFtbIlJVSCIsIjIwMjYtMTEtMjYiLCJDQUkiLG51bGwsIk5FIiwiMTY1Il1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 09:00"
+      },
+      "arrival_airport": {
+       "name": "Cairo International Airport",
+       "id": "CAI",
+       "time": "2026-11-26 11:20"
+      },
+      "duration": 200,
+      "airplane": "Airbus A320neo",
+      "airline": "Flynas",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+      "travel_class": "Economy",
+      "flight_number": "XY 273",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "In-seat USB outlet",
+       "Carbon emissions estimate: 124 kg"
+      ]
+     }
+    ],
+    "total_duration": 200,
+    "carbon_emissions": {
+     "this_flight": 125000,
+     "typical_for_this_route": 125000,
+     "difference_percent": 0
+    },
+    "price": 799,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+    "booking_token": "WyJDalJJYVd0V056Vk9PRmRRWWxsQlIxWkdjSGRDUnkwdExTMHRMUzB0TFMxdmVXRjBPVUZCUVVGQlIzSTVNblpaUTNwRVF6WkJFZ1ZZV1RJM014b0xDSnp3QkJBQ0dnTlRRVkk0SEhDdXBnRT0iLFtbIlJVSCIsIjIwMjYtMTEtMjYiLCJDQUkiLG51bGwsIlhZIiwiMjczIl1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 10:35"
+      },
+      "arrival_airport": {
+       "name": "Cairo International Airport",
+       "id": "CAI",
+       "time": "2026-11-26 12:35"
+      },
+      "duration": 180,
+      "airplane": "Airbus A320neo",
+      "airline": "Flynas",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+      "travel_class": "Economy",
+      "flight_number": "XY 269",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "In-seat USB outlet",
+       "Carbon emissions estimate: 124 kg"
+      ]
+     }
+    ],
+    "total_duration": 180,
+    "carbon_emissions": {
+     "this_flight": 125000,
+     "typical_for_this_route": 125000,
+     "difference_percent": 0
+    },
+    "price": 799,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+    "booking_token": "WyJDalJJYVd0V056Vk9PRmRRWWxsQlIxWkdjSGRDUnkwdExTMHRMUzB0TFMxdmVXRjBPVUZCUVVGQlIzSTVNblpaUTNwRVF6WkJFZ1ZZV1RJMk9Sb0xDSnp3QkJBQ0dnTlRRVkk0SEhDdXBnRT0iLFtbIlJVSCIsIjIwMjYtMTEtMjYiLCJDQUkiLG51bGwsIlhZIiwiMjY5Il1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 16:50"
+      },
+      "arrival_airport": {
+       "name": "Cairo International Airport",
+       "id": "CAI",
+       "time": "2026-11-26 18:50"
+      },
+      "duration": 180,
+      "airplane": "Airbus A320neo",
+      "airline": "Flynas",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+      "travel_class": "Economy",
+      "flight_number": "XY 271",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "In-seat USB outlet",
+       "Carbon emissions estimate: 124 kg"
+      ]
+     }
+    ],
+    "total_duration": 180,
+    "carbon_emissions": {
+     "this_flight": 125000,
+     "typical_for_this_route": 125000,
+     "difference_percent": 0
+    },
+    "price": 1099,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+    "booking_token": "WyJDalJJYVd0V056Vk9PRmRRWWxsQlIxWkdjSGRDUnkwdExTMHRMUzB0TFMxdmVXRjBPVUZCUVVGQlIzSTVNblpaUTNwRVF6WkJFZ1ZZV1RJM01Sb0xDTXphQmhBQ0dnTlRRVkk0SEhEcDVBRT0iLFtbIlJVSCIsIjIwMjYtMTEtMjYiLCJDQUkiLG51bGwsIlhZIiwiMjcxIl1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 16:30"
+      },
+      "arrival_airport": {
+       "name": "Cairo International Airport",
+       "id": "CAI",
+       "time": "2026-11-26 18:40"
+      },
+      "duration": 190,
+      "airplane": "Airbus A321",
+      "airline": "Saudia",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+      "travel_class": "Economy",
+      "flight_number": "SV 313",
+      "legroom": "32 in",
+      "extensions": [
+       "Above average legroom (32 in)",
+       "Free Wi-Fi",
+       "Carbon emissions estimate: 181 kg"
+      ],
+      "often_delayed_by_over_30_min": true
+     }
+    ],
+    "total_duration": 190,
+    "carbon_emissions": {
+     "this_flight": 181000,
+     "typical_for_this_route": 125000,
+     "difference_percent": 45
+    },
+    "price": 1862,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+    "booking_token": "WyJDalJJYVd0V056Vk9PRmRRWWxsQlIxWkdjSGRDUnkwdExTMHRMUzB0TFMxdmVXRjBPVUZCUVVGQlIzSTVNblpaUTNwRVF6WkJFZ1ZUVmpNeE14b0xDTml1Q3hBQ0dnTlRRVkk0SEhEWWd3TT0iLFtbIlJVSCIsIjIwMjYtMTEtMjYiLCJDQUkiLG51bGwsIlNWIiwiMzEzIl1dXQ=="
+   }
+  ],
+  "price_insights": {
+   "lowest_price": 585,
+   "price_level": "high",
+   "typical_price_range": [
+    200,
+    550
+   ],
+   "price_history": [
+    [
+     1789765200,
+     243
+    ],
+    [
+     1789851600,
+     243
+    ],
+    [
+     1789938000,
+     243
+    ],
+    [
+     1790024400,
+     243
+    ],
+    [
+     1790110800,
+     243
+    ],
+    [
+     1790197200,
+     243
+    ],
+    [
+     1790283600,
+     243
+    ],
+    [
+     1790370000,
+     243
+    ],
+    [
+     1790456400,
+     243
+    ],
+    [
+     1790542800,
+     243
+    ],
+    [
+     1790629200,
+     243
+    ],
+    [
+     1790715600,
+     243
+    ],
+    [
+     1790802000,
+     243
+    ],
+    [
+     1790888400,
+     243
+    ],
+    [
+     1790974800,
+     243
+    ],
+    [
+     1791061200,
+     243
+    ],
+    [
+     1791147600,
+     243
+    ],
+    [
+     1791234000,
+     405
+    ],
+    [
+     1791320400,
+     405
+    ],
+    [
+     1791406800,
+     404
+    ],
+    [
+     1791493200,
+     408
+    ],
+    [
+     1791579600,
+     408
+    ],
+    [
+     1791666000,
+     408
+    ],
+    [
+     1791752400,
+     408
+    ],
+    [
+     1791838800,
+     408
+    ],
+    [
+     1791925200,
+     408
+    ],
+    [
+     1792011600,
+     408
+    ],
+    [
+     1792098000,
+     408
+    ],
+    [
+     1792184400,
+     408
+    ],
+    [
+     1792270800,
+     409
+    ],
+    [
+     1792357200,
+     409
+    ],
+    [
+     1792443600,
+     409
+    ],
+    [
+     1792530000,
+     435
+    ],
+    [
+     1792616400,
+     435
+    ],
+    [
+     1792702800,
+     439
+    ],
+    [
+     1792789200,
+     439
+    ],
+    [
+     1792875600,
+     345
+    ],
+    [
+     1792962000,
+     305
+    ],
+    [
+     1793048400,
+     305
+    ],
+    [
+     1793134800,
+     345
+    ],
+    [
+     1793221200,
+     345
+    ],
+    [
+     1793307600,
+     345
+    ],
+    [
+     1793394000,
+     345
+    ],
+    [
+     1793480400,
+     305
+    ],
+    [
+     1793566800,
+     305
+    ],
+    [
+     1793653200,
+     345
+    ],
+    [
+     1793739600,
+     305
+    ],
+    [
+     1793826000,
+     345
+    ],
+    [
+     1793912400,
+     345
+    ],
+    [
+     1793998800,
+     375
+    ],
+    [
+     1794085200,
+     375
+    ],
+    [
+     1794171600,
+     408
+    ],
+    [
+     1794258000,
+     469
+    ],
+    [
+     1794344400,
+     500
+    ],
+    [
+     1794430800,
+     500
+    ],
+    [
+     1794517200,
+     490
+    ],
+    [
+     1794603600,
+     490
+    ],
+    [
+     1794690000,
+     490
+    ],
+    [
+     1794776400,
+     532
+    ],
+    [
+     1794862800,
+     539
+    ],
+    [
+     1794949200,
+     585
+    ]
+   ]
+  },
+  "airports": [
+   {
+    "departure": [
+     {
+      "airport": {
+       "id": "RUH",
+       "name": "King Khalid International Airport"
+      },
+      "city": "Riyadh",
+      "country": "Saudi Arabia",
+      "country_code": "SA",
+      "image": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcQcIKZwEhurQayMMY8REMG-ngE3R6B7fyPp1jtMDsXsJYk5zv8dSIdXyJGqoJ4Wo0MUSRm45GGd_Rgpaw",
+      "thumbnail": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcRkqG9nigWgHbtogOWlLR9sM2gVNqss9UYTiMlAyXVUbPB1qhGrjSDgIL0emclGmrDY-3s16sKVBFy0MLsPOo7o9iWTif-cYJLylIBFEm8"
+     }
+    ],
+    "arrival": [
+     {
+      "airport": {
+       "id": "CAI",
+       "name": "Cairo International Airport"
+      },
+      "city": "Cairo",
+      "country": "Egypt",
+      "country_code": "EG",
+      "image": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcT7ULfG_02k52ZUkT4SMv7eA5_XFLGUgtQP_gC4pBuZtEmSzwHjjK5wnTa4EydhWQZpABieItDPpIw1bA",
+      "thumbnail": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcSnrxz7k5kf6djuK1GMLNohWzFgdjfs-nlAN8vxOFLaRegspA7dbLL7ECQ-QfprCeItnbklqMs7TjbNW9zOrDToFoBJRvX-nBu5N40XIbM"
+     }
+    ]
+   }
+  ]
+ }
+}
