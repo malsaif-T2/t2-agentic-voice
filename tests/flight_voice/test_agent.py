@@ -272,7 +272,7 @@ def test_the_result_fields_the_instructions_name_are_the_tools() -> None:
 def test_the_progress_lines_cover_each_key_the_tools_name() -> None:
     agent = declare(Airline(today=lambda: TODAY), TripBook())
     for language in agent.languages:
-        assert set(language.progress) == {"searching", "fares"}
+        assert set(language.progress) == {"searching", "fares", "searching_live"}  # lean, live
 
 
 def _form(text: str) -> str:

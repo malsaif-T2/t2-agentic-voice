@@ -29,15 +29,15 @@ from flight_voice.lean.agent import declare
 from flight_voice.lean.booking_check import BookingCheck
 from flight_voice.settings import for_the_app
 from flight_voice.traveler import demo_caller
-from flight_voice.trip import TripBook
 from t2_agentic_voice import VoiceSettings
 from t2_agentic_voice.domain.ports.chat_model import ChatRequest
 from t2_agentic_voice.evals import FunctionLLM, ScriptedLLM, ScriptStep, TextCall
 
+from tests.flight_voice.lean.lean_support import lean_deps
 from tests.flight_voice.scenario_dates import TODAY
 
 DAY = date(2026, 11, 19)
-FIRST = "T2-101-2026-11-19"
+FIRST = "T2101-2026-11-19"
 TOTAL = priced((Leg(flight=101, day=DAY),), "economy", 1, TODAY)
 
 
@@ -129,7 +129,7 @@ async def _call(lines: Lines, words: str, *, over: str, settings: VoiceSettings)
     question (`over="question"`) or its first clause (`over="summary"`)."""
     llm = talker(lines)
     airline, check = Airline(today=lambda: TODAY), BookingCheck()
-    agent = declare(airline, TripBook(), check)
+    agent = declare(lean_deps(airline, check=check))
     async with TextCall(
         agent,
         llm=llm,
@@ -172,7 +172,7 @@ async def _yes_then(lines: Lines, no: str) -> tuple[int, str, str]:
     it too: the bookings made, and each turn's fate."""
     llm = talker(lines)
     airline, check = Airline(today=lambda: TODAY), BookingCheck()
-    agent = declare(airline, TripBook(), check)
+    agent = declare(lean_deps(airline, check=check))
     async with TextCall(
         agent,
         llm=llm,

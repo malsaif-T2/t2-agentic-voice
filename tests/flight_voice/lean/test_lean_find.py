@@ -30,19 +30,33 @@ def test_a_day_lists_the_outbound_as_plain_data_and_writes_the_trip() -> None:
     assert out["day"] == {"date": OUT, "weekday": "Thursday"}
     assert out["count"] == 4 and (out["first_departs"], out["last_departs"]) == ("06:00", "21:00")
     first = out["options"][0]
-    assert first["id"] == "T2-101-2026-11-19" and first["nonstop"] is True
-    assert set(first) >= {"departs", "arrives", "duration", "fare", "seats_ok", "part_of_day"}
-    cheapest = min((o for o in out["options"] if o["seats_ok"]), key=lambda o: o["fare"])
+    assert first["id"] == "T2101-2026-11-19" and first["stops"] == 0
+    assert first["airline"] == "T2 Air" and first["flight"] == "T2 101"
+    assert set(first) >= {"departs", "arrives", "duration", "price", "seats_ok", "part_of_day"}
+    assert "via" not in first and "airlines" not in out and "more" not in out
+    cheapest = min((o for o in out["options"] if o["seats_ok"]), key=lambda o: o["price"])
     assert out["cheapest_id"] == cheapest["id"]
     # f-dev-lean-4: given both days' flights, the model listed both in one reply (34 of 38) and
     # took one pick for both legs (f30, f09); the return's flights come with choose_flights.
     assert back == {"day": {"date": BACK, "weekday": "Saturday"}, "note": RETURN_LISTED}
-    assert "T2-102" not in str(answer)
+    assert "T2102" not in str(answer)
     assert found.card is not None and found.card.slot == "outbound" and card_passes(found)
     draft = call.draft
-    assert (draft.destination, draft.one_way, str(draft.return_date)) == ("JED", False, BACK)
-    assert [s.flight for s in draft.shown_outbound] == [101, 103, 105, 107]
-    assert [s.flight for s in draft.shown_return] == [102, 104, 106, 108]
+    assert draft.destination is not None and draft.destination.code == "JED"
+    assert (draft.one_way, str(draft.return_date)) == (False, BACK)
+    assert draft.listed_outbound is not None and draft.listed_return is not None
+    assert [o.flights for o in draft.listed_outbound.offers] == [
+        ("T2 101",),
+        ("T2 103",),
+        ("T2 105",),
+        ("T2 107",),
+    ]
+    assert [o.segments[0].number for o in draft.listed_return.offers] == [
+        "102",
+        "104",
+        "106",
+        "108",
+    ]
 
 
 def test_a_new_return_day_after_the_outbound_pick_keeps_it_and_lists_the_return() -> None:
@@ -60,7 +74,7 @@ def test_a_new_return_day_after_the_outbound_pick_keeps_it_and_lists_the_return(
 def test_a_new_outbound_day_after_both_picks_keeps_the_returns() -> None:
     call = chosen_trip()  # out on T2 101, back on T2 102
     answer = data(call.find(destination="Jeddah", depart="2026-11-20", return_date=BACK))
-    assert answer["chosen"] == {"return": "T2-102-2026-11-21"}
+    assert answer["chosen"] == {"return": "T2102-2026-11-21"} and "lost" not in answer
     assert answer["return"] == {"day": {"date": BACK, "weekday": "Saturday"}, "note": RETURN_KEPT}
     assert "chosen" not in data(LeanCall().find(destination="Jeddah", depart=OUT))
 
@@ -78,7 +92,7 @@ def test_a_fare_said_with_its_basis_passes_the_id_rule() -> None:
     for depart in ({"depart": OUT, "return_date": BACK}, {"depart": OUT}):
         found = LeanCall().find(destination="Jeddah", **depart)
         answer = data(found)
-        fare = answer["outbound"]["options"][0]["fare"]
+        fare = answer["outbound"]["options"][0]["price"]
         said = f"The cheapest leaves at 06:00 with a fare of {fare}, {answer['fares_are']}."
         assert ids_pass([said], found.texts()), said
 
@@ -99,7 +113,7 @@ def test_a_span_gives_each_day_and_the_two_cheapest_and_writes_nothing() -> None
     assert answer["status"] == "days" and answer["fares_are"] == PER_PERSON
     assert [d["date"] for d in answer["no_flight_days"]] == ["2026-11-17"]  # a Tuesday
     assert len(answer["days"]) == 6 and all(d["flights"] >= 1 for d in answer["days"])
-    lowest = sorted(answer["days"], key=lambda d: (d["lowest_fare"], d["date"]))[:2]
+    lowest = sorted(answer["days"], key=lambda d: (d["lowest_price"], d["date"]))[:2]
     assert answer["cheapest_days"] == [d["date"] for d in lowest]
     assert answer["departs"] and all(":" in t for t in answer["departs"])
     assert found.card is not None and found.card.slot == "outbound" and card_passes(found)
@@ -139,7 +153,7 @@ def test_a_span_past_two_weeks_is_given_week_by_week() -> None:
     for week in weeks:
         assert 1 <= week["days_with_flights"] <= 7
         assert week["first"]["date"] <= week["cheapest"]["date"] <= week["last"]["date"]
-    lowest = sorted((w["cheapest"] for w in weeks), key=lambda d: (d["lowest_fare"], d["date"]))
+    lowest = sorted((w["cheapest"] for w in weeks), key=lambda d: (d["lowest_price"], d["date"]))
     assert answer["cheapest"][0] == lowest[0] and len(answer["cheapest"]) == 2
     assert answer["cheapest_days"] == [d["date"] for d in answer["cheapest"]]
     # The card: each week's cheapest day, the two cheapest marked, no day the result lacks.

@@ -1,19 +1,21 @@
-"""`book_trip`, the lean agent's booking: a tool that writes the trip chosen so far to the mock
-airline's booking store, as the scripted agent's action job does, once the booking check holds
-(booking_check.py). It takes no arguments: the trip is the call's, and the traveler the call's
-verified caller (`attributes.traveler_id`, invariant 3), never a value the model gives; a booking
-already made is told from the trip as it was booked (`Ledger.trip`), never the call's trip since
-changed. This
-departs from the library's "only actions act" design, for the mock airline alone, by the owner's
-ruling (D-113): the model's own judgement that the caller agreed is the yes.
+"""`book_trip`, the lean agent's booking on the mock network alone (registered only when
+`deps.bookable`; called anyway, it answers `not_bookable`): a tool that writes the trip chosen
+so far to the mock airline's booking store, as the scripted agent's action job does, once the
+booking check holds (booking_check.py). It takes no arguments: the trip is the call's, and the
+traveler the call's verified caller (`attributes.traveler_id`, invariant 3), never a value the
+model gives; a booking already made is told from the trip as it was booked (`Ledger.trip`),
+never the call's trip since changed. This departs from the library's "only actions act"
+design, for the mock airline alone, by the owner's ruling (D-113): the model's own judgement
+that the caller agreed is the yes.
 
 In order, each with nothing written: a caller who is no traveler the airline knows is a
 `ToolError`; a booking already made in this call answers `already_booked` with it, and a write
 whose end is not known `unknown` (one booking a call, never a second write beside one that may
 have gone through); a trip with a leg not chosen is `incomplete`, with the legs `missing`; a trip
-the airline can no longer sell as it is (a seat gone, a day passed) is `refused`, with the
-reason; and a trip whose total was not said, played and answered is `not_confirmed`, its `say`
-the one fixed text the lean tools hold (`NOT_CONFIRMED`). Then the store books it, priced again,
+the airline can no longer sell as it is (a seat gone, a day passed, or a price that is no longer
+the one the caller heard: `price_changed`) is `refused`, with the reason; and a trip whose total
+was not said, played and answered is `not_confirmed`, its `say` the one fixed text the lean
+tools hold (`NOT_CONFIRMED`). Then the store books it, priced again,
 under a request ID of the call's own: a refusal is `refused`; a write that does not answer
 within `WRITE_S` is looked up by its request ID (when the store can find one), and `unknown`
 when nothing is found. A booking made returns its status, its total (the caller has just
@@ -65,19 +67,25 @@ from flight_voice.airline.bookings import (
 from flight_voice.airline.system import Airline
 from flight_voice.booking.action import NO_TRAVELER, traveler_of
 from flight_voice.booking.lines import CLAIMS
-from flight_voice.lean.booking_check import BookingCheck, Ledger
-from flight_voice.lean.choose import chosen_legs
+from flight_voice.flight_data.port import Places
+from flight_voice.lean.booking_check import Ledger
+from flight_voice.lean.deps import LeanDeps
+from flight_voice.lean.draft import LeanDraft
+from flight_voice.lean.offer_cards import trip_card
+from flight_voice.lean.picking import Picking, chosen_legs
 from flight_voice.lean.results import lean_result, route_said, trip_said
 from flight_voice.said import Tag, arabic
-from flight_voice.tools import cards
-from flight_voice.tools.trip_view import view
-from flight_voice.trip import TripBook, TripDraft
 
 BOOK_TRIP: Final = "book_trip"
 DESCRIPTION: Final = (
     "Book the trip chosen so far, only once the caller heard the trip with its total and "
     "agreed. It takes no arguments."
 )
+NOT_BOOKABLE: Final[dict[str, JsonValue]] = {
+    "status": "not_bookable",
+    "note": "Booking is not open on this line: say the trip and its total, and that the "
+    "airline's own site books it.",
+}
 NOT_CONFIRMED: Final[dict[str, JsonValue]] = {
     "status": "not_confirmed",
     "say": "Say the trip with its total in one sentence and ask whether to book it. Book only "
@@ -112,29 +120,30 @@ LEAN_CLAIMS: Final = Claims(
 )
 
 
-def booked_card(draft: TripDraft, airline: Airline, reference: str, tag: Tag) -> Card | None:
+def booked_card(draft: LeanDraft, places: Places, reference: str, tag: Tag) -> Card | None:
     """The review card of the trip booked, its last row "Booked · Reference …"."""
-    trip = cards.trip_card(view(draft, tag, airline.today(), airline.flight_name), draft, tag)
+    trip = trip_card(draft, Picking(draft, places, tag).chosen_options(), tag)
     if trip is None:
         return None
     line = BOOKED["ar" if arabic(tag) else "en"].format(ref=reference)
     return trip.model_copy(update={"rows": (*trip.rows, CardRow(title=line))})
 
 
-def _booked(booking: Booking, draft: TripDraft, airline: Airline, tag: Tag) -> ToolResult:
+def _booked(booking: Booking, draft: LeanDraft, places: Places, tag: Tag) -> ToolResult:
     """A booking just made: its status, its total and its reference (the module's docstring)."""
     answer: dict[str, JsonValue] = {
         "status": "booked",
         "total": booking.total_sar,
         "reference": booking.reference,
     }
-    return lean_result(answer, booked_card(draft, airline, booking.reference, tag), done=True)
+    return lean_result(answer, booked_card(draft, places, booking.reference, tag), done=True)
 
 
-def _already(booking: Booking, draft: TripDraft, airline: Airline, tag: Tag) -> ToolResult:
+def _already(booking: Booking, draft: LeanDraft, places: Places, tag: Tag) -> ToolResult:
     """A booking made before in this call, told whole as it was booked (`draft`), its reference
     too."""
-    said, msa = route_said((booking.origin, booking.destination), tag)
+    end = draft.destination or places.get(booking.destination) or draft.origin
+    said, msa = route_said((draft.origin, end), tag)
     kind, kind_msa = trip_said(booking.return_date is None, tag)
     answer: dict[str, JsonValue] = {
         "status": "already_booked",
@@ -146,8 +155,8 @@ def _already(booking: Booking, draft: TripDraft, airline: Airline, tag: Tag) -> 
         "travelers": booking.travelers,
         "cabin": booking.cabin,
     }
-    answer |= chosen_legs(airline, draft, tag) | {"reference": booking.reference}
-    return lean_result(answer, booked_card(draft, airline, booking.reference, tag), done=True)
+    answer |= chosen_legs(draft, places, tag) | {"reference": booking.reference}
+    return lean_result(answer, booked_card(draft, places, booking.reference, tag), done=True)
 
 
 async def _write(airline: Airline, new: NewBooking, ledger: Ledger) -> Booking | None:
@@ -168,9 +177,10 @@ async def _write(airline: Airline, new: NewBooking, ledger: Ledger) -> Booking |
         return None
 
 
-def book_trip(airline: Airline, trips: TripBook, check: BookingCheck) -> Tool:
-    """The booking of each call's trip in `trips`, once `check` holds (the module's
-    docstring)."""
+def book_trip(deps: LeanDeps) -> Tool:
+    """The booking of each call's trip in `deps.trips` on the mock airline, once `deps.check`
+    holds (the module's docstring)."""
+    airline, trips, check, places = deps.airline, deps.trips, deps.check, deps.places
 
     @tool(
         name=BOOK_TRIP,
@@ -181,6 +191,8 @@ def book_trip(airline: Airline, trips: TripBook, check: BookingCheck) -> Tool:
     )
     async def book(ctx: CallContext) -> ToolResult:
         tag: Tag = ctx.language
+        if not deps.bookable:
+            return lean_result(dict(NOT_BOOKABLE))
         traveler = traveler_of(ctx.caller)
         if traveler is None:
             raise ToolError(NO_TRAVELER)
@@ -188,19 +200,22 @@ def book_trip(airline: Airline, trips: TripBook, check: BookingCheck) -> Tool:
         draft = trips.get(ctx.call_id)
         if ledger.booked is not None:
             booked = draft if ledger.trip is None else ledger.trip
-            return _already(ledger.booked, booked, airline, tag)
+            return _already(ledger.booked, booked, places, tag)
         if ledger.unsure:
             return lean_result({"status": "unknown"})
         missing: list[JsonValue] = [m for m in draft.missing() if m in ("outbound", "return")]
         if missing or draft.destination is None:
             return lean_result({"status": "incomplete", "missing": missing})
+        chosen = tuple(Leg(flight=int(o.segments[0].number), day=o.day) for o in draft.legs())
+        heard = draft.total()
         try:
-            total = priced(draft.legs(), draft.cabin, draft.travelers, airline.today())
+            total = priced(chosen, draft.cabin, draft.travelers, deps.today())
         except BookingRefused as error:
             return lean_result({"status": "refused", "reason": error.reason})
+        if heard is None or total != heard:
+            return lean_result({"status": "refused", "reason": "price_changed"})
         if not check.confirmed(ctx.call_id, draft, total):
             return lean_result(dict(NOT_CONFIRMED))
-        chosen = draft.legs()
         legs: tuple[Leg] | tuple[Leg, Leg] = (
             (chosen[0],) if len(chosen) == 1 else (chosen[0], chosen[1])
         )
@@ -221,6 +236,6 @@ def book_trip(airline: Airline, trips: TripBook, check: BookingCheck) -> Tool:
         if made_booking is None:
             return lean_result({"status": "unknown"})
         ledger.booked, ledger.trip, ledger.unsure = made_booking, draft, False
-        return _booked(made_booking, draft, airline, tag)
+        return _booked(made_booking, draft, places, tag)
 
     return book

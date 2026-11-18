@@ -2,7 +2,8 @@
 the runtime's observers would: it holds once a reply ended since the trip was completed and the
 caller spoke after it, its total said or not (the owner's ruling of 2026-11-18; a later turn that
 cut the reply counting though its transcript came before the reply's end); and it refuses with no
-caller turn after the reply, and the trip changed after the reply. A yes said over the closing
+caller turn after the reply, and the trip changed after the reply (a price changed under the same
+id too). A yes said over the closing
 question, which the library answers only once the reply has ended (D-116), so its transcript came
 first, holds when what had played as its speech began (`UserTurnEnded.reply_played`) begins the
 reply; never when nothing had played, over another reply, or is the turn the reply answers. A
@@ -15,7 +16,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from flight_voice.flight_data.mock import MockPlaces
+from flight_voice.flight_data.model import Money
 from flight_voice.lean.booking_check import BookingCheck, stated_at
+from flight_voice.lean.draft import LeanDraft
 from t2_agentic_voice.events import AgentSpeechEnded, Event, UserTurnEnded
 from t2_agentic_voice.languages import speak_number
 
@@ -125,7 +129,7 @@ def test_a_trip_changed_after_the_summary_is_refused() -> None:
     call = chosen_trip()
     call.said(_summary(call))
     call.heard("make it two of us")
-    call.choose(travelers=2)
+    call.find(destination="Jeddah", depart="2026-11-19", return_date="2026-11-21", travelers=2)
     assert not _holds(call)
     call.said(_summary(call))  # the new total said
     call.heard("yes")
@@ -187,3 +191,26 @@ def test_an_ended_call_is_dropped_and_the_calls_kept_are_capped() -> None:
     for n in range(3):
         capped.ledger(f"call-{n}")
     assert len(capped) == 2
+
+
+def test_a_price_changed_under_the_same_id_starts_the_check_again() -> None:
+    call = chosen_trip()
+    call.said(_summary(call))
+    call.heard("yes")
+    assert _holds(call)
+    picked = call.draft.chosen_outbound
+    assert picked is not None
+    dearer = picked.model_copy(update={"price": Money(amount=picked.price.amount + 10)})
+    moved = call.draft.choose("outbound", dearer)
+    assert not call.check.confirmed(CALL_ID, moved, 0)  # the same id, another price
+    call.trips.put(CALL_ID, moved)
+    call.said(_summary(call))
+    call.heard("yes")
+    assert _holds(call)
+
+
+def test_a_trip_with_no_destination_is_marked_and_never_holds() -> None:
+    check = BookingCheck()
+    empty = LeanDraft(origin=MockPlaces().home)
+    check.mark(CALL_ID, empty)
+    assert not check.confirmed(CALL_ID, empty, 0)

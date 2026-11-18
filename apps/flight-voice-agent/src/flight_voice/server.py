@@ -9,9 +9,10 @@ setting `FLIGHT_VOICE_AGENT` chooses, today's scripted talker (agent.py) by defa
 beside it (lean/agent.py, D-113, its booking check observing each call's `AgentSpeechEnded`,
 `UserTurnEnded` and `CallEnded`, and its calendar's day each `CallStarted`), over the mock
 airline, kept in memory and reset to its seed at each start, its modes and today the settings'
-(for the lean agent, today as the server starts, the day its calendar is written for, kept);
-each call's trip is kept in one `TripBook`,
-dropped as the call ends (`CallEnded`). Every join token the token route mints names the demo
+(for the lean agent, today as the server starts, the day its calendar is written for, kept; its
+flight source the mock behind the flight data port, lean/deps.py, closed as the app's lifespan
+ends, after the router's); each call's trip is kept in one trip book, dropped as the call ends
+(`CallEnded`). Every join token the token route mints names the demo
 traveler (traveler.py), whatever the request says. There is no echo: the mock airline needs no
 outside service, and the library's runtime needs the Groq key for its chat model and voices
 whatever the agent, so with none set it refuses to start, naming the key's setting. The app is
@@ -33,10 +34,11 @@ from __future__ import annotations
 
 import argparse
 import time
-from collections.abc import Awaitable, Callable, Mapping, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from datetime import date
 from pathlib import Path
-from typing import Final
+from typing import Any, Final, Protocol
 
 import uvicorn
 from fastapi import APIRouter, FastAPI
@@ -65,7 +67,7 @@ from flight_voice.airline.bookings import BookingStore
 from flight_voice.airline.system import Airline
 from flight_voice.lean.agent import OBSERVED, calendar_watch
 from flight_voice.lean.agent import declare as declare_lean
-from flight_voice.lean.booking_check import BookingCheck
+from flight_voice.lean.deps import mock_deps
 from flight_voice.routes import api_router
 from flight_voice.settings import AppSettings, Settings, load
 from flight_voice.traveler import demo_caller
@@ -98,7 +100,16 @@ FILES: Final = {
     "/mark.svg": ("mark.svg", "image/svg+xml"),
 }
 
+# An app's lifespan, as FastAPI keeps it on its router: the app in, a context out.
+Lifespan = Callable[[Any], AbstractAsyncContextManager[Any]]
+
 log = get_logger(__name__)
+
+
+class Closable(Protocol):
+    """What the app closes as its lifespan ends: the lean agent's flight source."""
+
+    async def aclose(self) -> None: ...
 
 
 def airline_of(app: AppSettings, today: Callable[[], date] | None = None) -> Airline:
@@ -124,10 +135,12 @@ def build_app(
     airline: Airline,
     clock: Callable[[], float] = time.monotonic,
     web: Path = WEB,
+    closing: Sequence[Closable] = (),
 ) -> FastAPI:
     """The app: the page's files from `web`, the token route minting with `minter` (its guard
     on `clock`) for the demo traveler, the page's routes over `airline`, and the library's
-    `router` under VOICE_PREFIX."""
+    `router` under VOICE_PREFIX; each of `closing` closed as the app's lifespan ends, after the
+    router's."""
     app = FastAPI(telemetry=TELEMETRY_OFF, openapi_url=None)
     app.add_middleware(
         CORSMiddleware,
@@ -141,6 +154,8 @@ def build_app(
     )
     app.include_router(api_router(airline, settings.app.names()))
     app.include_router(router, prefix=VOICE_PREFIX)
+    if closing:  # the router's lifespan, merged into the app's as included, runs inside
+        app.router.lifespan_context = _around(app.router.lifespan_context, closing)
     headers = page_headers(settings.app.website_origin)
     for path, (name, media_type) in FILES.items():
         endpoint = _file(web / name, media_type, headers)
@@ -156,21 +171,25 @@ def make_app(settings: Settings) -> FastAPI:
     (lean/agent.py)."""
     voice = settings.voice
     tokens = SignedJoinTokens.from_settings(voice.join, prefix=voice.prefix)
-    trips = TripBook()
     names = settings.app.names()
     observers: list[tuple[type[Event], Callable[[Event], Awaitable[None]]]] = []
+    closing: list[Closable] = []
     if settings.app.agent == "lean":
         day = settings.app.today_source()()  # the calendar's, kept as the airline's today
         airline = airline_of(settings.app, today=lambda: day)
-        check = BookingCheck()
-        agent = declare_lean(airline, trips, check, names)
-        observers += [(kind, check.observed) for kind in OBSERVED]
+        deps = mock_deps(airline, names, today=lambda: day)
+        agent = declare_lean(deps, names)
+        ended: Callable[[CallEnded], Awaitable[None]] = deps.trips.call_ended
+        observers += [(kind, deps.check.observed) for kind in OBSERVED]
         observers.append((CallStarted, calendar_watch(day)))
+        closing.append(deps.data)
     else:
         airline = airline_of(settings.app)
+        trips = TripBook()
         agent = declare(airline, trips, names)
+        ended = trips.call_ended
     runtime = VoiceRuntime(agent, settings=voice, identity=tokens)
-    runtime.on(CallEnded)(trips.call_ended)
+    runtime.on(CallEnded)(ended)
     for kind, observer in observers:
         runtime.on(kind)(observer)
     log.info(
@@ -179,7 +198,8 @@ def make_app(settings: Settings) -> FastAPI:
         search=settings.app.search_mode,
         agent=agent.name,
     )
-    return build_app(settings, router=runtime.router(), minter=tokens, airline=airline)
+    router = runtime.router()
+    return build_app(settings, router=router, minter=tokens, airline=airline, closing=closing)
 
 
 def server_config(app: FastAPI, voice: VoiceSettings, *, host: str, port: int) -> uvicorn.Config:
@@ -221,6 +241,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     log.info("server_ready", address=f"http://{args.host}:{args.port}/")
     uvicorn.Server(config).run()
     return 0
+
+
+def _around(inner: Lifespan, closing: Sequence[Closable]) -> Lifespan:
+    """A lifespan that runs `inner` (the app's, the routers' merged into it) and closes each of
+    `closing`, in order, however `inner` ended."""
+
+    @asynccontextmanager
+    async def lifespan(app: Any) -> AsyncIterator[Any]:
+        try:
+            async with inner(app) as state:
+                yield state
+        finally:
+            for resource in closing:
+                await resource.aclose()
+
+    return lifespan
 
 
 def _file(

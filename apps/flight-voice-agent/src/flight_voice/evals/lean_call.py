@@ -1,6 +1,7 @@
 """Run F's play of a scripted call with the lean agent (`poe eval-flights --agent lean`; D-113):
 call.py's `play`, the same seam and the same turns said, with the lean agent over the play's new
-airline and trip book, its booking check reading the call's own events (`TextCall.emitted`).
+airline (the mock behind the flight data port, its answers logged) and its own trip book, its
+booking check reading the call's own events (`TextCall.emitted`).
 
 **The timing words.** A turn said `when = "read_back"` or `"closing_question"` names a moment of
 the library's read-back, which the lean agent has none of. One said `"closing_question"` is said
@@ -23,7 +24,8 @@ measures: a clause fewer than half of whose characters, spaces aside, are letter
 digits, or one holding "[", "{" or "<"), counted over the talker's requests alone (those whose
 system prompt names `find_flights`); and, from the call's events, the booking: the caller turns
 until it (the turn whose reply booked, from 1), its scenario turn, and the seconds from the
-call's start to the `book_trip` result that booked.
+call's start to the `book_trip` result that booked; and every day the flight source answered
+in the call (`answered`), which the checks read their facts from.
 """
 
 from __future__ import annotations
@@ -44,10 +46,14 @@ from flight_voice.airline.system import Airline
 from flight_voice.evals import call
 from flight_voice.evals.call_wait import HELD_S, STEP_S
 from flight_voice.evals.scenarios import Scenario, Turn
+from flight_voice.flight_data.logged import Logged
+from flight_voice.flight_data.queries import DayOffers
 from flight_voice.lean.agent import declare
 from flight_voice.lean.book import BOOK_TRIP
 from flight_voice.lean.booking_check import BookingCheck, stated_at
+from flight_voice.lean.deps import LeanDeps, mock_deps
 from flight_voice.lean.find import FIND_FLIGHTS
+from flight_voice.persona import Names
 from flight_voice.trip import TripBook
 
 # The read-back's moments: in a lean play, a stop's over the reply; a turn's over its closing
@@ -62,12 +68,14 @@ MIN_SHARE: Final = 0.5
 @dataclass(frozen=True)
 class LeanRead(call.PlayRead):
     """What a lean play did (the module's docstring): `PlayRead`'s, and the replies the
-    plain-speech rule drops, and the booking's caller turns, scenario turn and seconds."""
+    plain-speech rule drops, the booking's caller turns, scenario turn and seconds, and the
+    days the flight source answered."""
 
     drops: int = 0
     booked_turns: int | None = None
     booked_index: int | None = None
     booked_s: float | None = None
+    answered: tuple[DayOffers, ...] = ()
 
 
 def not_speech(clause: str) -> bool:
@@ -179,11 +187,11 @@ async def say(
     return said
 
 
-def _total(text_call: TextCall, airline: Airline, trips: TripBook) -> int | None:
-    """The total of the trip the call has chosen so far, priced now; None before the call
-    started, or while a leg is missing."""
+def _total(text_call: TextCall, deps: LeanDeps) -> int | None:
+    """The total of the trip the call has chosen so far, as the caller heard it; None before
+    the call started, or while a leg is missing."""
     call_id = next((event.call_id for event in text_call.emitted), None)
-    return None if call_id is None else trips.get(call_id).total(airline.today())
+    return None if call_id is None else deps.trips.get(call_id).total()
 
 
 def booking_of(events: tuple[Event, ...], scenario: Scenario) -> dict[str, Any]:
@@ -230,16 +238,18 @@ async def play(
     are call.py's `play`'s (`clock`, `limit_s`, `whole_s`, `call`)."""
     check = BookingCheck()
     made: list[TextCall] = []
-    built: list[tuple[Airline, TripBook]] = []
+    built: list[LeanDeps] = []
     build = options.pop("call", TextCall)
 
     def agent(airline: Airline, trips: TripBook) -> VoiceAgent:
-        built.append((airline, trips))
-        return declare(airline, trips, check)
+        del trips  # the scripted agent's book: the lean agent keeps its own
+        deps = mock_deps(airline, Names(), check=check, logged=True)
+        built.append(deps)
+        return declare(deps)
 
     async def said(text_call: TextCall, turn: Turn, before: TextTurn | None) -> TextTurn:
-        airline, trips = built[-1]
-        return await say(text_call, turn, before, total=lambda: _total(text_call, airline, trips))
+        deps = built[-1]
+        return await say(text_call, turn, before, total=lambda: _total(text_call, deps))
 
     def held(*args: Any, **kwargs: Any) -> TextCall:
         text_call: TextCall = build(*args, **kwargs)
@@ -252,4 +262,6 @@ async def play(
     read = await call.play(lean, watched, settings, agent=agent, call=held, say=said, **options)
     found = booking_of(made[0].emitted, scenario) if made else {}
     kept = {f.name: getattr(read, f.name) for f in fields(read)}
-    return LeanRead(**kept, drops=watched.drops, **found)
+    logged = built[-1].data if built else None
+    answered = tuple(logged.answers) if isinstance(logged, Logged) else ()
+    return LeanRead(**kept, drops=watched.drops, answered=answered, **found)

@@ -26,15 +26,15 @@ from flight_voice.lean.agent import declare
 from flight_voice.lean.booking_check import BookingCheck
 from flight_voice.settings import for_the_app
 from flight_voice.traveler import demo_caller
-from flight_voice.trip import TripBook
 from t2_agentic_voice import VoiceSettings
 from t2_agentic_voice.domain.ports.chat_model import ChatRequest
 from t2_agentic_voice.evals import FunctionLLM, ScriptedLLM, ScriptStep, TextCall
 
+from tests.flight_voice.lean.lean_support import lean_deps
 from tests.flight_voice.scenario_dates import TODAY
 
 DAY = date(2026, 11, 19)
-FIRST = "T2-101-2026-11-19"
+FIRST = "T2101-2026-11-19"
 ASKED = "A one-way to Jeddah on Thursday the 19th, please."
 PICKED = "The first one."
 AGREED = "Yes, go ahead."
@@ -99,7 +99,7 @@ def _results(llm: FunctionLLM, tool: str) -> list[dict[str, Any]]:
 
 async def _called(llm: FunctionLLM) -> tuple[Airline, tuple[str, ...]]:
     airline, check = Airline(today=lambda: TODAY), BookingCheck()
-    agent = declare(airline, TripBook(), check)
+    agent = declare(lean_deps(airline, check=check))
     async with TextCall(
         agent, llm=llm, settings=_settings(), caller=demo_caller(), today=TODAY, language="en"
     ) as call:

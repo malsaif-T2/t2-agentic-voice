@@ -1,7 +1,8 @@
-"""What the lean agent's tests share: one call's four tools over one airline, one trip book and
-one booking check (`LeanCall`), each tool run through the library's own runner from the
-arguments as JSON (tests/flight_voice/tools/tool_support.py's `run`), and the call's events fed
-to the check as the runtime's observers would (`said`, `heard`, `ended`)."""
+"""What the lean agent's tests share: one call's tools over one set of sources (`LeanCall`: the
+mock airline behind the flight data port, `mock_deps`, or any `LeanDeps`), each tool run through
+the library's own runner from the arguments as JSON (tests/flight_voice/tools/tool_support.py's
+`run`), and the call's events fed to the check as the runtime's observers would (`said`,
+`heard`, `ended`)."""
 
 from __future__ import annotations
 
@@ -13,9 +14,11 @@ from flight_voice.airline.system import Airline
 from flight_voice.lean.book import book_trip
 from flight_voice.lean.booking_check import BookingCheck
 from flight_voice.lean.choose import choose_flights
+from flight_voice.lean.deps import LeanDeps, mock_deps
+from flight_voice.lean.draft import LeanBook, LeanDraft
 from flight_voice.lean.find import find_flights
+from flight_voice.persona import Names
 from flight_voice.said import Tag
-from flight_voice.trip import TripBook, TripDraft
 from t2_agentic_voice import Caller, ToolResult
 from t2_agentic_voice.events import AgentSpeechEnded, CallEnded, CallReport, UserTurnEnded
 
@@ -27,28 +30,37 @@ OUT: Final = "2026-11-19"
 BACK: Final = "2026-11-21"
 
 
-class LeanCall:
-    """One call's lean tools over one airline, trip book and booking check, in `tag`."""
+def lean_deps(flights: Airline | None = None, **more: Any) -> LeanDeps:
+    """The lean tools' sources over the mock airline (`flights`, or a new one on the pinned
+    day)."""
+    return mock_deps(flights if flights is not None else airline(), Names(), **more)
 
-    def __init__(self, tag: Tag = "en", flights: Airline | None = None) -> None:
+
+class LeanCall:
+    """One call's lean tools over one set of sources (the mock's unless `deps` is given), in
+    `tag`."""
+
+    def __init__(
+        self, tag: Tag = "en", flights: Airline | None = None, deps: LeanDeps | None = None
+    ) -> None:
         self.tag = tag
-        self.airline = flights if flights is not None else airline()
-        self.trips = TripBook()
-        self.check = BookingCheck()
+        self.deps = deps if deps is not None else lean_deps(flights)
+        self.airline = self.deps.airline
+        self.trips: LeanBook = self.deps.trips
+        self.check: BookingCheck = self.deps.check
         self._turn = 0
 
     def find(self, **arguments: Any) -> ToolResult:
-        return run(find_flights(self.airline, self.trips, self.check), self.tag, **arguments)
+        return run(find_flights(self.deps), self.tag, **arguments)
 
     def choose(self, **arguments: Any) -> ToolResult:
-        return run(choose_flights(self.airline, self.trips, self.check), self.tag, **arguments)
+        return run(choose_flights(self.deps), self.tag, **arguments)
 
     def book(self, caller: Caller = CALLER) -> ToolResult:
-        tool = book_trip(self.airline, self.trips, self.check)
-        return run(tool, self.tag, caller=caller)
+        return run(book_trip(self.deps), self.tag, caller=caller)
 
     @property
-    def draft(self) -> TripDraft:
+    def draft(self) -> LeanDraft:
         return self.trips.get(CALL_ID)
 
     def said(self, text: str, played: float = 1.0, turn: int | None = None) -> None:
@@ -78,7 +90,7 @@ class LeanCall:
 
     def total(self) -> int:
         """The trip's total, every leg chosen."""
-        total = self.draft.total(self.airline.today())
+        total = self.draft.total()
         assert total is not None
         return total
 

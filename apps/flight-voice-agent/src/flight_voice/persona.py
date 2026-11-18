@@ -48,20 +48,28 @@ GREETINGS: Final[dict[Tag, Template]] = {
     ),
 }
 # The progress lines the tools name (lean/find.py, tools/search.py, cabins.py: `searching`;
-# calendar.py: `fares`), each in a few short wordings, one said each time, never the one the
+# calendar.py: `fares`; lean/find.py on the real network, whose search takes longer:
+# `searching_live`), each in a few short wordings, one said each time, never the one the
 # call said last (plan 010's 1.15), so the answer is not held up behind a long line; drafts in
 # Saad's voice for the owner's pick, the shortest first (none holds «لحظة», a wait word).
 PROGRESS: Final[dict[Tag, dict[str, tuple[str, ...]]]] = {
     # ashoof lak: I'll look for you; adawwir lak al-Heen: I'm searching for you now (Najdi
     # «الحين»); khallni ashoof lak: let me look for you; ashoof lak al-as'aar: I'll look at the
-    # prices for you; ashayyik 'ala al-as'aar: I'm checking the prices (Saudi «أشيّك», check).
+    # prices for you; ashayyik 'ala al-as'aar: I'm checking the prices (Saudi «أشيّك», check);
+    # khallni ashoof lak ar-riHlaat, thawaani bas: let me look at the flights, just seconds;
+    # ashoof lak kull al-khuToot al-Heen: I'm looking at every airline for you now.
     "ar-SA": {
         "searching": ("أشوف لك.", "أدوّر لك الحين.", "خلني أشوف لك."),
         "fares": ("أشوف لك الأسعار.", "أشيّك على الأسعار."),
+        "searching_live": ("خلني أشوف لك الرحلات، ثواني بس.", "أشوف لك كل الخطوط الحين."),
     },
     "en": {
         "searching": ("Checking now.", "Let me look.", "Let me check.", "Looking that up."),
         "fares": ("Checking the fares.", "Looking at fares.", "Let me check prices."),
+        "searching_live": (
+            "Let me check the airlines, it takes a few seconds.",
+            "Checking every airline now, a few seconds.",
+        ),
     },
 }
 # How long after the caller stopped speaking a search's progress line is due: at once, as the

@@ -9,11 +9,13 @@ as written. The scripted mode's checks are unchanged."""
 
 from __future__ import annotations
 
+import asyncio
 import tomllib
 from datetime import date
 from typing import Any, Literal
 
 from flight_voice.airline.bookings import Booking, Leg
+from flight_voice.airline.system import Airline
 from flight_voice.evals.call import PlayRead, TurnRead
 from flight_voice.evals.checks import booking_checks
 from flight_voice.evals.lean_call import LeanRead
@@ -21,8 +23,14 @@ from flight_voice.evals.lean_checks import lean_booking_checks, lean_turn_checks
 from flight_voice.evals.lean_repeats import NEAR_REPEAT_OVERLAP, Facts, Said, facts, lean_repeat
 from flight_voice.evals.scenarios import CALLS, FlightOn, Scenario
 from flight_voice.evals.score import record_of
+from flight_voice.flight_data.mock import MockFlightData, MockPlaces
+from flight_voice.flight_data.queries import OfferQuery
+from flight_voice.lean.deps import carrier_of
+from flight_voice.persona import Names
 from t2_agentic_voice.evals import HeardClause, find_repeat
 from t2_agentic_voice.testing import repeats
+
+from tests.flight_voice.scenario_dates import TODAY
 
 F30 = Scenario.model_validate(
     tomllib.loads((CALLS / "f30_dearest_saudi.toml").read_text(encoding="utf-8"))
@@ -251,3 +259,19 @@ def test_a_lean_record_keeps_the_reply_as_written_and_a_scripted_one_does_not() 
     (lean,) = record_of(made, 1, read, 1.0, agent="lean").turns
     (scripted,) = record_of(made, 1, read, 1.0).turns
     assert lean.written == F29_WRITTEN and scripted.written == ()
+
+
+def test_the_tie_is_read_from_what_the_play_was_answered() -> None:
+    places = MockPlaces()
+    jeddah = places.get("JED")
+    assert jeddah is not None
+    source = MockFlightData(Airline(today=lambda: TODAY), carrier_of(Names()))
+    back = OfferQuery(origin=jeddah, destination=places.home, day=BACK)
+    answered = (asyncio.run(source.day(back)),)
+    assert tied(FlightOn(number=102, day=BACK), "economy", answered) == {102, 106}
+    # Another party's answer is not this one's: the leg's flight alone.
+    assert tied(FlightOn(number=102, day=BACK), "economy", answered, travelers=2) == {102}
+    assert tied(FlightOn(number=102, day=OUT), "economy", answered) == {102}
+    p1 = _booked(105, 106)
+    read = LeanRead(turns=(), violations=(), made=p1.made, answered=answered)
+    assert list(lean_booking_checks(F30, read)) == []
