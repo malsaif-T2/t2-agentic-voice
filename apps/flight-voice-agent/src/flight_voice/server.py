@@ -101,6 +101,8 @@ FILES: Final = {
     "/texts.js": ("texts.js", _JS),
     "/mark.svg": ("mark.svg", "image/svg+xml"),
 }
+# The page's files are asked again each load (an ETag answers 304 when unchanged).
+REVALIDATE: Final = {"Cache-Control": "no-cache"}
 
 # An app's lifespan, as FastAPI keeps it on its router: the app in, a context out.
 Lifespan = Callable[[Any], AbstractAsyncContextManager[Any]]
@@ -265,10 +267,11 @@ def _around(inner: Lifespan, closing: Sequence[Closable]) -> Lifespan:
 def _file(
     path: Path, media_type: str, headers: Mapping[str, str]
 ) -> Callable[[], Awaitable[FileResponse]]:
-    """An endpoint that answers `path` with its headers."""
+    """An endpoint that answers `path` with its headers, revalidated on every load, so a page
+    updated on the server never runs beside a cached older module of itself."""
 
     async def serve() -> FileResponse:
-        return FileResponse(path, media_type=media_type, headers=dict(headers))
+        return FileResponse(path, media_type=media_type, headers=dict(headers) | REVALIDATE)
 
     return serve
 

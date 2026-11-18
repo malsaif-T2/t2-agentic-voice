@@ -18,10 +18,10 @@
 // text into a call. Every text, the captions, cards and notices included, is set with textContent.
 
 import { VoiceClient } from "./voice/client/1/t2v-client.js";
-import { Cards } from "./cards.js";
-import { Booking } from "./bookings.js";
-import { Orb } from "./orb.js";
-import { fill, wordsOf } from "./texts.js";
+import { Cards } from "./cards.js?v=2026-11-19";
+import { Booking } from "./bookings.js?v=2026-11-19";
+import { Orb } from "./orb.js?v=2026-11-19";
+import { fill, wordsOf } from "./texts.js?v=2026-11-19";
 
 // The version the join token carries: the server's privacy.consent_version, as Ole5's widget
 // sends it, since both servers read the same .env.

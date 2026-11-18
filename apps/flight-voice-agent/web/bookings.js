@@ -8,8 +8,8 @@
 // line that books (the profile's `bookings`, `Booking.shown`): on one that books nothing none of
 // it is shown, and no route of it is ever asked.
 
-import { linksOf, waitsForYes } from "./cards.js";
-import { fill } from "./texts.js";
+import { linksOf, waitsForYes } from "./cards.js?v=2026-11-19";
+import { fill } from "./texts.js?v=2026-11-19";
 
 export const EVERY_MS = 10_000;
 

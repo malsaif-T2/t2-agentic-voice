@@ -48,7 +48,11 @@ def test_every_page_file_is_served_with_the_page_headers(tmp_path: Path) -> None
         assert answer.text == name
         assert answer.headers["content-type"] == media_type
         for header, value in page_headers(None).items():
-            assert answer.headers[header] == value
+            if header.lower() != "cache-control":
+                assert answer.headers[header] == value
+        # Asked again each load: a page updated on the server never runs a cached older module
+        # (2026-11-18: the browser kept an old bookings.js beside the new app.js).
+        assert answer.headers["cache-control"] == "no-cache", path
     assert "frame-ancestors 'none'" in client.get("/").headers["content-security-policy"]
 
 
