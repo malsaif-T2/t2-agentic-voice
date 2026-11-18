@@ -19,7 +19,8 @@ voice/session/call.py.
   line** below); an action's read-back is said, and the call is confirming (`ReadBackRequested`,
   read_back.py); a clause the guard blocked is never said (`ClauseBlocked`): the reply's failure
   line is said in its place, once a reply (the preset's `error` notice when none of the reply was
-  said, else `cut_off` after a beat: D-077), and `GuardBlocked` goes out (the talker keeps its
+  said, else `cut_off` after a beat: D-077), but for a claim whose request the talker sends once
+  more (`sent_again`, `guard.retry_claims`), and `GuardBlocked` goes out (the talker keeps its
   developer note: the history holds only what the caller heard); each model request is
   counted in the call's usage as it goes and its tokens as it ends (`ModelRequested`,
   `ModelReplied`; an early start's or a kept reply's, dropped unplayed, once it is let go), the

@@ -304,7 +304,26 @@ reply to an MSA caller gets a language section, and a line after a tool's result
 Modern Standard Arabic with no dialect word; any other `ar-SA` reply's section asks for the
 Saudi dialect unless the caller speaks MSA, as an `ar` reply's does whatever the words. A turn
 the drop rule judged the agent's own voice is not the caller's, and says nothing of their
-register. The presets' own texts (the
+register.
+
+**Your own Saudi forms.** `T2V_WORDS__DIALECT` adds forms to that list, as a JSON list of words
+or phrases (`["ودي", "الجاي", "طويل العمر"]`); a phrase counts when its words come in a row, and
+each word also with «و» written onto it. None by default, so the library's reading stays as it
+was until an app adds its own.
+
+**Saudi first.** A Najdi caller does not say a form of the list in every turn: «السلام عليكم»،
+«إي نعم», a city or a date hold none, so by default such a call is answered in MSA. With
+`T2V_WORDS__SAUDI_FIRST=true`, a turn with no Saudi form reads MSA only when it plainly speaks
+MSA, by a short list of forms only MSA says («أريد»، «أودّ»، «هل»، «ماذا»، «لماذا»، «أين»، «الآن»،
+«سوف»، «لن»، «ليس»، «يوجد»، and a caller's «أرغب»، «غدًا»، «القادم»، «لدي»، «حسنًا»، «الذي»,
+`MSA_WORDS` in `agent/language.py`, each also with «و» written onto it, but «ولدي», my son);
+a turn with neither is no evidence. The call is then Saudi until an MSA turn is heard, MSA from then on until
+the caller says a Saudi form, and Saudi for good once they do, as before. Off by default (GP-18):
+an app that answers Saudi callers first turns it on (the flight app does, with its own forms:
+`apps/flight-voice-agent/src/flight_voice/caller_register.py`). The `languages` facade's
+`register_of(words, dialect=..., saudi_first=...)` reads one turn so.
+
+The presets' own texts (the
 notices, the echo's frame) are in the register of their tag: Saudi for `ar-SA`, MSA for `ar`.
 Write your greetings and progress lines in the register of their tag too; Ole5's instructions
 ask for the Saudi spoken register, and MSA for a caller who speaks it. An action's lines follow

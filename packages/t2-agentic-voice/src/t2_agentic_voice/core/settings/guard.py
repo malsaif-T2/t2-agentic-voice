@@ -4,8 +4,9 @@ claim rule's default list (rule A; plan 007); whether a script none of the agent
 writes is taken out of what the talker writes before the guard reads it (agent/stray_script.py);
 how many questions one reply may ask the caller (agent/question_limit.py, D-085), and whether a
 stop there drops its request's tool calls; whether stage notes and tags count as the
-model's reasoning (agent/leaked_reasoning.py, D-089); and whether only plain speech is said, a
-request whose text is not speech tried once more (agent/plain_speech.py, D-111). Every clause
+model's reasoning (agent/leaked_reasoning.py, D-089); whether only plain speech is said, a
+request whose text is not speech tried once more (agent/plain_speech.py, D-111); and whether a
+request whose claim rule A blocked is sent once more (agent/clause_gate.py). Every clause
 the talker writes is checked before text-to-speech, and so is a card's text; the runtime's own
 templates are not.
 """
@@ -60,7 +61,8 @@ class GuardSettings(Group):
         description=(
             "Phrases added to each language's default list of what claims any action, as a "
             'JSON object from a language\'s code to a list: {"ar": ["..."]}. A value replaces '
-            "the map."
+            "the map. An agent that declares no action, only tools that declare claims, reads "
+            "these alone, without the defaults."
         ),
     )
     remove_stray_script: bool = Field(
@@ -116,6 +118,18 @@ class GuardSettings(Group):
             "more while the turn has a request left; and zero-width spaces, word joiners, byte "
             "order marks, asterisks and backticks are taken out of every clause. Off: "
             "said as written."
+        ),
+    )
+    retry_claims: bool = Field(
+        default=False,
+        description=(
+            "Whether a reply whose clause the claim rule blocked (it said an action or a tool's "
+            "write was done, and no result of the call says so) asks the model once more, once "
+            "a turn: neither the clause nor the error notice in its place is said, nor anything "
+            "of its request after it, none of that request's tools runs, and the request is "
+            "sent again with what it said before the clause and a note that the claim was held "
+            "back, one request past llm.max_requests_per_turn. A claim blocked again is dropped "
+            "as on_block says. Off: as on_block says, the error notice said in its place."
         ),
     )
 

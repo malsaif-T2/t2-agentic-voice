@@ -4,7 +4,9 @@ Jeddah found, its first flight chosen, said with its total and booked on the cal
 booking check reading the call's own events (`TextCall.emitted`); a `book_trip` called before
 the summary books nothing; and run F's lean play (evals/lean_call.py) of the same call, its
 closing question's moment said over the reply's question, scored by its outcomes with every kept
-check holding, its measures read, and a booking claimed before the store held one counted."""
+check holding, its measures read, and a booking claimed before the store held one counted:
+one the output guard does not hold back (its claims are the booking's own: test_lean_claims.py),
+which run F's check reads wider."""
 
 from __future__ import annotations
 
@@ -54,7 +56,8 @@ def _last_user(request: ChatRequest) -> tuple[str, list[str]]:
 
 def talker(*, early: bool = False, claim: bool = False) -> FunctionLLM:
     """A fake model that finds, picks, says the trip and books on the yes; `early` calls
-    book_trip before the summary, and `claim` says it is booked before it is."""
+    book_trip before the summary, and `claim` says it is booked before it is, in words the
+    guard lets pass and run F's check does not ("is all set")."""
 
     def answer(request: ChatRequest) -> Sequence[ScriptStep]:
         words, results = _last_user(request)
@@ -63,7 +66,7 @@ def talker(*, early: bool = False, claim: bool = False) -> FunctionLLM:
                 return ScriptedLLM.call_tool(
                     "find_flights", destination="Jeddah", depart="2026-11-19"
                 )
-            return ScriptedLLM.reply("All set, you're booked. " + LISTED if claim else LISTED)
+            return ScriptedLLM.reply("Your trip is all set. " + LISTED if claim else LISTED)
         if PICKED in words:
             if not results:
                 return ScriptedLLM.call_tool("choose_flights", outbound_id=FIRST)

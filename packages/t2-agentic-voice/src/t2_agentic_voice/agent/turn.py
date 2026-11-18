@@ -20,8 +20,8 @@ turn and the call as it was heard to the events the session plays, within the re
   it. What is left goes through the clause splitter as it
   streams (`ClauseStream`), any note of the history's it copied taken out first
   (agent/context.py's `Unnoted`), and each whole clause, once the output guard passed it
-  (agent/speech_guard.py: rule A on claims, for an agent with actions, then rule B against the
-  evidence seen this call: its tools' results, the call's record, the caller's heard words),
+  (agent/speech_guard.py: rule A on claims, for an agent with actions or tools that claim, then
+  rule B against the evidence seen this call: its tools' results, its record, the caller's words),
   is yielded at once (agent/clause_gate.py). A blocked one is `ClauseBlocked`, with its rule's
   reason, and by `guard.on_block` the rest of the reply goes with it (`drop_rest`: no more
   clause, request or tool) or only it; the next turn's history holds a developer note.
@@ -67,7 +67,10 @@ turn and the call as it was heard to the events the session plays, within the re
   that said nothing so is sent once more, the same messages, a new first line and nothing of
   its text kept (what the leak check held of it included), while the turn has a request left
   and neither a leak nor the question limit stopped the reply; after that, or with none left,
-  the reply ends, and the session says the `error` notice when none of it was said.
+  the reply ends, and the session says the `error` notice when none of it was said. Under
+  `guard.retry_claims`, the turn's first claim rule A blocks ends its request so too, with no
+  notice, and the request is sent once more, one past the limit, with what it said and a note
+  (agent/clause_gate.py's `held_back`).
 - **Time** is the call's clock's alone: a tool's `ms`, a request's
   `first_token_s` and the prompt's date (the runner times each tool's timeout on it too).
 - **Warmth.** Each request's `ModelReplied` says whether it went out on a kept-alive connection
@@ -93,7 +96,6 @@ from t2_agentic_voice.agent.context import (
 )
 from t2_agentic_voice.agent.events import (
     LanguageMoved,
-    ModelReplied,
     ModelRequested,
     ReadBackRequested,
     ReplyDone,
@@ -104,6 +106,7 @@ from t2_agentic_voice.agent.language import call_register, reply_language, wordi
 from t2_agentic_voice.agent.leaked_reasoning import LeakedReasoning
 from t2_agentic_voice.agent.prompt import compose_prompt, tool_definitions
 from t2_agentic_voice.agent.question_limit import REASON
+from t2_agentic_voice.agent.speech_guard import claimants
 from t2_agentic_voice.agent.stray_script import StrayScript
 from t2_agentic_voice.agent.tool_calls import Memory, ToolCalls, exchange
 from t2_agentic_voice.agent.turn_answer import Answer, answer_events
@@ -150,14 +153,14 @@ class Turn:
         )
         heard = [t.words for t in turn.conversation.turns if t.fate != "dropped" and t.words]
         self.heard = (*heard, turn.words)
-        self.register = call_register(self.heard)  # the call's so far, this turn's among it
+        self.register = call_register(self.heard, settings.words)  # the call's, this turn's too
         self.scripts = StrayScript.of(agent, settings)
         self.gate = ClauseGate(
             settings=settings.guard,
             year=clock.wall().astimezone(agent.zone).year,
             language=self.language,
             turn_id=turn.turn_id,
-            actions=() if actions is None else actions.actions,
+            claimants=claimants(() if actions is None else actions.actions, runner.tools),
             record=record,
             memory=memory,
             heard=self.heard,
@@ -201,8 +204,9 @@ class Turn:
         requests = tools_run = 0
         warm: bool | None = None  # whether the turn's first request went out on a warm connection
         llm, retried = self.settings.llm, False
-        for index in range(llm.max_requests_per_turn):
-            last = index == llm.max_requests_per_turn - 1
+        most = llm.max_requests_per_turn  # one more for a claim sent again (guard.retry_claims)
+        while requests < most:
+            last = requests == most - 1
             tools = () if last else tool_definitions(self.runner, self.actions)
             request = request_of(
                 llm,
@@ -222,16 +226,12 @@ class Turn:
                     yield event
             finally:
                 await asked.aclose()
-            stray, scripts = self.scripts.take()
-            yield ModelReplied(
-                model=request.model,
-                usage=answer.usage,
-                first_token_s=answer.first_token_s,
-                warm_connection=answer.warm,
-                stray_characters=stray,
-                stray_scripts=scripts,
-            )
+            yield answer.replied(request.model, *self.scripts.take())
             warm = answer.warm if requests == 1 else warm
+            if self.gate.held:  # a claim held back: sent once more, one past the limit
+                messages += self.gate.held_back()
+                most += 1
+                continue
             if self.gate.not_speech:  # D-111: nothing more of it; said nothing, sent once more
                 stopped = self.leak.found or self.gate.questions.stopped  # no request follows
                 retry = not (retried or self.gate.said_now or last or stopped)

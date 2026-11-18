@@ -5,7 +5,8 @@ booked with its reference; and, writing nothing, it answers a trip not complete,
 confirmed (its one fixed `say`), a booking already made (told whole as it was booked, though the
 trip changed since, but for its reference), a refusal of
 the store, and a write that did not answer (looked up by its request ID when the store can
-find one, `unknown` when it cannot, and never written again in that call)."""
+find one, `unknown` when it cannot, and never written again in that call); only a booking
+made, or one made before, is `done`, which backs the booking's claims it declares."""
 
 from __future__ import annotations
 
@@ -13,7 +14,7 @@ import json
 
 import pytest
 from flight_voice.lean import book
-from flight_voice.lean.book import NOT_CONFIRMED
+from flight_voice.lean.book import LEAN_CLAIMS, NOT_CONFIRMED
 from flight_voice.tools.cards import TRIP_EN
 
 from tests.flight_voice.lean.lean_support import OUT, LeanCall, chosen_trip, ids
@@ -131,3 +132,13 @@ def chosen_trip_on(call: LeanCall) -> LeanCall:
     out = call.choose(outbound_id=ids(listed)[0])
     call.choose(return_id=ids(out, "return")[0])
     return call
+
+
+def test_only_a_booking_made_backs_the_bookings_claims() -> None:
+    """The guard says «تم حجز رحلتك» only after a result marked done (test_lean_claims.py)."""
+    call = chosen_trip()
+    assert book.book_trip(call.airline, call.trips, call.check).claims is LEAN_CLAIMS
+    assert not call.book().done  # not confirmed
+    _agreed(call)
+    assert call.book().done and call.book().done  # booked, then already booked
+    assert not LeanCall().book().done  # incomplete

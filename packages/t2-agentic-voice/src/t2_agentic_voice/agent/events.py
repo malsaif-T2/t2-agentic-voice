@@ -81,12 +81,14 @@ class ProgressDue(_Event):
 class ClauseBlocked(_Event):
     """A clause the output guard blocked (domain/guard.py, domain/claims.py), never spoken: its
     `text` and `language`, why (`reason`), and the ID-shaped tokens it held with no evidence, for
-    the developer note and the trace, never for the caller."""
+    the developer note and the trace, never for the caller; `sent_again` when its request is
+    sent once more (`guard.retry_claims`), so no notice is said in its place."""
 
     text: str
     language: LanguageTag
     unsupported: tuple[str, ...] = ()
     reason: GuardReason = "unsupported_id"
+    sent_again: bool = False
 
 
 class ReadBackRequested(_Event):

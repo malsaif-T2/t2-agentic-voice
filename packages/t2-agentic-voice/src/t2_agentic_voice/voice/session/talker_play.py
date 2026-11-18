@@ -162,9 +162,10 @@ class TalkPlayer:
                 if progress is not None:
                     line = self._wording(key, wordings(progress))
                     await reply.add_phrase(line, language=tag, at=at, progress=True)
-            case ClauseBlocked(language=tag, reason=reason):
+            case ClauseBlocked(language=tag, reason=reason, sent_again=again):
                 emit(GuardBlocked(call_id=call_id, turn_id=turn_id, at=wall, reason=reason))
-                await self._told(talk, reply, tag, at)
+                if not again:  # its request sent once more answers in its place
+                    await self._told(talk, reply, tag, at)
             case LanguageMoved(language=tag):
                 moved = tool_moved(self._setup, tag, turn_id)
                 talk.language = tag if moved is not None else talk.language

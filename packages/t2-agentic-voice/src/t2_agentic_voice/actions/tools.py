@@ -19,11 +19,14 @@ to have its result discarded (the design's 3.2).
   nothing said in the call changes (invariant 3); the call's id; the reply language; the call's
   `record` of completed actions as plain values; and `past_actions`, what this caller has had
   done before (the design's 6.4; plan 007's Q4). A tool with `reports_on` may back up a claim
-  about those actions (the design's 8.2, rule A).
+  about those actions (the design's 8.2, rule A). A tool that writes (an app's own, outside
+  "only actions act", D-113) may declare `claims`, the phrases that say its write was done:
+  rule A says one only once a result of it in the call was `done`, as an action's on its record.
 - **What comes back:** a `ToolResult`, the data the talker reads (framed as data, never as
   instructions: invariant 4), a card for the screen, the evidence the output guard's ID rule
-  reads beside the data (domain/guard.py), and whether the call succeeded (`ok`). A function may
-  return one itself; the runner makes one of any other return, its value as JSON.
+  reads beside the data (domain/guard.py), whether the call succeeded (`ok`), and whether it
+  did what its claims say (`done`). A function may return one itself; the runner makes one of
+  any other return, its value as JSON.
 - **Failures** (the design's 6.4): `ToolError(message)` (core/errors.py) is an expected failure
   whose message the talker gets; any other exception, or the timeout, gives the talker a generic
   "the tool failed" (the runner, actions/runner.py): an exception logged at ERROR by its type
@@ -45,6 +48,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    InstanceOf,
     JsonValue,
     PrivateAttr,
     ValidationError,
@@ -59,6 +63,7 @@ from t2_agentic_voice.core.events import CallId
 from t2_agentic_voice.core.identity import Caller
 from t2_agentic_voice.core.settings.base import FROZEN, PLAIN
 from t2_agentic_voice.core.settings.tts import LanguageTag
+from t2_agentic_voice.domain.action_declaration import Claims
 from t2_agentic_voice.domain.cards import Card
 from t2_agentic_voice.domain.ports.chat_model import TOOL_NAME, ToolSchema
 from t2_agentic_voice.domain.talker_declaration import ProgressKey
@@ -86,6 +91,7 @@ _FIXES = {
     "on_interrupt": 'give on_interrupt "cancel" or "finish"',
     "bind": 'bind each parameter with from_caller("subject") or another field of the caller',
     "reports_on": 'name the actions its results report on, as reports_on=["open_request"]',
+    "claims": "give claims a Claims of the phrases, by language, that say its write was done",
 }
 
 
@@ -158,15 +164,17 @@ class ToolResult(_Frozen):
     """What a tool call gave: `data`, which the talker reads as data, never as instructions;
     a `card` to show the caller, if any; `evidence`, the texts beside `data` whose ID-shaped
     tokens the output guard may let the talker say (a passage's whole text, a record's number);
-    and `ok`, False when the call failed (a `ToolError`, any other failure, the timeout, an
+    `ok`, False when the call failed (a `ToolError`, any other failure, the timeout, an
     argument the talker got wrong), its `data` then saying why, and `failure` naming what failed
-    for the call's trace (D-078): a word or two the runner sets, never a value."""
+    for the call's trace (D-078): a word or two the runner sets, never a value; `done`, True when
+    it did what its tool's `claims` say (its write made in the call), its texts their evidence."""
 
     data: JsonValue = None
     card: Card | None = None
     evidence: tuple[str, ...] = ()
     ok: bool = True
     failure: str | None = None
+    done: bool = False
 
     def texts(self) -> tuple[str, ...]:
         """The texts the output guard reads as this result's evidence: its data as JSON, then
@@ -190,6 +198,7 @@ class Tool(_Frozen):
         default_factory=dict, validate_default=True
     )
     reports_on: tuple[Annotated[str, Field(pattern=TOOL_NAME)], ...] = ()
+    claims: InstanceOf[Claims] | None = None
 
     @field_validator("description")
     @classmethod
@@ -217,6 +226,7 @@ class Tool(_Frozen):
         on_interrupt: OnInterrupt = "cancel",
         bind: Mapping[str, FromCaller] | None = None,
         reports_on: Sequence[str] = (),
+        claims: Claims | None = None,
     ) -> Tool:
         """`function`, async or sync, as a tool named `name` (the function's own by default):
         its parameters' model read from its signature, a `CallContext` parameter and those
@@ -235,6 +245,7 @@ class Tool(_Frozen):
             "on_interrupt": on_interrupt,
             "bind": bound,
             "reports_on": reports_on,
+            "claims": claims,
         }
         try:
             return cls.model_validate(values)
@@ -267,6 +278,7 @@ def tool(
     on_interrupt: OnInterrupt = "cancel",
     bind: Mapping[str, FromCaller] | None = None,
     reports_on: Sequence[str] = (),
+    claims: Claims | None = None,
 ) -> Callable[[Callable[..., Any]], Tool]:
     """The decorator that makes an async or a sync function a `Tool` (`Tool.from_function`'s
     arguments): `@tool(description="...", timeout_s=3)`."""
@@ -282,6 +294,7 @@ def tool(
             on_interrupt=on_interrupt,
             bind=bind,
             reports_on=reports_on,
+            claims=claims,
         )
 
     return made

@@ -60,7 +60,10 @@ Both go in the agent's `tools`, each name once.
   a screen, and `evidence` for the output guard). A `ToolError(message)` is a failure the talker
   reads; anything else, and the timeout, gives the talker only "the tool failed".
 - **`progress=`** names a line said when the wait runs long; **`reports_on=`** makes its result
-  evidence for claims about an action ("Lookups: a status tool", below).
+  evidence for claims about an action ("Lookups: a status tool", below); **`claims=`**, for a
+  tool of yours that writes outside an action, names the phrases that say its write was done,
+  said only once a result of it marked `ToolResult(done=True)` came in the call
+  ([safety.md](safety.md), "A tool that writes").
 
 ### Wrapping a function you already have
 

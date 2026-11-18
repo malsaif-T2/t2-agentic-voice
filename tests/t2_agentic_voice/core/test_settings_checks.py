@@ -333,7 +333,8 @@ def test_the_turn_tts_and_limit_defaults_are_the_plans() -> None:
 def test_the_interruption_and_word_defaults_are_plan_005s() -> None:
     """The two-step interruption, by the owner's ruling of 2026-11-06 (plan 005), the
     prototype's duck level, run W3's window and the starting rule's bounds, the short output's
-    as the rule's one revision set it (1.2 s); no word added; the filter for text from silence
+    as the rule's one revision set it (1.2 s); no word added, nor a Saudi form, and the caller's
+    register not read Saudi first (GP-18); the filter for text from silence
     on, as the registered rule F and its one revision set it (0.55 and the caption list); a yes
     over a read-back's summary counting for nothing, as before D-108's setting, and a yes over a
     reply's closing question let go, as before D-116's (GP-18)."""
@@ -350,7 +351,8 @@ def test_the_interruption_and_word_defaults_are_plan_005s() -> None:
         "answer_yes_over_question": False,
     }
     kinds = ("stop", "wait", "repeat", "backchannel", "no", "yes", "send")
-    assert settings.words.model_dump() == {kind: {} for kind in kinds} | {"vocabulary": ()}
+    unlisted = {"vocabulary": (), "dialect": (), "saudi_first": False}
+    assert settings.words.model_dump() == {kind: {} for kind in kinds} | unlisted
     assert (settings.stt.no_speech_max, settings.stt.caption_filter) == (0.55, True)
     words = VoiceSettings.model_validate({"env": "test", "words": {"stop": {"en": ["x", "y"]}}})
     assert words.words.stop == {"en": ("x", "y")} and words.words.no == {}

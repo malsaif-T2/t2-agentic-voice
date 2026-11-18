@@ -172,12 +172,15 @@ def full_note(listed: Iterable[LegList], travelers: int, cabin: Cabin) -> str | 
     return f"A flight with seats_ok false has no seats for {travelers} in {cabin}."
 
 
-def lean_result(answer: BaseModel | dict[str, JsonValue], card: Card | None = None) -> ToolResult:
+def lean_result(
+    answer: BaseModel | dict[str, JsonValue], card: Card | None = None, *, done: bool = False
+) -> ToolResult:
     """`answer` as the model reads it, its `None` fields left out and its fields by their alias
-    ("return"), with its card, whose texts are the result's evidence."""
+    ("return"), with its card, whose texts are the result's evidence; `done` for a booking made
+    (book.py), which backs the booking's claims."""
     data: dict[str, JsonValue] = (
         answer.model_dump(mode="json", exclude_none=True, by_alias=True)
         if isinstance(answer, BaseModel)
         else {k: v for k, v in answer.items() if v is not None}
     )
-    return ToolResult(data=data, card=card, evidence=card.texts() if card else ())
+    return ToolResult(data=data, card=card, evidence=card.texts() if card else (), done=done)

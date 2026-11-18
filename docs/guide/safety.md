@@ -381,7 +381,8 @@ without actions; [concepts.md](concepts.md) has it in full ("The output guard's 
 
 ### The claim rule
 
-It runs only for an agent that declares at least one action.
+It runs only for an agent that declares at least one action, or a tool that declares `claims`
+(below, "A tool that writes").
 
 **A claim phrase** is one of these, in any of your languages whatever the reply's (a model may
 write a claim in its other language), matched as whole words on the normalized clause, and also
@@ -416,6 +417,20 @@ after waw or feh written onto its first word («وتم»):
 A passage, the caller's words, or any other tool's result is no evidence of a claim. A clause
 with a default phrase passes when some action backs it.
 
+**A tool that writes.** A tool of your own that writes outside an action (the flight app's lean
+agent books with `book_trip`, D-113) can still be held to the rule: give it
+`claims=Claims({...})`, the phrases that say its write was done, and return
+`ToolResult(..., done=True)` from a call that made it (or found it made before in the call). A
+clause holding one of those phrases then passes only once a result of that tool marked `done`
+came in this call, which backs it as an action's record does, its numbers read against that
+result's data and evidence; a result not `done`, or one that failed, backs nothing. A tool
+with no `claims` is no evidence, and turns no rule on. An agent that declares no action, only
+such tools, is held to their phrases and those `T2V_GUARD__CLAIMS` adds, never the default
+ones: the defaults are an action's, and their "has been booked" sits in an honest "nothing
+has been booked yet", whose English negation the rule does not read. So list the ways your
+model words the claim («تم حجزها», «حجزتها», "your flight's booked"), each one that cannot sit
+in an English negative.
+
 **Its numbers.** Every ID-shaped number in a claiming clause must be in the claimed action's own
 evidence: a number a passage holds, or the caller said, is no proof that the action made it. A
 clause with no claim phrase goes to the ID rule.
@@ -435,6 +450,13 @@ rules, to say why or ask for what is missing.
   `unsupported_id` (the ID rule).
 - The talker's next turn holds a note that a sentence was held back, never the sentence; for a
   claim, that it said an action was done that no record or status result holds.
+- **A claim sent again** (`T2V_GUARD__RETRY_CLAIMS=true`, off by default): the turn's first
+  claim the rule blocks is not answered with the notice. Nothing more of its model request is
+  said, none of its tools runs, and the request is sent once more, with what it said before the
+  claim as the model's own words and a note that the claim was held back (agent/clause_gate.py's
+  `CLAIM_HELD`), one request past `llm.max_requests_per_turn`. So a model that said "booked"
+  after its booking tool refused gets to say what the tool asked instead. A second blocked claim
+  in the turn goes as above.
 - In a test, `turn.expect.blocked()` checks that a clause was held back, and `call.violations`
   lists any clause said that breaks a rule ([testing.md](testing.md)).
 
