@@ -107,6 +107,17 @@ def test_a_span_gives_each_day_and_the_two_cheapest_and_writes_nothing() -> None
     assert call.draft.destination is None
 
 
+def test_a_one_day_span_lists_that_days_flights_to_choose() -> None:
+    # The owner's call of 2026-11-18: a span of one day gave no flight id, so nothing to book.
+    call = LeanCall()
+    answer = data(call.find(destination="Jeddah", depart={"first": OUT, "last": OUT}))
+    assert answer["status"] == "ok" and answer["outbound"]["day"]["date"] == OUT
+    first = answer["outbound"]["options"][0]["id"]
+    assert data(call.choose(outbound_id=first))["status"] == "ok"
+    span = data(call.find(destination="Singapore", depart={"first": OUT, "last": "2026-11-22"}))
+    assert "find_flights" in span["note"]  # how to book one of its days
+
+
 def test_a_long_span_shows_its_cheapest_days_on_the_card() -> None:
     found = LeanCall().find(
         destination="Dubai", depart={"first": "2026-11-20", "last": "2026-12-03"}

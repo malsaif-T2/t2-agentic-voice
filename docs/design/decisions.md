@@ -4340,3 +4340,22 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Consequences:** «تم حجز رحلتك» is said only after this call's booking was made. A held-back claim costs one more model request instead of the error notice, and the model then says what book_trip's `say` asked. The booking check is unchanged. Nothing changes for an agent with no claiming tool, or with the setting off. Run F's `notice` check still fails a turn whose claim was held back, even when the retry answered well. TextCall's `call.violations` still runs rule A only for agents with actions.
 - **Evidence:** tests/t2_agentic_voice/agent/test_tool_claims.py, tests/flight_voice/lean/test_lean_claims.py, tests/flight_voice/lean/test_lean_book.py; a probe of the same call: with the retry off the caller hears only «صار عندنا خلل بسيط، تكلم مرة ثانية لو سمحت.», and with the claims off the false claim.
 - *Amended 2026-11-18, the review:* an agent that declares no action reads no default claim phrases (their "has been booked" sits in "nothing has been booked yet"); the flight app's book_trip declares the booking's claims plus their rewordings («حجزتها», «تم حجزها», «حجزت رحلتك», «تم تأكيد حجزك»).
+
+## D-125 · A register held for the whole call (`words.fixed_register`), and the weekday a caller said held over its date · 2026-11-18 · Accepted (the owner: "make a switch for Nadji and Arabic, don't make them change during the call")
+
+- **The register switch.** `words.fixed_register` (saudi, msa or unset; unset by default, GP-18)
+  holds every ar-SA call in one register from its start to its end, whatever the caller says:
+  `call_register` returns it, so the reply's language section and an action's wording never
+  change mid-call. The flight app sets saudi (Najdi) for either agent, unless the environment
+  sets it; `T2V_WORDS__FIXED_REGISTER=msa` holds its calls in MSA. In the owner's calls of
+  2026-11-18 an MSA form in a greeting («هل», «أريد») turned a Najdi call to MSA for a reply.
+- **The weekday held over its date.** The model counts dates less well than it copies a weekday
+  it heard: «نرجع يوم الخميس» after Saturday 28 November was searched as Tuesday 1 December.
+  The lean `find_flights` takes `depart_weekday` and `return_weekday`, the weekday the caller
+  said, and moves each date to that weekday's nearest date (three days at most either way),
+  never before today for the departure or before the departure for the return
+  (flight_voice/lean/weekday.py). With none said, the date is searched as given.
+- **A one-day span is that day.** A span whose first and last days are one gives that day's
+  flights, with ids to choose; a span's result says how to book one of its days, and
+  `choose_flights` with nothing listed says to search the day first (the owner's call of
+  2026-11-18, where Saad listed a day's flights from a span and could not book any).

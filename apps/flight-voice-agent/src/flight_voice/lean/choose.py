@@ -170,6 +170,13 @@ class _Picking:
         )
 
 
+# What the model is told when no day's flights are listed yet (a span gives days, not flights).
+NOTHING_LISTED: Final = (
+    "No flights are listed to choose from: call find_flights with depart as the one day the "
+    "caller wants (YYYY-MM-DD), then choose from its flights."
+)
+
+
 def chosen_legs(airline: Airline, draft: TripDraft, tag: Tag) -> dict[str, JsonValue]:
     """The trip's chosen legs as data, by their leg (`Chosen`), as `book_trip` gives them back."""
     picking = _Picking(airline, draft, tag)
@@ -198,7 +205,7 @@ def choose_flights(airline: Airline, trips: TripBook, check: BookingCheck) -> To
         draft = trips.get(ctx.call_id)
         to = draft.destination
         if to is None or not draft.shown_outbound:
-            return lean_result({"status": "nothing_listed"})
+            return lean_result({"status": "nothing_listed", "note": NOTHING_LISTED})
         sold = flights(draft.origin, to)[0].cabins
         if cabin is not None and cabin not in sold:
             offered: list[JsonValue] = [c for c in CABINS if c in sold]

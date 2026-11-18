@@ -86,6 +86,9 @@ class Spanned(_Data):
     no_flight_days: tuple[Day, ...] = ()
     cheapest: tuple[SpanDay, ...]
     cheapest_days: tuple[str, ...]
+    note: str = (
+        "To book, call find_flights with one of these days as depart, then choose its flight."
+    )
 
 
 async def span_search(

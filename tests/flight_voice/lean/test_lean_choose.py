@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from flight_voice.lean.choose import DESCRIPTION, chosen_legs
+from flight_voice.lean.choose import DESCRIPTION, NOTHING_LISTED, chosen_legs
 from flight_voice.lean.results import option_id
 from flight_voice.tools.cards import TRIP_EN
 
@@ -153,7 +153,8 @@ def test_a_flight_with_no_seats_for_the_travelers_is_refused() -> None:
 
 def test_nothing_listed_and_a_cabin_not_sold_are_refused() -> None:
     call = LeanCall()
-    assert data(call.choose(outbound_id="T2-101-2026-11-19")) == {"status": "nothing_listed"}
+    answer = data(call.choose(outbound_id="T2-101-2026-11-19"))
+    assert answer == {"status": "nothing_listed", "note": NOTHING_LISTED}
     _found(call)
     answer = data(call.choose(cabin="first"))
     assert answer["status"] == "cabin_not_offered" and answer["offered"] == ["economy", "business"]

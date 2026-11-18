@@ -79,6 +79,14 @@ class WordSettings(Group):
             "one of them heard as those words in a row. A value replaces the list."
         ),
     )
+    fixed_register: Literal["saudi", "msa"] | None = Field(
+        default=None,
+        description=(
+            "The register every ar-SA call is held in from its start to its end, whatever the "
+            "caller says: saudi (the Saudi spoken register) or msa; unset (the default), it is "
+            "read from the caller's words as dialect and saudi_first say."
+        ),
+    )
     saudi_first: bool = Field(
         default=False,
         description=(

@@ -2,8 +2,9 @@
 `words.saudi_first`), and a team's own Saudi forms (`words.dialect`): with the setting on, a turn
 with no Saudi form is MSA only when it plainly speaks MSA (`MSA_WORDS`); a turn with neither
 keeps the call Saudi, or MSA once an MSA turn was heard, until a Saudi form is; with it off (the
-default), every reading is as it was. The talker asks for the register so read. Every sentence
-is written for the test."""
+default), every reading is as it was. With `words.fixed_register` set, every call is held in that
+one, whatever the caller says. The talker asks for the register so read. Every sentence is
+written for the test."""
 
 from __future__ import annotations
 
@@ -75,6 +76,19 @@ def test_an_msa_turn_holds_the_call_in_msa_until_a_saudi_form_is_heard() -> None
     assert call_register(["أريد السفر إلى جدة", "وين أرخص يوم؟", "نعم"], FIRST) == "saudi"
     assert call_register(["أبي أسافر", "هل توجد رحلة؟"], FIRST) == "saudi"  # as before
     assert call_register(["OK", "Yes"], FIRST) == call_register([], FIRST) == "saudi"
+
+
+def test_a_register_set_holds_every_call_in_it_whatever_is_said() -> None:
+    # The owner, 2026-11-18: "make a switch for Nadji and Arabic, don't make them change during
+    # the call".
+    saudi, msa = (
+        WordSettings(fixed_register="saudi"),
+        WordSettings(fixed_register="msa", saudi_first=True),
+    )
+    for turns in (["أريد السفر إلى جدة", "هل توجد رحلة؟"], ["أبي أسافر", "وين أرخص يوم؟"], []):
+        assert call_register(turns, saudi) == "saudi", turns
+        assert call_register(turns, msa) == "msa", turns
+    assert WordSettings().fixed_register is None  # read from the caller's words by default
 
 
 def test_a_teams_saudi_forms_read_saudi_with_the_setting_off_too() -> None:

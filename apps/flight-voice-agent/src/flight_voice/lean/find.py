@@ -8,7 +8,7 @@ its departure, and a span too long or the wrong way round are a `date_problem` n
 (`first_day`, `last_day`), with a short note. The checks, in order: the cities are served and
 the route is flown (`not_served`, with the cities served); the dates; the cabin is sold on the
 route (`cabin_not_offered`); each day has a flight (`no_flights`, with the nearest days that
-have one). Then:
+have one). A weekday the caller said is held over its date (weekday.py). Then:
 
 - **A day:** the route, the cabin, the travelers, the fares' basis (`fares_are`: per person,
   each way on a round trip; results.py) and the outbound flights (results.py's `LegList`), with
@@ -61,6 +61,7 @@ from flight_voice.lean.results import (
     route_said,
 )
 from flight_voice.lean.span import MOST_DAYS, DaySpan, span_search
+from flight_voice.lean.weekday import SAID, Weekday, on_weekday
 from flight_voice.persona import PROGRESS_AT_S
 from flight_voice.said import Tag, register
 from flight_voice.tools import cards
@@ -176,10 +177,20 @@ def find_flights(airline: Airline, trips: TripBook, check: BookingCheck) -> Tool
         return_date: Annotated[date | None, Field(description=_RETURN)] = None,
         cabin: Annotated[Cabin | None, Field(description=_CABIN)] = None,
         travelers: Annotated[int | None, Field(ge=1, le=9, description=_TRAVELERS)] = None,
+        depart_weekday: Annotated[Weekday | None, Field(description=SAID)] = None,
+        return_weekday: Annotated[Weekday | None, Field(description=SAID)] = None,
     ) -> ToolResult:
         tag: Tag = ctx.language
         draft = trips.get(ctx.call_id)
         today = airline.today()
+        if isinstance(depart, DaySpan) and depart.first == depart.last:
+            # A span of one day is that day: its flights, with ids to choose (the owner's call
+            # of 2026-11-18, where a one-day span gave no flight to book).
+            depart = depart.first
+        if not isinstance(depart, DaySpan):
+            depart = on_weekday(depart, depart_weekday, not_before=today)
+            if return_date is not None:
+                return_date = on_weekday(return_date, return_weekday, not_before=depart)
         end = find_airport(destination)
         start = airport(draft.origin) if origin is None else find_airport(origin)
         if end is None or start is None or not route_served(start.code, end.code):

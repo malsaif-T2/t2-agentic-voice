@@ -14,22 +14,21 @@ Saudi, MSA and English turns, each answered in its own.
 - **The tag.** That language is the agent's tag for it: the call's own when its language is
   the same (an `ar-SA` call stays `ar-SA`), else the first of the agent's tags in it, else the
   call's.
-- **The register** of the caller's Arabic (`register_of`, a turn's; `call_register`, the
-  call's). Saudi Arabic and MSA share a code, so the tag does not tell them apart; the caller's
-  words do, by a small explicit list of Saudi and Gulf dialect forms: a turn whose Arabic holds
-  one is Saudi, one that holds none is MSA (and a turn with no Arabic word keeps the Saudi
-  default). A reply follows the call's: Saudi once any heard turn of the caller's held a form,
-  so a short plain turn after a Saudi one (tamam, okay; kammil, go on) stays Saudi, and MSA
-  while none of them has. A team adds its own Saudi forms (`words.dialect`, a phrase of several
-  words heard as those words in a row). Under `words.saudi_first` (off by default, GP-18; the
-  owner's call of 2026-11-18 was answered in MSA to a Najdi caller), a turn with
-  no Saudi form is MSA only when it plainly speaks MSA, by a short list of forms only MSA says
-  (`MSA_WORDS`: ureed, awadd, hal, matha and the like); one with neither (a greeting, «إي
-  نعم», a city) is no evidence, so the call is Saudi until an MSA turn is heard, MSA from then
-  on until a Saudi form is. An `ar-SA` reply's language section and its
-  line after a tool result then ask for that register (agent/prompt.py); an agent's Arabic tag
-  that is not Saudi (`ar`) keeps its section as it was. Run K's first dev round had 8 of 10 MSA
-  callers answered in Saudi Arabic while the model alone was asked to tell the two apart.
+- **The register** of the caller's Arabic (`register_of`, a turn's; `call_register`, the call's).
+  Saudi Arabic and MSA share a code, so the tag does not tell them apart; the caller's words do,
+  by a small explicit list of Saudi and Gulf dialect forms: a turn whose Arabic holds one is
+  Saudi, one that holds none is MSA (and a turn with no Arabic word keeps the Saudi default). A
+  reply follows the call's: Saudi once any heard turn of the caller's held a form, so a short
+  plain turn after a Saudi one (tamam, okay; kammil, go on) stays Saudi, and MSA while none of
+  them has. A team adds its own Saudi forms (`words.dialect`, a phrase of several words heard as
+  those words in a row). Under `words.saudi_first` (off by default, GP-18; D-123), a turn with no
+  Saudi form is MSA only when it plainly speaks MSA, by a short list of forms only MSA says
+  (`MSA_WORDS`: ureed, awadd, hal, matha and the like); one with neither (a greeting, «إي نعم», a
+  city) is no evidence, so the call is Saudi until an MSA turn is heard, MSA from then on until a
+  Saudi form is. `words.fixed_register` set, every call is held in that one. An `ar-SA` reply's
+  language section and its line after a tool result then ask for that register (agent/prompt.py);
+  an agent's Arabic tag that is not Saudi (`ar`) keeps its section as it was. Run K's first dev
+  round: 8 of 10 MSA callers were answered in Saudi when the model alone told them apart.
 - **The wording** of an action's lines (`wording`): an `ar-SA` reply to an MSA caller reads an
   action's texts in `ar`, its MSA ones (domain/action_declaration.py's `read_in`), and the
   library's own lines in MSA, the owner's ruling of 2026-11-10; it is still spoken in `ar-SA`,
@@ -279,12 +278,13 @@ def register_of(words: str, *, dialect: Sequence[str] = (), saudi_first: bool = 
 
 
 def call_register(turns: Sequence[str], settings: WordSettings | None = None) -> Register:
-    """The register of the caller's Arabic over the call so far, from the words of each of
-    their heard `turns`, the one answered now among them (the module's docstring): Saudi once a
-    turn held a dialect form (a team's too, `settings.dialect`), or while none held an Arabic
-    word; MSA while every turn with Arabic in it held none, or under `settings.saudi_first`
-    once one plainly spoke MSA, Saudi before. Each turn is read on its own (`register_of`), so
-    a form opens only its own turn and ma pairs only with a word of its own turn."""
+    """The register of the caller's Arabic over the call so far, from each heard turn of
+    `turns` read on its own (`register_of`): `settings.fixed_register` when set, for the whole call;
+    else Saudi once a turn held a dialect form (`settings.dialect` too) or while none held
+    Arabic; MSA while every Arabic turn held none, or under `saudi_first` once one plainly
+    spoke MSA."""
+    if settings is not None and settings.fixed_register is not None:
+        return settings.fixed_register
     dialect = () if settings is None else settings.dialect
     read = {_read(words, dialect) for words in turns if _arabic(words)}
     if not read or "saudi" in read:

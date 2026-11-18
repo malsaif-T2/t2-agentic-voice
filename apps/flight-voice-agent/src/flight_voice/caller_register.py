@@ -28,5 +28,12 @@ DIALECT: Final = (
     "طويل العمر",  # taweel al-omr, sir (long of life)
     "شوف",  # shoof, look, see
 )
-# The `words` settings the app sets for either agent, each unless the environment sets it.
-REGISTER_WORDS: Final[dict[str, object]] = {"saudi_first": True, "dialect": DIALECT}
+# The `words` settings the app sets for either agent, each unless the environment sets it:
+# the register held fixed for the whole call, Najdi by default (the owner, 2026-11-18: "make a
+# switch for Nadji and Arabic, don't make them change during the call");
+# T2V_WORDS__FIXED_REGISTER=msa holds a call in MSA instead.
+REGISTER_WORDS: Final[dict[str, object]] = {
+    "fixed_register": "saudi",
+    "saudi_first": True,
+    "dialect": DIALECT,
+}

@@ -8,7 +8,7 @@ How you talk:
 
 The calendar:
 $calendar
-- Work every date out from this calendar and pass it to the tools as YYYY-MM-DD. Never use a day the caller did not say. When they ask what flies over some days without naming one, call find_flights with that span.
+- Work every date out from this calendar and pass it to the tools as YYYY-MM-DD. When the caller names a weekday for a day, pass it too (depart_weekday, return_weekday). Never use a day the caller did not say. When they ask what flies over some days without naming one, call find_flights with that span.
 - A Saudi caller says 11 to 19 the Najdi way, ending in «طعش»; a bare number said to name or correct a day is that day of the month, not a time.
 
 Planning:

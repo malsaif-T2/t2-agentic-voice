@@ -1,8 +1,10 @@
 """How the flight app reads the register of a caller's Arabic (caller_register.py, settings.py's
 `for_the_app`): Saudi first with the app's own Saudi forms, for either agent, each unless the
-environment sets it. The owner's call of 2026-11-18 (05:57), whose Najdi caller the library read
-as MSA turn after turn, reads Saudi at every turn; an MSA caller still reads MSA; and the
-library's defaults, Ole5's, read that call as they did."""
+environment sets it, and the register held fixed for the whole call: Saudi (Najdi) by default,
+MSA with T2V_WORDS__FIXED_REGISTER=msa (the owner, 2026-11-18). The owner's call of 2026-11-18
+(05:57), whose Najdi caller the library read as MSA turn after turn, reads Saudi at every turn;
+with the register unset, an MSA caller still reads MSA; and the library's defaults, Ole5's,
+read that call as they did."""
 
 from __future__ import annotations
 
@@ -38,7 +40,7 @@ def _words(agent: AgentKind) -> WordSettings:
 @pytest.mark.parametrize("agent", ["lean", "scripted"])
 def test_the_owners_call_reads_saudi_at_every_turn(agent: AgentKind) -> None:
     words = _words(agent)
-    assert (words.saudi_first, words.dialect) == (True, DIALECT)
+    assert (words.fixed_register, words.saudi_first, words.dialect) == ("saudi", True, DIALECT)
     for n, turn in enumerate(OWNER_TURNS):
         assert call_register(OWNER_TURNS[: n + 1], words) == "saudi", n
         assert register_of(turn, dialect=words.dialect, saudi_first=True) == "saudi", n
@@ -51,8 +53,21 @@ def test_the_library_defaults_read_the_owners_call_as_msa_as_before() -> None:
         assert call_register(OWNER_TURNS[: n + 1], WordSettings()) == "msa", n
 
 
-def test_an_msa_caller_still_reads_msa() -> None:
-    words = _words("lean")
+def test_every_call_is_najdi_by_default_and_msa_with_the_switch(
+    environment: pytest.MonkeyPatch,
+) -> None:
+    environment.setenv("FLIGHT_VOICE_AGENT", "lean")
+    najdi = load().voice.words
+    environment.setenv("T2V_WORDS__FIXED_REGISTER", "msa")
+    msa = load().voice.words
+    for turns in (MSA_TURNS, WISHED_TURNS, OWNER_TURNS):
+        for n in range(len(turns)):
+            assert call_register(turns[: n + 1], najdi) == "saudi", (turns[0], n)
+            assert call_register(turns[: n + 1], msa) == "msa", (turns[0], n)
+
+
+def test_an_msa_caller_still_reads_msa_with_the_register_unset() -> None:
+    words = _words("lean").model_copy(update={"fixed_register": None})
     for turns in (MSA_TURNS, WISHED_TURNS):
         for n in range(len(turns)):
             assert call_register(turns[: n + 1], words) == "msa", (turns[0], n)
@@ -60,7 +75,7 @@ def test_an_msa_caller_still_reads_msa() -> None:
 
 
 def test_each_of_the_apps_forms_reads_saudi_in_a_plain_turn() -> None:
-    words = _words("lean")
+    words = _words("lean").model_copy(update={"fixed_register": None})
     for form in DIALECT:
         assert call_register([f"نعم {form} إلى جدة"], words) == "saudi", form
         assert call_register([f"نعم {form} إلى جدة"], WordSettings()) == "msa", form
@@ -69,7 +84,7 @@ def test_each_of_the_apps_forms_reads_saudi_in_a_plain_turn() -> None:
 def test_the_register_words_hold_unless_the_environment_sets_them(
     environment: pytest.MonkeyPatch,
 ) -> None:
-    assert REGISTER_WORDS == {"saudi_first": True, "dialect": DIALECT}
+    assert REGISTER_WORDS == {"fixed_register": "saudi", "saudi_first": True, "dialect": DIALECT}
     environment.setenv("FLIGHT_VOICE_AGENT", "lean")
     words = load().voice.words
     assert words.saudi_first and words.dialect == DIALECT and words.send["ar"]  # send kept
