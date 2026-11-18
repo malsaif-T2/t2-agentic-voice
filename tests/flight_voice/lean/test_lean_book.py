@@ -11,14 +11,16 @@ made, or one made before, is `done`, which backs the booking's claims it declare
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
 import pytest
+from flight_voice.flight_data.model import Money
 from flight_voice.lean import book
-from flight_voice.lean.book import LEAN_CLAIMS, NOT_CONFIRMED
+from flight_voice.lean.book import LEAN_CLAIMS, NOT_BOOKABLE, NOT_CONFIRMED
 from flight_voice.tools.cards import TRIP_EN
 
 from tests.flight_voice.lean.lean_support import OUT, LeanCall, chosen_trip, ids
-from tests.flight_voice.tools.tool_support import CALLER, airline, data, ids_pass
+from tests.flight_voice.tools.tool_support import CALL_ID, CALLER, airline, data, ids_pass
 
 STRANGER = CALLER.model_copy(update={"attributes": {"traveler_id": "T-9999"}})
 
@@ -61,11 +63,12 @@ def test_a_trip_changed_after_the_booking_is_answered_with_the_trip_booked() -> 
     booked = data(made)
     listed = call.find(destination="Jeddah", depart=OUT, return_date="2026-11-21")
     call.choose(outbound_id=ids(listed)[2])  # another outbound, chosen after the booking
-    assert call.draft.chosen_outbound is not None and call.draft.chosen_outbound.flight != 101
+    chosen = call.draft.chosen_outbound
+    assert chosen is not None and chosen.id != f"T2101-{OUT}"
     again = call.book()
     answer = data(again)
     assert answer["status"] == "already_booked" and answer["total"] == booked["total"]
-    assert answer["outbound"]["id"] == f"T2-101-{OUT}"
+    assert answer["outbound"]["id"] == f"T2101-{OUT}"
     assert again.card is not None and made.card is not None
     assert again.card.rows == made.card.rows  # the booked trip's times, never the new pick's
     assert len(call.airline.bookings.writes) == 1
@@ -86,7 +89,7 @@ def test_a_trip_not_confirmed_books_nothing() -> None:
     # changed one, total said or not.
     call.said("Shall I book the trip for you?")
     call.heard("yes")
-    call.choose(travelers=2)
+    call.find(destination="Jeddah", depart=OUT, return_date="2026-11-21", travelers=2)
     assert data(call.book()) == NOT_CONFIRMED
     assert call.airline.bookings.writes == []
 
@@ -148,8 +151,24 @@ def chosen_trip_on(call: LeanCall) -> LeanCall:
 def test_only_a_booking_made_backs_the_bookings_claims() -> None:
     """The guard says «تم حجز رحلتك» only after a result marked done (test_lean_claims.py)."""
     call = chosen_trip()
-    assert book.book_trip(call.airline, call.trips, call.check).claims is LEAN_CLAIMS
+    assert book.book_trip(call.deps).claims is LEAN_CLAIMS
     assert not call.book().done  # not confirmed
     _agreed(call)
     assert call.book().done and call.book().done  # booked, then already booked
     assert not LeanCall().book().done  # incomplete
+
+
+def test_a_price_no_longer_the_one_heard_is_refused() -> None:
+    call = _agreed(chosen_trip())
+    picked = call.draft.chosen_outbound
+    assert picked is not None
+    cheaper = picked.model_copy(update={"price": Money(amount=picked.price.amount - 10)})
+    call.trips.put(CALL_ID, call.draft.choose("outbound", cheaper))
+    assert data(call.book()) == {"status": "refused", "reason": "price_changed"}
+    assert call.airline.bookings.writes == []
+
+
+def test_a_line_that_does_not_book_says_so_and_writes_nothing() -> None:
+    call = _agreed(chosen_trip())
+    closed = LeanCall(deps=replace(call.deps, bookable=False))
+    assert data(closed.book()) == NOT_BOOKABLE and call.airline.bookings.writes == []

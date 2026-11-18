@@ -13,7 +13,8 @@ turn `language`, `register`, `stage_note`, `notice`, `max_words` and `repeat`.
 
 **The amendments** (the flight spec's 13): `booked` takes a leg picked by fare (the scenario's
 `cheapest`, `dearest` or `fare` pick for it) whose read-back flight ties another of its route
-that day at its fare in the cabin, by the airline's own fares, as either flight (f30's "the
+that day at its price in the cabin for the travelers, by what the flight source answered in the
+play (the airline's own fares when the play kept none), as either flight (f30's "the
 dearest" on 19 Nov, T2 102 and T2 106 at 470), all else held as before; `repeat` is
 lean_repeats.py's, a near repeat counting unless the later reply states a new fact, and never
 on a first clause alone; `max_words` counts the reply as written (`TurnRead.written`, the
@@ -55,6 +56,7 @@ from flight_voice.evals.lean_call import LeanRead
 from flight_voice.evals.lean_repeats import Said, lean_repeat
 from flight_voice.evals.scenarios import FlightOn, Scenario
 from flight_voice.evals.spoken import failure_notices, form, stage_note
+from flight_voice.flight_data.queries import DayOffers
 from flight_voice.trip import LegKind
 
 # Phrases that claim a booking beside the booking's own claims (booking/lines.py).
@@ -131,15 +133,37 @@ def lean_violations(read: PlayRead) -> tuple[str, ...]:
     return tuple(found)
 
 
-def tied(leg: FlightOn, cabin: Cabin) -> frozenset[int]:
-    """`leg`'s flight and each flight of its route that day at its fare in `cabin`, by the
-    airline's own fares; its flight alone when the cabin is not sold on it."""
+def tied(
+    leg: FlightOn, cabin: Cabin, answered: Sequence[DayOffers] = (), *, travelers: int = 1
+) -> frozenset[int]:
+    """`leg`'s flight and each flight of its route that day at its price in `cabin` for
+    `travelers`, by the answers the play's source gave (`answered`: the one whose query has the
+    leg's day, the cabin and the travelers and holds the leg's flight); by the airline's own
+    fares when the play kept no answer; its flight alone when none holds it."""
+    if answered:
+        return _tied_in(leg, cabin, answered, travelers)
     flight = find_flight(leg.number)
     wanted = None if flight is None else fare(departure(flight, leg.day), cabin)
     if flight is None or wanted is None:
         return frozenset({leg.number})
     same_day = departures(flight.origin, flight.destination, leg.day)
     return frozenset({leg.number, *(d.flight.number for d in same_day if fare(d, cabin) == wanted)})
+
+
+def _tied_in(
+    leg: FlightOn, cabin: Cabin, answered: Sequence[DayOffers], travelers: int
+) -> frozenset[int]:
+    number = str(leg.number)
+    for answer in answered:
+        q = answer.query
+        if (q.day, q.cabin, q.adults) != (leg.day, cabin, travelers):
+            continue
+        own = next((o for o in answer.offers if o.segments[0].number == number), None)
+        if own is None:
+            continue
+        same = (o.segments[0].number for o in answer.offers if o.price == own.price)
+        return frozenset({leg.number, *(int(n) for n in same if n.isdigit())})
+    return frozenset({leg.number})
 
 
 def _by_fare(scenario: Scenario, leg: LegKind) -> bool:
@@ -160,6 +184,7 @@ def _booked_alike(scenario: Scenario, read: PlayRead) -> bool:
     if back.return_ is not None:
         wanted.append(("return", back.return_))
     kept = (booking.travelers, booking.cabin) == (back.travelers, back.cabin)
+    answered = read.answered if isinstance(read, LeanRead) else ()
     return (
         kept
         and len(booking.legs) == len(wanted)
@@ -167,7 +192,10 @@ def _booked_alike(scenario: Scenario, read: PlayRead) -> bool:
             leg.day == want.day
             and (
                 leg.flight == want.number
-                or (_by_fare(scenario, kind) and leg.flight in tied(want, back.cabin))
+                or (
+                    _by_fare(scenario, kind)
+                    and leg.flight in tied(want, back.cabin, answered, travelers=back.travelers)
+                )
             )
             for leg, (kind, want) in zip(booking.legs, wanted, strict=False)
         )

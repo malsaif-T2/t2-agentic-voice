@@ -3,8 +3,8 @@ server.py's `make_app`): the scripted agent by default, the lean one (D-113) whe
 the lean agent's settings path (the guard's rules and four requests a turn on, no yes held over
 a read-back it has none of, a bare yes over its closing question answered once the reply ends:
 D-116, unless the environment sets it), and its booking check observing each call's events
-beside the trip book's end of call; its airline keeping the day its calendar was written for,
-and a call on a stale calendar logged. The runtime is a fake that keeps what it was given."""
+beside the trip book's end of call, its flight source closed as the app ends; its airline
+keeping the day its calendar was written for, and a call on a stale calendar logged. The runtime is a fake that keeps what it was given."""
 
 from __future__ import annotations
 
@@ -14,10 +14,12 @@ from typing import Any, ClassVar
 
 import pytest
 from fastapi import APIRouter
+from fastapi.testclient import TestClient
 from flight_voice import server, settings
 from flight_voice.agent import NAME
 from flight_voice.airline.system import Airline
 from flight_voice.booking.lines import SEND_WORDS
+from flight_voice.flight_data.mock import MockFlightData
 from flight_voice.lean.agent import NAME as LEAN
 from flight_voice.lean.agent import calendar_watch
 from flight_voice.settings import AGENTS, for_the_app, load
@@ -159,3 +161,20 @@ def test_another_agent_is_refused_naming_its_setting(environment: pytest.MonkeyP
     environment.setenv("FLIGHT_VOICE_AGENT", "clever")
     with pytest.raises(ConfigurationError, match="FLIGHT_VOICE_AGENT"):
         load()
+
+
+def test_the_lean_flight_source_is_closed_as_the_app_ends(
+    environment: pytest.MonkeyPatch,
+) -> None:
+    environment.setenv("FLIGHT_VOICE_AGENT", "lean")
+    environment.setattr(server, "VoiceRuntime", _Runtime)
+    closed: list[str] = []
+
+    async def aclose(self: MockFlightData) -> None:
+        closed.append(self.name)
+
+    environment.setattr(MockFlightData, "aclose", aclose)
+    app = server.make_app(load())
+    with TestClient(app):
+        assert closed == []
+    assert closed == ["mock"]

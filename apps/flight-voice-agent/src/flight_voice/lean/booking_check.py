@@ -54,7 +54,7 @@ from t2_agentic_voice.events import AgentSpeechEnded, CallEnded, Event, UserTurn
 from t2_agentic_voice.languages import normalize_arabic, normalize_digits, speak_number
 
 from flight_voice.airline.bookings import Booking
-from flight_voice.trip import TripDraft
+from flight_voice.lean.draft import LeanDraft
 
 MAX_CALLS: Final = 64
 # The events the app observes for the check.
@@ -98,7 +98,7 @@ class Ledger:
     write's end is not known."""
 
     booked: Booking | None = None
-    trip: TripDraft | None = None
+    trip: LeanDraft | None = None
     unsure: bool = False
     writes: int = 0
 
@@ -141,10 +141,18 @@ def stated_at(text: str, total: int) -> float | None:
     return min(ends) / len(plain) if ends else None
 
 
-def _key(draft: TripDraft) -> object:
-    """What a trip is, for the check: its route, its legs chosen, its kind, cabin and travelers."""
+def _key(draft: LeanDraft) -> object:
+    """What a trip is, for the check: its route, each leg chosen by its id and price (a price
+    changed under the same id starts the check again), its kind, cabin and travelers."""
     legs = (draft.chosen_outbound, None if draft.one_way else draft.chosen_return)
-    return (draft.origin, draft.destination, legs, draft.one_way, draft.cabin, draft.travelers)
+    return (
+        draft.origin.code,
+        None if draft.destination is None else draft.destination.code,
+        tuple(None if o is None else (o.id, o.price.amount) for o in legs),
+        draft.one_way,
+        draft.cabin,
+        draft.travelers,
+    )
 
 
 def _seen(events: Sequence[Event], call_id: str) -> list[Seen]:
@@ -226,7 +234,7 @@ class BookingCheck:
         """How the call's booking went so far."""
         return self._call(call_id).ledger
 
-    def mark(self, call_id: str, draft: TripDraft) -> None:
+    def mark(self, call_id: str, draft: LeanDraft) -> None:
         """The call's trip is `draft` now: when it differs from the trip last marked, the check
         starts again from the events seen so far."""
         held = self._call(call_id)
@@ -234,7 +242,7 @@ class BookingCheck:
         if key != held.trip:
             held.trip, held.since = key, len(self._events(call_id))
 
-    def confirmed(self, call_id: str, draft: TripDraft, total: int) -> bool:
+    def confirmed(self, call_id: str, draft: LeanDraft, total: int) -> bool:
         """Whether a reply of the agent's ended since `draft` was marked and the caller spoke
         after it (the module's docstring); `total` need no longer be said in the reply (the
         owner's ruling of 2026-11-18). A trip not marked as it is never is."""

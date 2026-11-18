@@ -1,13 +1,16 @@
 """The lean agent's instructions (lean/instructions/<tag>.md, about 30 lines each), filled with
-the persona's names and the calendar the model reads every date from.
+the persona's names, the lines of its network (network_text.py: the mock's, or the real
+network's of every airline, which does not book) and the calendar the model reads every date
+from.
 
 **The calendar** (`calendar`), written in code in the reply's language: today with its weekday,
 then the next `AHEAD` days, each with its weekday (tomorrow named), then the days "this week",
 "this weekend", "next week" and "next weekend" cover, the Saudi week running Sunday to Saturday
-and the weekend Friday and Saturday, none of them before today; and the booking window's last day
-(`window`), so a day past the listed ones is searched, never taken for one that cannot be booked
-(f-dev-lean-3 refused a day past them as not among its days). Each date is written whole and as
-`YYYY-MM-DD`, the form the tools take.
+and the weekend Friday and Saturday, none of them before today; and the last day the source
+sells (`last_day`: the mock's booking window, or how far ahead the airlines show), so a day
+past the listed ones is searched, never taken for one that cannot be booked (f-dev-lean-3
+refused a day past them as not among its days). Each date is written whole and as `YYYY-MM-DD`,
+the form the tools take.
 
 The instructions are built once, when the agent is declared, from the airline's today: a server
 serves the calendar of the day it started, its airline kept on that day (restarted each day, its
@@ -25,7 +28,8 @@ from typing import Final
 from flight_voice.airline.airports import Register
 from flight_voice.airline.dates import week_index
 from flight_voice.airline.profile import TRAVELER, Traveler
-from flight_voice.airline.schedule import window
+from flight_voice.lean.network_text import blocks
+from flight_voice.lean.results import Network
 from flight_voice.persona import TAGS, Names, filled
 from flight_voice.said import Tag, words
 
@@ -44,6 +48,8 @@ _TEXTS: Final[dict[str, dict[str, str]]] = {
         "next_weekend": "Next weekend: {days}.",
         "open": "Bookings are open up to {last}: any day up to it can be searched, listed above "
         "or not.",
+        "open_real": "Flights can be searched up to {last}: any day up to it can be searched, "
+        "listed above or not.",
         "and": " and ",
     },
     "ar": {
@@ -56,6 +62,7 @@ _TEXTS: Final[dict[str, dict[str, str]]] = {
         "next_week": "الأسبوع القادم: من {first} إلى {last}.",
         "next_weekend": "عطلة الأسبوع القادم: {days}.",
         "open": "الحجز مفتوح حتى {last}: يمكن البحث في أي يوم حتى ذلك اليوم، مذكورًا أعلاه أو لا.",
+        "open_real": "يمكن البحث عن الرحلات حتى {last}: أي يوم حتى ذلك اليوم، مذكورًا أعلاه أو لا.",
         "and": " و",
     },
 }
@@ -76,7 +83,7 @@ def _days(first: date, last: date, today: date, tag: Tag) -> str:
     return texts["and"].join(written(d, tag) for d in kept if d >= today)
 
 
-def calendar(today: date, tag: Tag) -> str:
+def calendar(today: date, tag: Tag, last: date, network: Network = "mock") -> str:
     """The calendar the model reads every date from (the module's docstring)."""
     texts = _TEXTS["en" if tag == "en" else "ar"]
     lines = [texts["today"].format(day=written(today, tag)), texts["ahead"]]
@@ -92,17 +99,26 @@ def calendar(today: date, tag: Tag) -> str:
         friday = start + timedelta(days=_FRIDAY)
         weekend = texts[f"{which}_weekend"].format(days=_days(friday, saturday, today, tag))
         lines += [f"- {week}", f"- {weekend}"]
-    lines.append(f"- {texts['open'].format(last=written(window(today)[1], tag))}")
+    opened = texts["open" if network == "mock" else "open_real"]
+    lines.append(f"- {opened.format(last=written(last, tag))}")
     return "\n".join(lines)
 
 
-def instructions(names: Names, today: date, traveler: Traveler = TRAVELER) -> dict[Tag, str]:
-    """The lean agent's instructions for each language, filled with the names, the traveler and
-    the calendar of `today` in that language."""
+def instructions(
+    names: Names,
+    today: date,
+    last: date,
+    *,
+    network: Network = "mock",
+    traveler: Traveler = TRAVELER,
+) -> dict[Tag, str]:
+    """The lean agent's instructions for each language, filled with the names, the traveler,
+    the network's lines and the calendar of `today` to `last` in that language."""
     folder = files("flight_voice") / "lean" / "instructions"
     found: dict[Tag, str] = {}
     for tag in TAGS:
         text = (folder / f"{tag}.md").read_text(encoding="utf-8")
-        values = filled(names, traveler) | {"calendar": calendar(today, tag)}
+        values = filled(names, traveler)
+        values |= blocks(network, tag, values) | {"calendar": calendar(today, tag, last, network)}
         found[tag] = Template(text).substitute(values)
     return found

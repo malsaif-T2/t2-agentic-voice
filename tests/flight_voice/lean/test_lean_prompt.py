@@ -10,21 +10,25 @@ from __future__ import annotations
 import json
 import re
 import tomllib
+from dataclasses import replace
 from datetime import date, timedelta
 
 import pytest
 from flight_voice.agent import TIME_ZONE
+from flight_voice.airline.schedule import window
 from flight_voice.airline.system import Airline
 from flight_voice.evals.scenarios import CALLS
 from flight_voice.lean.agent import NAME, declare
-from flight_voice.lean.booking_check import BookingCheck
 from flight_voice.lean.prompt import calendar, instructions
-from flight_voice.persona import TAGS, Names, Tag
-from flight_voice.trip import TripBook
+from flight_voice.lean.results import fares_are
+from flight_voice.persona import PROGRESS, TAGS, Names, Tag, breaking, held_words
 from t2_agentic_voice import Action, Tool, render_prompt
+from t2_agentic_voice.languages import speak_number
 
+from tests.flight_voice.lean.lean_support import lean_deps
 from tests.flight_voice.scenario_dates import TODAY
 
+LAST = window(TODAY)[1]
 OTHER = Names(persona_name_en="Fahad", persona_name_ar="فهد", airline_name_en="Najm Air")
 LEAN_DIR = CALLS.parents[1] / "src" / "flight_voice" / "lean" / "instructions"
 # The owner's rulings of 2026-11-17, and the prompt's rules, each by a phrase both files hold.
@@ -73,7 +77,7 @@ RULES = (
 
 
 def test_the_lean_agent_declares_its_four_tools_and_no_action() -> None:
-    agent = declare(Airline(today=lambda: TODAY), TripBook(), BookingCheck())
+    agent = declare(lean_deps(Airline(today=lambda: TODAY)))
     assert agent.name == NAME and agent.time_zone == TIME_ZONE
     assert [t.name for t in agent.tools] == [
         "find_flights",
@@ -92,7 +96,7 @@ def test_the_lean_agent_declares_its_four_tools_and_no_action() -> None:
 
 def test_no_lean_tool_is_shown_with_a_reference_or_a_one_of() -> None:
     # As the scripted tools are (test_tool_schemas.py): gpt-oss on Groq fails on a `$ref`.
-    agent = declare(Airline(today=lambda: TODAY), TripBook(), BookingCheck())
+    agent = declare(lean_deps(Airline(today=lambda: TODAY)))
     for each in agent.tools:
         assert isinstance(each, Tool)
         text = json.dumps(dict(each.tool_schema().parameters))
@@ -104,7 +108,7 @@ def test_no_lean_tool_is_shown_with_a_reference_or_a_one_of() -> None:
 
 
 def test_the_calendar_holds_today_three_weeks_and_the_saudi_weeks() -> None:
-    text = calendar(TODAY, "en")  # Monday 16 November 2026
+    text = calendar(TODAY, "en", LAST)  # Monday 16 November 2026
     assert text.startswith("Today is Monday 16 November 2026 (2026-11-16).")
     days = re.findall(r"^- (\w+) \d+ \w+ \d{4} \((\d{4}-\d{2}-\d{2})\)", text, re.MULTILINE)
     assert [d for _, d in days] == [(TODAY + timedelta(n)).isoformat() for n in range(1, 22)]
@@ -123,13 +127,13 @@ def test_the_calendar_holds_today_three_weeks_and_the_saudi_weeks() -> None:
 
 def test_on_a_saturday_this_weekend_is_today_alone() -> None:
     saturday = date(2026, 11, 21)
-    text = calendar(saturday, "en")
+    text = calendar(saturday, "en", window(saturday)[1])
     assert "- This weekend: Saturday 21 November 2026 (2026-11-21)." in text
     assert "- This week: Saturday 21 November 2026 (2026-11-21) to Saturday 21" in text
 
 
 def test_the_arabic_calendar_is_written_in_arabic() -> None:
-    text = calendar(TODAY, "ar-SA")
+    text = calendar(TODAY, "ar-SA", LAST)
     assert text.startswith("اليوم الاثنين 16 نوفمبر 2026 (2026-11-16).")
     assert "الثلاثاء 17 نوفمبر 2026 (2026-11-17)، غدًا" in text
     assert "عطلة هذا الأسبوع: الجمعة 20 نوفمبر 2026 (2026-11-20) والسبت 21" in text
@@ -138,9 +142,9 @@ def test_the_arabic_calendar_is_written_in_arabic() -> None:
 
 @pytest.mark.parametrize("tag", TAGS)
 def test_the_instructions_are_short_filled_and_hold_the_rulings(tag: Tag) -> None:
-    text = instructions(OTHER, TODAY)[tag]
+    text = instructions(OTHER, TODAY, LAST)[tag]
     assert "$" not in text and "Fahad" in text and "Najm Air" in text and "Khalid" in text
-    assert calendar(TODAY, tag) in text
+    assert calendar(TODAY, tag, LAST) in text
     own = (LEAN_DIR / f"{tag}.md").read_text(encoding="utf-8").splitlines()
     assert 25 <= len(own) <= 35
     assert [rule for rule in RULES if rule not in text] == []
@@ -148,7 +152,7 @@ def test_the_instructions_are_short_filled_and_hold_the_rulings(tag: Tag) -> Non
 
 
 def test_the_saudi_file_keeps_the_register_lines() -> None:
-    text = instructions(Names(), TODAY)["ar-SA"]
+    text = instructions(Names(), TODAY, LAST)["ar-SA"]
     for line in (
         '"now" is «الحين», never «الآن»',
         # f-dev-lean-3: MSA callers answered «ما فيه… تبي» on a turn with no tool.
@@ -180,7 +184,7 @@ def test_the_saudi_file_keeps_the_register_lines() -> None:
 def test_the_english_file_keeps_its_digits_over_its_own_spoken_history() -> None:
     # f-dev-lean-4: 12 of 102 English replies wrote numbers in words, each after a reply whose
     # history held its numbers as they were said.
-    text = instructions(Names(), TODAY)["en"]
+    text = instructions(Names(), TODAY, LAST)["en"]
     assert "in digits, as the tools give them, even where your earlier replies show them in" in text
 
 
@@ -207,7 +211,92 @@ def test_no_lean_example_is_a_dev_calls_line() -> None:
         for s in _strings(turn)
     }
     assert _bare("لا خلها ستطعش") in said  # the search finds a line once pasted (f27)
-    texts = [(LEAN_DIR / f"{tag}.md").read_text(encoding="utf-8") for tag in TAGS]
+    texts = [
+        text
+        for network in ("mock", "real")
+        for text in instructions(Names(), TODAY, LAST, network=network).values()
+    ]
     quoted = [q for text in texts for q in re.findall(r'[«"]([^»"]+)[»"]', text)]
     assert len(quoted) >= 10
     assert [q for q in quoted if _bare(q) in said] == []
+
+
+@pytest.mark.parametrize("tag", TAGS)
+def test_the_mock_lines_change_only_on_another_search_and_a_price_as_given(tag: Tag) -> None:
+    text = instructions(Names(), TODAY, LAST)[tag]
+    for kept in ("Every flight starts or ends in Riyadh.", "Then ask whether to book it."):
+        assert kept in text
+    assert "- For another cabin, number of travelers, day or city, call find_flights again." in text
+    assert "Say a price as the tool gives it; never divide or multiply one." in text
+    assert "call choose_flights with it;" not in text and "Bookings are open up to" in calendar(
+        TODAY, "en", LAST
+    )
+
+
+@pytest.mark.parametrize("tag", TAGS)
+def test_the_real_lines_name_every_airline_and_book_nothing(tag: Tag) -> None:
+    text = instructions(Names(), TODAY, LAST, network="real")[tag]
+    assert "$" not in text and "the travel assistant of T2 Air" in text
+    for gone in ("Every flight starts or ends in Riyadh.", "ask whether to book", "book_trip"):
+        assert gone not in text, gone
+    for held in (
+        "and others, nonstop or with one stop",
+        "the airline's own site books it",
+        "never say a trip is booked",
+        '"Saudia 1020"',
+        "unknown_days",
+        "checked_last",
+        "the airlines do not show flights that far ahead yet",
+        "Hotels, cars, visas, seats on the plane, meals, baggage, booking",
+        "Say a price as the tool gives it; never divide or multiply one.",
+    ):
+        assert held in text, held
+    opened = "Flights can be searched up to" if tag == "en" else "يمكن البحث عن الرحلات حتى"
+    assert opened in text and "Bookings are open" not in text and "الحجز مفتوح" not in text
+    if tag == "ar-SA":
+        assert "«فيها ترانزيت في دبي ساعتين»" in text
+
+
+def test_no_basis_of_a_price_holds_a_digit_word() -> None:
+    numbers = {speak_number(n, language="en") for n in range(1, 10)}
+    numbers |= {
+        speak_number(n, language="ar-SA", register=r)
+        for n in range(1, 10)
+        for r in ("saudi", "msa")
+    }
+    for network in ("mock", "real"):
+        for travelers in (1, 2):
+            for round_trip in (True, False):
+                for tag in ("en", "ar-SA", "ar"):
+                    said = fares_are(
+                        tag, round_trip=round_trip, travelers=travelers, network=network
+                    )
+                    for text in (t for t in said if t):
+                        words = set(re.findall(r"\w+", text.lower()))
+                        assert not words & numbers and not re.search(r"\d", text), text
+                        assert travelers == 1 or "للشخص" not in text
+
+
+def test_the_live_search_lines_pass_the_lines_rule() -> None:
+    assert breaking(Names()) == ()
+    for tag in TAGS:
+        lines = PROGRESS[tag]["searching_live"]
+        assert lines and all(
+            held_words(line, "en" if tag == "en" else "ar") == () for line in lines
+        )
+
+
+def test_the_real_network_declares_its_own_terms_and_no_booking() -> None:
+    deps = replace(
+        lean_deps(),
+        bookable=False,
+        network="real",
+        terms=("Riyadh", "Saudia"),
+        pronounce={"SV": {"en": "ess vee", "ar": "إس في"}},
+    )
+    agent = declare(deps)
+    assert [t.name for t in agent.tools] == ["find_flights", "choose_flights", "traveler_profile"]
+    assert agent.vocabulary is not None and agent.vocabulary.terms == ("Riyadh", "Saudia", "T2 Air")
+    assert dict(agent.pronounce)["SV"] == {"en": "ess vee", "ar": "إس في"}
+    assert "T2" in dict(agent.pronounce)
+    assert "the travel assistant of" in render_prompt(agent, "en")

@@ -25,7 +25,6 @@ from flight_voice.lean.book import REWORDED
 from flight_voice.lean.booking_check import BookingCheck
 from flight_voice.settings import for_the_app
 from flight_voice.traveler import demo_caller
-from flight_voice.trip import TripBook
 from t2_agentic_voice import Tool, VoiceSettings
 from t2_agentic_voice.agent.clause_gate import CLAIM_HELD
 from t2_agentic_voice.agent.speech_guard import SpeechGuard, claimants
@@ -33,10 +32,11 @@ from t2_agentic_voice.agent.tool_calls import Memory
 from t2_agentic_voice.domain.ports.chat_model import ChatRequest
 from t2_agentic_voice.evals import FunctionLLM, ScriptedLLM, ScriptStep, TextCall
 
+from tests.flight_voice.lean.lean_support import lean_deps
 from tests.flight_voice.scenario_dates import TODAY
 
 DAY = date(2026, 11, 19)
-FIRST = "T2-101-2026-11-19"
+FIRST = "T2101-2026-11-19"
 TOTAL = priced((Leg(flight=101, day=DAY),), "economy", 1, TODAY)
 ASKED = "أبي رحلة لجدة يوم الخميس تسعطعش، رايح بس"
 PICKED = "الأولى"
@@ -91,7 +91,7 @@ def _talker(claimed: str) -> FunctionLLM:
 async def _called(llm: FunctionLLM) -> tuple[Airline, list[list[str]]]:
     airline, check = Airline(today=lambda: TODAY), BookingCheck()
     settings = for_the_app(VoiceSettings.model_validate({"env": "test"}), agent="lean")
-    agent = declare(airline, TripBook(), check)
+    agent = declare(lean_deps(airline, check=check))
     heard: list[list[str]] = []
     async with TextCall(
         agent, llm=llm, settings=settings, caller=demo_caller(), today=TODAY, language="ar-SA"
@@ -125,7 +125,7 @@ def _guard(*done: str) -> SpeechGuard:
     """The guard of a lean reply, its claimants the lean agent's (its tools alone), the
     booking's results marked done `done`."""
     settings = for_the_app(VoiceSettings.model_validate({"env": "test"}), agent="lean")
-    agent = declare(Airline(today=lambda: TODAY), TripBook(), BookingCheck())
+    agent = declare(lean_deps(Airline(today=lambda: TODAY)))
     memory = Memory(done={"book_trip": list(done)} if done else {})
     return SpeechGuard(
         settings=settings.guard,
