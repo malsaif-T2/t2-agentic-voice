@@ -139,3 +139,14 @@ class TtsSettings(Group):
             "plays as it comes."
         ),
     )
+    stream_replies: bool = Field(
+        default=False,
+        description=(
+            "Whether the talker's replies are spoken on the provider's streaming socket, one a "
+            "call, each clause sent as the talker writes it and each reply one turn of the voice "
+            "(ElevenLabs' Text-to-Dialogue socket, for its v3 and v4 models; D-121). Fixed lines, "
+            "an action's lines and the clause cache's takes keep to one request a clause, as "
+            "does a provider or model with no socket; a socket's failure turns it off for the "
+            "rest of the call. Off by default until it is measured."
+        ),
+    )

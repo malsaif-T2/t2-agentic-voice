@@ -19,7 +19,7 @@ Each turn's times, in milliseconds, each empty when its step did not happen:
 | `end_of_turn_ms` | the end of the caller's speech | the turn's end, as the turn analyzer closed it: the stop delay, Smart Turn's judgement and the hold after it |
 | `turn_complete_ms` | the end of the caller's speech | Smart Turn's "complete", where the hold began (in a call with a talker, for a turn said while the agent was silent) |
 | `llm_first_token_ms` | the end of the caller's speech | the chat model's first token, the talker's first request |
-| `tts_first_audio_ms` | a text-to-speech request | its first audio |
+| `tts_first_audio_ms` | a text-to-speech request, or a clause sent on the call's socket | its first audio |
 
 - **The end of the caller's speech** is, in a live call, the speech detector's stop less its
   stop delay (`turns.vad_stop_ms`, 200 ms), so the time counts from the caller's last sound,
@@ -139,6 +139,26 @@ result, before step 5.
   laptop the model took about 60 ms on one thread and 40 ms on two
   (`turns.smart_turn_threads`); with every core busy, 140 to 180 ms on either, the waits around
   it staying under 3 ms.
+- **One socket a call for the voice** (`T2V_TTS__STREAM_REPLIES=true`, off by default; D-121).
+  With ElevenLabs' v4 Turbo (the default voice) or another of its v3 and v4 models, the talker's
+  replies go on ElevenLabs' Text-to-Dialogue socket, opened as the call starts and kept alive
+  under its 20 s idle limit, instead of one HTTPS request a clause. Each clause goes as the
+  talker writes it, flushed so its audio is made at once, and each reply is one turn of the
+  voice. In the study of 2026-11-17 a line's clauses sent into one turn, flushed once at its
+  end, kept the voice's intonation across them («للندن» came out right on the socket and wrong
+  in both HTTPS takes); a flush a clause, as here, is for the owner's listen to judge. The
+  first audio of a clause came
+  at 0.17 / 0.18 s (p50 / p95, 20 clauses, a library voice) against 0.21 / 0.23 s over HTTPS;
+  in the owner's voice, a smoke of five clauses each gave 0.16 to 0.19 s against 0.20 to
+  0.23 s. Fixed lines, an action's lines and the clause cache's takes keep to one request a
+  clause. A stop cuts the clause in flight: v4 has no socket that can drop one clause, so the
+  socket is closed and a new one opens at once in the background, ready long before the
+  caller's next turn is answered. A reply that moves to the other language opens that
+  language's socket at its first clause, one handshake. A socket's failure turns it off for the
+  rest of the call, logged once as `tts_stream_fell_back`, and the clause is requested over
+  HTTPS in its place when none of its audio had come. Each call holds one of the account's
+  dialogue sessions for as long as it lasts, from a pool of their own (14 on ElevenLabs' free
+  plan, 105 on Scale). The flight app leaves it off until it is measured and heard.
 - **A stop costs no model time.** The interruption rule stops the reply before any model request
   is sent, so the talker adds nothing to the time a stop takes.
 - **A clause said before plays from disk** (`tts.cache_clauses`, on by default by the

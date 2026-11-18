@@ -23,6 +23,9 @@ never closes the adapter it wraps (whoever built that closes it). Public through
 - **Reading:** a key the index holds is read in a thread within `READ_TIMEOUT_S`, else it is a
   miss and the clause is requested as today; a file that is no take is a miss, counted, its entry
   dropped and its file removed by the writer. `held` never raises.
+- **The socket** (D-121): `streams` and `open_stream` pass on the wrapped adapter's
+  (`StreamingTextToSpeech`); a clause spoken on a call's socket is never kept: it was
+  spoken within its reply's turn, after the clauses before it.
 - **Logs** never hold a text or a key (a key is a hash of a short text that can be guessed back,
   GP-19): `clause_cache_opened`, `_closed` and `_trimmed` at INFO; at WARNING
   `clause_unreadable`, and `clause_write_failed` and `clause_lookup_failed` (a lookup's own bug,
@@ -47,6 +50,7 @@ from t2_agentic_voice.adapters.wav_files import wav_of, write_whole
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.logging import get_logger
 from t2_agentic_voice.core.settings.tts import LanguageTag, TtsVoice
+from t2_agentic_voice.domain.ports.speech_stream import SpeechStream, StreamingTextToSpeech
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk, TextToSpeech
 
 log = get_logger(__name__)
@@ -137,6 +141,18 @@ class ClauseCache:
             found = None
         self._tally.looked_up(time.perf_counter() - started, hit=found is not None)
         return found
+
+    def streams(self, language: str) -> bool:
+        """Whether the adapter it wraps speaks `language` on its socket (D-121)."""
+        tts = self._tts
+        return isinstance(tts, StreamingTextToSpeech) and tts.streams(language)
+
+    def open_stream(self, *, language: str) -> SpeechStream:
+        """The wrapped adapter's session for one call, once `streams` said it has one."""
+        tts = self._tts
+        if not isinstance(tts, StreamingTextToSpeech):
+            raise TypeError("the text-to-speech the clause cache wraps has no socket")
+        return tts.open_stream(language=language)
 
     async def open(self) -> None:
         """Read the folder (clause_files.py's `scan`) and start the writer."""

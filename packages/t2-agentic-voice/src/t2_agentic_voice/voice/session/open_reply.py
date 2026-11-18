@@ -59,8 +59,10 @@ class ReplyWriter(Protocol):
         audio: AudioChunk | None = None,
         progress: bool = False,
         part: ReadBackPart | None = None,
+        talker: bool = False,
     ) -> ClauseIndex | None:
-        """Ask for the reply's next clause; its index, None when it was not asked for."""
+        """Ask for the reply's next clause (`talker` when the talker wrote it); its index,
+        None when it was not asked for."""
 
     async def show_card(self, reply_id: ReplyId, card: Card) -> bool:
         """Show `card`, as `t2v/1`'s `card`; whether it was shown."""
@@ -118,11 +120,12 @@ class OpenReply:
         self, text: str, *, language: LanguageTag, at: float, register: Register | None = None
     ) -> None:
         """Ask for the reply's next clause, `text` in `language`'s voice, at `at`, its numbers
-        in the caller's `register` when the setting asks; nothing once a stop or the call's
-        end dropped the reply."""
+        in the caller's `register` when the setting asks, marked the talker's (a streaming
+        text-to-speech may say it on its socket); nothing once a stop or the call's end dropped
+        the reply."""
         for request, caption in speech_of(self._setup, text, language, register):
             asked = await self._writer.write(
-                self.reply_id, text=request, caption=caption, language=language, at=at
+                self.reply_id, text=request, caption=caption, language=language, at=at, talker=True
             )
             if asked is None:
                 return

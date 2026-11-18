@@ -854,6 +854,19 @@ class TextToSpeech(Protocol):
     ) -> None: ...  # raises naming the missing model, voice, access or terms
 
 
+class SpeechStream(Protocol):  # provisional (D-121): one call's session on a socket
+    def say(
+        self, text: str, *, language: str, new_turn: bool
+    ) -> AsyncIterator[AudioChunk]: ...  # one clause, flushed; a reply's first, a new turn
+    def cut(self) -> None: ...  # a stop: the clause in flight dropped
+    async def aclose(self) -> None: ...  # at the call's end
+
+
+class StreamingTextToSpeech(Protocol):  # provisional (D-121), met beside TextToSpeech
+    def streams(self, language: str) -> bool: ...  # its model speaks on the socket
+    def open_stream(self, *, language: str) -> SpeechStream: ...  # opening at once
+
+
 class LanguageScores(BaseModel, frozen=True):  # provisional (D-086)
     shares: Mapping[str, float]  # each code asked, 0 to 1, summing to 1
     mass: float  # the share of the model's whole output those codes held
@@ -869,6 +882,8 @@ class LanguageClassifier(Protocol):  # provisional (D-086)
     async def aclose(self) -> None: ...
 ```
 
+*Added by plan 010 (D-121):* the streaming text-to-speech port, beside `TextToSpeech`, which is unchanged. A text-to-speech that can also speak over one socket a call meets `StreamingTextToSpeech`: `open_stream` opens a call's `SpeechStream` as the call's pipeline starts, its socket opening in the background for the call's language. The text-to-speech bridge then sends each clause the talker writes on it, one at a time and flushed, a reply's first as a new turn, so a reply is one turn of the voice. A stop cuts the clause in flight. The session keeps its socket alive under the provider's idle limit, opens another socket when a clause's language needs one, and closes at the call's end. Fixed lines, an action's lines and the clause cache's takes keep to `synthesize`. A failure is a `ProviderError`, as on every port, and the call falls back to `synthesize` for the rest of it. `ElevenLabsTTS` meets it with ElevenLabs' Text-to-Dialogue socket for its v3 and v4 models (v4 Turbo, the default). The clause cache passes on the adapter it wraps, and keeps nothing spoken on a socket. `tts.stream_replies` turns it on, off by default.
+
 *Added by plan 007's Block H (D-086):* the spoken-language classifier port, which runs in the process and sends no audio anywhere, so it has no `DataFlow`. Its answer is parsed at the port: an answer that does not parse is a failure, as a `ProviderError` is. The `classifiers` facade gives Silero's (on onnxruntime) and ECAPA's (on torch, through the `ecapa` extra); any other is passed in code, `Providers.from_settings(settings).replace(classifier=...)`.
 
 The Groq `DataFlow` values come from Groq's "Your Data" page (checked). That page does not say where requests are processed.
@@ -878,6 +893,7 @@ The Groq `DataFlow` values come from Groq's "Your Data" page (checked). That pag
 **Rules for every port:**
 - **Cancellation.** The runtime cancels a provider call by cancelling its task. The Groq adapters' tests check that a call stops within 50 ms and leaks no tasks or connections. Contract suites for other authors come on request (section 3.1).
 - **Failures** are raised as `ProviderError(kind, retryable, retry_after_s)`.
+- **Streaming text-to-speech** is an optional port of its own (`StreamingTextToSpeech`, above): an adapter that has no socket meets only `TextToSpeech`, and nothing changes for it.
 - **Streaming speech-to-text.** The name `StreamingSpeechToText` is reserved for an optional protocol with partial transcripts. It will be designed when a streaming provider exists. The voice session already takes "words heard so far" as events, so the interruption logic will not change shape.
 - **Swapping a provider.** A setting (`stt.provider` and so on) picks among the built-in adapters. Any other adapter is an object passed in code. There is no registry and no discovery through entry points. Passing an object in code goes beyond GP-22's "by configuration", so it needs a decision entry (section 16.3).
 
@@ -1140,7 +1156,7 @@ The defaults below are the agent's starting values, to be measured in the milest
 | `groq` | `api_key` (required for Groq adapters), `api_key_file`, `base_url`, `timeout_s` | — |
 | `stt` | `provider` (groq), `model` (`whisper-large-v3`, chosen by the M1 baseline: D-025), `timeout_s` (6), `no_speech_max` (0.55) and `caption_filter` (true), the filter for text from silence (D-063, D-068); `live_language` (`session`; or `auto`, `classified`, `detected`, `hinted` or `single`: D-066, D-086, D-038, D-115, D-117), `detect_from_s` (1.2) and `switch_min_probability` (0.8), its classifier, `classifier` (`silero`; or `ecapa`), `classifier_dir` (none), `classifier_from_s` (2.0), `classifier_min_share` (0.7) and `classifier_threads` (2), registered for run H | M1, M3, plan 007 |
 | `llm` | `provider` (groq), `model` (openai/gpt-oss-120b), `reasoning_effort` (medium: D-074), `max_output_tokens`, `timeout_s` (8), `vary_first_line` (true: D-072), `max_requests_per_turn` (3, from 2 to 5; the flight app's 4) | M4 |
-| `tts` | `provider` (groq), `languages` (a map from language to `{model, voice}`; models `canopylabs/orpheus-arabic-saudi` and `canopylabs/orpheus-v1-english`; voices chosen in M2), `timeout_s`, `cache_phrases` (true), `cache_clauses` (true, the owner's ruling of 2026-11-12) and `clause_cache_mb` (512), the clause cache (D-087) | M2, M5 |
+| `tts` | `provider` (groq), `languages` (a map from language to `{model, voice}`; models `canopylabs/orpheus-arabic-saudi` and `canopylabs/orpheus-v1-english`; voices chosen in M2), `timeout_s`, `cache_phrases` (true), `cache_clauses` (true, the owner's ruling of 2026-11-12) and `clause_cache_mb` (512), the clause cache (D-087), and `stream_replies` (false), the talker's replies on the provider's socket (D-121) | M2, M5 |
 | `turns` | `vad_confidence`, `vad_start_ms`, `vad_stop_ms` (200), `smart_turn` (true), `smart_turn_threshold` (0.5), `complete_hold_ms` (600, the hold after Smart Turn's "complete": D-067), `max_silence_ms` (fallback end of turn) | M2, M3 |
 | `interruptions` | `mode` (two_step, by the owner's ruling: D-068; or drop), `duck_level` (0.25), `first_window_ms` (750), `min_words` (2), `short_words` (2), `short_s` (1.2), `own_words_s` (5) (D-061), `yes_over_read_back` (false: section 8.3, D-108; the flight app turns it on), `answer_yes_over_question` (false: section 8.3, D-116; the flight app's lean agent turns it on) | M3 (from the M1 overlap data) |
 | `words` | `stop`, `wait`, `repeat`, `backchannel`, `no` (M3, D-062); `yes`, `send`, `vocabulary`: additions to the declaration | M3 to M5 |

@@ -1438,6 +1438,12 @@ Block 0.
   probe smoke (10 dev clips, $0.008): commit to final p50 263 / p95 435 ms against batch's 664 /
   969 ms; English 0 % WER both ways, Arabic 13.3 % against 10.0 % (one word on one two-word MSA
   reply); the port is built only if the full dev probe, a timing run, clears the bar.
+- 2026-11-18: ElevenLabs' dialogue socket for talker replies built and merged (D-121,
+  `tts.stream_replies`, off by default): smoke in the owner's voice, first audio 0.16-0.19 s
+  against HTTP's 0.20-0.23 s, gaps between clauses about the same. Whether a flush per clause keeps
+  the flow the TTS study heard from one flush per line is for the owner's ear (the measure
+  script's socket, socket-end and HTTP renders). Size debt: adapters/elevenlabs_stream.py 335
+  lines, speaker.py 371, clause_cache.py 318, under the cap, to split in the next pass.
 - 2026-11-17: the text-to-speech candidates for the owner's pick by ear (D-114, branch
   `plan-010-tts`): `tts.provider` takes `elevenlabs`, `groq` and `telnyx`, each speaking the
   provider's default voices with `tts.languages` unset. The owner picked ElevenLabs v4 Turbo in
