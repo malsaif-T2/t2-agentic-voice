@@ -43,13 +43,15 @@ VERSION: Final = "2026-11-17.4"
 TIME_ZONE: Final = RIYADH.utcoffset(None) or timedelta(hours=3)
 
 
-def languages(names: Names) -> list[Language]:
-    """Saudi Arabic, then English, each with its greeting and progress lines."""
+def languages(names: Names, network: persona.Network = "mock") -> list[Language]:
+    """Saudi Arabic, then English, each with its greeting on `network` and progress lines."""
+
+    def said(tag: persona.Tag) -> str:
+        return persona.greeting(tag, names, network=network)
+
     return [
-        Language.saudi_arabic(
-            greeting=persona.greeting("ar-SA", names), progress=persona.PROGRESS["ar-SA"]
-        ),
-        Language.english(greeting=persona.greeting("en", names), progress=persona.PROGRESS["en"]),
+        Language.saudi_arabic(greeting=said("ar-SA"), progress=persona.PROGRESS["ar-SA"]),
+        Language.english(greeting=said("en"), progress=persona.PROGRESS["en"]),
     ]
 
 

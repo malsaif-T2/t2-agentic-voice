@@ -236,7 +236,7 @@ def test_the_mock_lines_change_only_on_another_search_and_a_price_as_given(tag: 
 @pytest.mark.parametrize("tag", TAGS)
 def test_the_real_lines_name_every_airline_and_book_nothing(tag: Tag) -> None:
     text = instructions(Names(), TODAY, LAST, network="real")[tag]
-    assert "$" not in text and "the travel assistant of T2 Air" in text
+    assert "$" not in text and "the flight assistant of T2" in text and "T2 Air" not in text
     for gone in ("Every flight starts or ends in Riyadh.", "ask whether to book", "book_trip"):
         assert gone not in text, gone
     for held in (
@@ -302,4 +302,4 @@ def test_the_real_network_declares_its_own_terms_and_no_booking() -> None:
     assert agent.vocabulary is not None and agent.vocabulary.terms == ("Riyadh", "Saudia", "T2 Air")
     assert dict(agent.pronounce)["SV"] == {"en": "ess vee", "ar": "إس في"}
     assert "T2" in dict(agent.pronounce)
-    assert "the travel assistant of" in render_prompt(agent, "en")
+    assert "the flight assistant of T2, the company" in render_prompt(agent, "en")

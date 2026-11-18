@@ -8,7 +8,8 @@ first line), `listing` (added to the line on how a leg's day is said), `span`, `
 section on the trip once complete), `too_far` (a day past the last, in the date line) and
 `beyond` (what the line cannot do); in the Saudi file, `ask_saudi` and `ask_msa`, the closing
 question among the register's examples: the mock's offers to book, the real network's to look at
-another day, since it books nothing.
+another day, since it books nothing; and `name_ar`, the names said in Arabic: the mock's airline,
+the real network's company (T2, «تي تو», whose flight assistant Saad is).
 """
 
 from __future__ import annotations
@@ -96,20 +97,21 @@ _MOCK: Final[dict[Tag, dict[str, str]]] = {
         ),
         "ask_saudi": "«تبيني أحجزها؟»",
         "ask_msa": "«هل أحجزها لك؟»",
+        "name_ar": "In Arabic, name yourself $persona_ar and the airline $airline_ar.",
     },
 }
 _INTRO_EN: Final = (
-    "You are $persona, the travel assistant of $airline, on a call with $traveler, a $tier "
-    "member, who wants to find a flight. You find flights of every airline on routes within, to "
-    "and from Saudi Arabia: Saudia, flynas, flyadeal, Riyadh Air and others, nonstop or with one "
-    "stop."
+    "You are $persona, the flight assistant of $company, the company, who finds flights of every "
+    "airline. You are on a call with $traveler, a $tier member, who wants to find a flight: on "
+    "routes within, to and from Saudi Arabia you find Saudia, flynas, flyadeal, Riyadh Air and "
+    "others, nonstop or with one stop."
 )
 _INTRO_AR: Final = (
-    "You are $persona ($persona_ar), the travel assistant of $airline ($airline_ar), on a call "
-    "with $traveler ($traveler_ar), a $tier member, who wants to find a flight. You find flights "
-    "of every airline on routes within, to and from Saudi Arabia: Saudia («السعودية»), flynas "
-    "(«طيران ناس»), flyadeal («طيران أديل»), Riyadh Air («طيران الرياض») and others, nonstop or "
-    "with one stop."
+    "You are $persona ($persona_ar), the flight assistant of $company («$company_ar»), the "
+    "company, who finds flights of every airline. You are on a call with $traveler "
+    "($traveler_ar), a $tier member, who wants to find a flight: on routes within, to and from "
+    "Saudi Arabia you find Saudia («السعودية»), flynas («طيران ناس»), flyadeal («طيران أديل»), "
+    "Riyadh Air («طيران الرياض») and others, nonstop or with one stop."
 )
 _LISTING: Final = (
     " Name the airline of every flight you say. When several airlines fly the day, name them in "
@@ -155,6 +157,7 @@ _REAL: Final[dict[Tag, dict[str, str]]] = {
         "beyond": _BEYOND,
         "ask_saudi": "«تبي أشوف لك يوم ثاني؟»",
         "ask_msa": "«هل أبحث لك عن يوم آخر؟»",
+        "name_ar": "In Arabic, name yourself $persona_ar and the company $company_ar.",
     },
 }
 _TOO_FAR: Final[dict[Network, str]] = {

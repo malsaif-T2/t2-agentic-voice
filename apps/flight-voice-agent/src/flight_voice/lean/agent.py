@@ -2,7 +2,8 @@
 setting `FLIGHT_VOICE_AGENT` is `lean` (server.py), and what run F plays under `--agent lean`.
 
 It speaks as today's agent does (the same languages, greetings, progress lines, pronunciation of
-the airline's code and vocabulary, agent.py's and persona.py's), in Riyadh's time zone, with its
+the airline's code and vocabulary, agent.py's and persona.py's; on the real network the greeting
+is the real network's, Saad as T2's flight assistant), in Riyadh's time zone, with its
 own short instructions and calendar (prompt.py) and its tools over its sources (deps.py):
 `find_flights`, `choose_flights`, `book_trip` (only where the line books: the mock) and today's
 `traveler_profile`. On the real network the vocabulary's terms are the network's own (they
@@ -44,7 +45,7 @@ from flight_voice.persona import Names
 from flight_voice.tools.profile import traveler_profile
 
 NAME: Final = "flight-lean"
-VERSION: Final = "lean-2026-11-18.3"
+VERSION: Final = "lean-2026-11-18.4"
 
 __all__ = ["NAME", "OBSERVED", "VERSION", "calendar_watch", "declare", "lean_tools"]
 
@@ -86,7 +87,7 @@ def declare(deps: LeanDeps, names: Names | None = None) -> VoiceAgent:
     return VoiceAgent(
         name=NAME,
         version=VERSION,
-        languages=languages(named),
+        languages=languages(named, deps.network),
         pronounce=pronounce,
         instructions=prompt.instructions(
             named, today, deps.data.last_day(today), network=deps.network
