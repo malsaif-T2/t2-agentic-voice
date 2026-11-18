@@ -11,7 +11,7 @@ too.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from t2_agentic_voice.core.events import EndReason, TurnId
 from t2_agentic_voice.core.settings.tts import LanguageTag
@@ -56,7 +56,9 @@ class Speak:
     sent as it is (the session made it the provider's text: call.py); or, for a fixed phrase,
     `audio` from the phrase cache, played with no request (`text`, the whole phrase as written
     whatever its length, kept for its caption and its span: one clause). Clauses play in the
-    order they were asked for."""
+    order they were asked for. `talker` marks a clause the talker wrote (open_reply.py's
+    `add_clause`), which a streaming text-to-speech may say on its socket under
+    `tts.stream_replies` (voice/tts_stream.py); a fixed or an action's line never is."""
 
     reply_id: ReplyId
     clause: ClauseIndex
@@ -64,6 +66,7 @@ class Speak:
     text: str
     language: LanguageTag
     audio: AudioChunk | None = None
+    talker: bool = field(default=False, compare=False)  # a hint for the bridge alone
 
 
 @dataclass(frozen=True, kw_only=True)

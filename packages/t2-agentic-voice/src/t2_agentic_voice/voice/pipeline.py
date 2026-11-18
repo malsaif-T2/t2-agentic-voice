@@ -60,6 +60,7 @@ from t2_agentic_voice.voice.transport import (
     WebRTCPeer,
 )
 from t2_agentic_voice.voice.tts_bridge import ClauseTTSBridge
+from t2_agentic_voice.voice.tts_stream import call_stream
 from t2_agentic_voice.voice.turn_hold import LongerWait
 from t2_agentic_voice.voice.turns import stops_early, turn_processors
 
@@ -115,9 +116,10 @@ class CallPipeline:
             at_stop=at_stop,
         )
         bridge = SessionBridge(events)
-        timeout_s = setup.settings.tts.timeout_s
+        timeout_s, streamed = setup.settings.tts.timeout_s, setup.settings.tts.stream_replies
+        stream = call_stream(tts, on=streamed, language=setup.language.tag, call_id=setup.call_id)
         self.tts_bridge = ClauseTTSBridge(
-            tts=tts, events=events, report=self.report, timeout_s=timeout_s
+            tts=tts, events=events, report=self.report, timeout_s=timeout_s, stream=stream
         )
         wait_s = turns.read_back_silence_ms  # a read-back's answer's longer wait, when set
         self.longer = None if wait_s is None else LongerWait(seconds=wait_s / 1000)

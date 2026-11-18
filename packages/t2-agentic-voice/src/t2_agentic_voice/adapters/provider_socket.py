@@ -82,8 +82,12 @@ class _Silent:
         return None
 
 
-async def open_socket(url: str, headers: Mapping[str, str], open_timeout_s: float) -> Socket:
-    """The connection to `url` with `headers` sent on its handshake (the module's docstring)."""
+async def open_socket(
+    url: str, headers: Mapping[str, str], open_timeout_s: float, *, max_size: int = MAX_MESSAGE
+) -> Socket:
+    """The connection to `url` with `headers` sent on its handshake (the module's docstring),
+    reading messages of up to `max_size` bytes (a streamed take's audio is larger than a
+    turn's transcript)."""
     connection = await connect(
         url,
         additional_headers=dict(headers),
@@ -91,7 +95,7 @@ async def open_socket(url: str, headers: Mapping[str, str], open_timeout_s: floa
         compression=None,
         ping_interval=None,
         open_timeout=open_timeout_s,
-        max_size=MAX_MESSAGE,
+        max_size=max_size,
         logger=cast(LoggerLike, _Silent()),
     )
     return cast(Socket, connection)

@@ -20,6 +20,10 @@ no variable of its own read, no redirect followed):
   `rejected` before a call; its `Date` header is the answer's time. The voice shows only at its
   first synthesis: a key restricted to text-to-speech (no `voices_read`, as the owner's) cannot
   read a voice.
+- **Its socket** (D-121): it is a `StreamingTextToSpeech` too. A language whose model is one of
+  the dialogue models (`eleven_v3*`, `eleven_v4*`) `streams`, and `open_stream` opens one call's
+  session on the Text-to-Dialogue socket (adapters/elevenlabs_stream.py), with the same key,
+  voices, timeout and silence trim.
 
 Every failure is a ProviderError naming no key or text; a cancel stops the request at once,
 closing its response.
@@ -34,6 +38,12 @@ from typing import Final
 import httpx
 from pydantic import BaseModel, ConfigDict, JsonValue, SecretStr, TypeAdapter
 
+from t2_agentic_voice.adapters.elevenlabs_stream import (
+    DIALOGUE_URL,
+    DialogueStream,
+    on_dialogue_socket,
+    open_dialogue,
+)
 from t2_agentic_voice.adapters.groq_client import server_time
 from t2_agentic_voice.adapters.pcm_takes import PcmTake, no_voice, too_long
 from t2_agentic_voice.adapters.provider_http import (
@@ -44,6 +54,7 @@ from t2_agentic_voice.adapters.provider_http import (
     ok_status,
     provider_key,
 )
+from t2_agentic_voice.adapters.provider_socket import Opener
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError, ProviderError
 from t2_agentic_voice.core.settings.base import setting_name
@@ -82,8 +93,9 @@ DATA_FLOW: Final = DataFlow(
 
 
 class ElevenLabsTTS:
-    """Text-to-speech with ElevenLabs, a model and a voice per language; a `TextToSpeech`.
-    `transport` replaces the HTTP transport (a test's fake one). Close it with `aclose()`."""
+    """Text-to-speech with ElevenLabs, a model and a voice per language; a `TextToSpeech` and a
+    `StreamingTextToSpeech`. `transport` replaces the HTTP transport and `opener` the socket's
+    connection (a test's fakes). Close it with `aclose()`."""
 
     name: str = "elevenlabs"
     data_flow: DataFlow = DATA_FLOW
@@ -97,16 +109,22 @@ class ElevenLabsTTS:
         trim_silence: bool = False,
         base_url: str = BASE_URL,
         transport: httpx.AsyncBaseTransport | None = None,
+        opener: Opener = open_dialogue,
     ) -> None:
         self._api_key = given_key(api_key, ElevenLabsSettings, VENDOR, instead=TTS_INSTEAD)
         self._languages: dict[str, TtsVoice] = dict(languages.items())
         self._base = base_url.rstrip("/")
         self._timeout_s, self._trim = timeout_s, trim_silence
         self._http = http_client(timeout_s=timeout_s, transport=transport)
+        self._open = opener
 
     @classmethod
     def from_settings(
-        cls, settings: VoiceSettings, *, transport: httpx.AsyncBaseTransport | None = None
+        cls,
+        settings: VoiceSettings,
+        *,
+        transport: httpx.AsyncBaseTransport | None = None,
+        opener: Opener = open_dialogue,
     ) -> ElevenLabsTTS:
         """The adapter the settings describe: `elevenlabs`' key, `tts.languages`,
         `tts.timeout_s` and `tts.trim_silence`; a ConfigurationError naming
@@ -119,6 +137,7 @@ class ElevenLabsTTS:
             timeout_s=tts.timeout_s,
             trim_silence=tts.trim_silence,
             transport=transport,
+            opener=opener,
         )
 
     def __repr__(self) -> str:
@@ -174,6 +193,23 @@ class ElevenLabsTTS:
         if last is not None:
             first = not take.sent
             yield last.model_copy(update={"remaining_requests": headroom if first else None})
+
+    def streams(self, language: str) -> bool:
+        """Whether `language`'s model speaks on the Text-to-Dialogue socket."""
+        voice = self._languages.get(language)
+        return voice is not None and on_dialogue_socket(voice.model)
+
+    def open_stream(self, *, language: str) -> DialogueStream:
+        """One call's session on the socket, opening for `language` (the module's docstring)."""
+        return DialogueStream(
+            api_key=self._api_key,
+            voices=self._languages,
+            language=language,
+            timeout_s=self._timeout_s,
+            trim_silence=self._trim,
+            url=DIALOGUE_URL,
+            opener=self._open,
+        )
 
     async def check_language(self, language: str) -> datetime | None:
         """Return when `language` has a model and a voice and ElevenLabs lists the model for the

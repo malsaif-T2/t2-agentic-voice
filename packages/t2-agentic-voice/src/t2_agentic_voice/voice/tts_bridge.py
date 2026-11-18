@@ -19,6 +19,10 @@ session_bridge.py's `SpeakFrame`) through the `TextToSpeech` port, one request a
   phrase's audio plays, with no `Synthesizing` and no request, its `ClauseQueued` marked `held`,
   once the bridge has checked again that no stop dropped the clause while its take was read. A
   miss is requested as any clause. With any other text-to-speech nothing is looked up.
+- With `tts.stream_replies` on and a text-to-speech that streams (tts_stream.py's
+  `CallStream`, D-121), a clause the talker wrote goes on the call's socket instead of its own
+  request, with the same events; the session opens as the pipeline starts, a stop cuts the
+  clause in flight on it, and it closes as the pipeline ends. Every other clause goes as above.
 - Every clause's last audio is followed by its context's `TTSStoppedFrame`, which the output
   transport passes on once that audio has left it: the output tap then asks `played` for the
   clause's `ClausePlayed` (transport.py), with the seconds and chunks that came, the headroom on
@@ -46,8 +50,10 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator
 
 from pipecat.frames.frames import (
+    CancelFrame,
     Frame,
     InterruptionFrame,
+    StartFrame,
     TTSAudioRawFrame,
     TTSSpeakFrame,
     TTSStartedFrame,
@@ -77,6 +83,7 @@ from t2_agentic_voice.voice.session_bridge import (
 )
 from t2_agentic_voice.voice.session_bridge import context_id as clause_context
 from t2_agentic_voice.voice.tts_output import ClauseTake, OutputChunks
+from t2_agentic_voice.voice.tts_stream import CallStream
 
 log = get_logger(__name__)
 
@@ -84,10 +91,17 @@ log = get_logger(__name__)
 class ClauseTTSBridge(TTSService):
     """One call's text-to-speech bridge: each clause through `tts`, its events to `events`, its
     failures to `report`; a context with no audio for `timeout_s` (the settings' longest
-    request) is ended, as Pipecat ends one gone quiet."""
+    request) is ended, as Pipecat ends one gone quiet. `stream` is the call's streaming
+    text-to-speech, under `tts.stream_replies` (tts_stream.py); None speaks as before."""
 
     def __init__(
-        self, *, tts: TextToSpeech, events: EventStream, report: FailureReport, timeout_s: float
+        self,
+        *,
+        tts: TextToSpeech,
+        events: EventStream,
+        report: FailureReport,
+        timeout_s: float,
+        stream: CallStream | None = None,
     ) -> None:
         super().__init__(
             text_aggregation_mode=TextAggregationMode.TOKEN,
@@ -102,6 +116,7 @@ class ClauseTTSBridge(TTSService):
         self._holder = tts if isinstance(tts, HeldSpeech) else None
         self._events = events
         self._report = report
+        self._stream = stream
         self._clauses: dict[ClauseKey, ClauseTake] = {}
         self._speaking: tuple[ClauseKey, Speak] | None = None
 
@@ -111,11 +126,28 @@ class ClauseTTSBridge(TTSService):
             return
         await super().process_frame(frame, direction)
         if isinstance(frame, InterruptionFrame):  # a stop: forget what it dropped
+            if self._stream is not None:
+                self._stream.cut()
             dropped = self._events.dropped
             for key in [k for k in self._clauses if k in dropped]:
                 del self._clauses[key]
             for context in [c for c in self._tts_contexts if clause_of(c) in dropped]:
                 del self._tts_contexts[context]
+
+    async def start(self, frame: StartFrame) -> None:
+        await super().start(frame)
+        if self._stream is not None:
+            self._stream.start()
+
+    async def cancel(self, frame: CancelFrame) -> None:
+        await super().cancel(frame)
+        if self._stream is not None:
+            await self._stream.aclose()
+
+    async def cleanup(self) -> None:
+        await super().cleanup()  # type: ignore[no-untyped-call]
+        if self._stream is not None:
+            await self._stream.aclose()
 
     def create_context_id(self) -> str:
         """The context of the clause being spoken, named from its key."""
@@ -135,8 +167,14 @@ class ClauseTTSBridge(TTSService):
         clause.requested_at = clock.now()
         self._events.hand(Synthesizing(reply_id=key[0], clause=key[1], at=clause.requested_at))
         chunks = OutputChunks(self.sample_rate)
+        stream = self._stream
+        takes = (
+            self._tts.synthesize(speak.text, language=speak.language)
+            if stream is None
+            else stream.speech(speak)
+        )
         try:
-            async for chunk in self._tts.synthesize(speak.text, language=speak.language):
+            async for chunk in takes:
                 clause.took(chunk)
                 for frame in await self._audio(key, clause, context_id, await chunks.whole(chunk)):
                     yield frame
@@ -147,6 +185,9 @@ class ClauseTTSBridge(TTSService):
         except Exception as error:  # an adapter's bug: the clause still fails, as it must
             log.error("tts_request_failed", reply_id=key[0], error=type(error).__name__)
             self._failed(key, clause, "server_error", False)
+        finally:  # on the socket, a cancel or an early close ends the clause there at once
+            if stream is not None:
+                await stream.close(takes)
 
     async def _audio(
         self, key: ClauseKey, clause: ClauseTake, context_id: str, audio: bytes

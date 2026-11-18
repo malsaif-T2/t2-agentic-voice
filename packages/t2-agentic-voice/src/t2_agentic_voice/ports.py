@@ -1,7 +1,7 @@
 """The ports: the protocols an outside service is reached through, and their data types (the
 design's 6.1, 6.3, 6.4 and 6.5). Stable (D-021), `UsedTokens`, `KnowledgeBase` and `Outbox`
-provisional (the design's 5.1), as are `LanguageClassifier` and `LanguageScores` (D-086). A
-facade: it only re-exports (ARCH-FACADE)."""
+provisional (the design's 5.1), as are `LanguageClassifier` and `LanguageScores` (D-086), and
+`StreamingTextToSpeech` and `SpeechStream` (D-121). A facade: it only re-exports (ARCH-FACADE)."""
 
 from t2_agentic_voice.domain.ports.chat_model import (
     ChatEvent,
@@ -18,6 +18,7 @@ from t2_agentic_voice.domain.ports.identity import IdentityVerifier, JoinContext
 from t2_agentic_voice.domain.ports.knowledge import KnowledgeBase, Passage
 from t2_agentic_voice.domain.ports.language_classifier import LanguageClassifier, LanguageScores
 from t2_agentic_voice.domain.ports.outbox import Outbox, OutboxEntry
+from t2_agentic_voice.domain.ports.speech_stream import SpeechStream, StreamingTextToSpeech
 from t2_agentic_voice.domain.ports.speech_to_text import (
     AudioClip,
     DataFlow,
@@ -43,7 +44,9 @@ __all__ = [
     "Outbox",
     "OutboxEntry",
     "Passage",
+    "SpeechStream",
     "SpeechToText",
+    "StreamingTextToSpeech",
     "TextDelta",
     "TextToSpeech",
     "ToolCallRequest",

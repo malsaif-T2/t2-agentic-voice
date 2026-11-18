@@ -27,6 +27,11 @@ Bayan, measured beside them, is `"telnyx"` (`Fahd` for Saudi, `Michael` for Engl
 (`{"en": {"model": "eleven_v4", "voice": "<voice ID>"}}`, or `{"model": "Telnyx.Bayan", "voice":
 "Jasem"}`), and the settings refuse one of another provider.
 
+With `tts.stream_replies` on (off by default, D-121), the talker's replies in a language whose
+ElevenLabs model is v3 or v4 are spoken on one socket a call, each reply one turn of the voice
+([latency.md](latency.md), "One socket a call for the voice"). The socket is opened for one
+language code: the two Arabic presets share it, and a clause in English opens English's.
+
 The echo's frame is «سمعتك تقول:» in both Arabic presets. Both share the primary code `ar`: the
 word lists, the pronunciation map and the speech-to-text request are keyed by it. An agent lists
 its languages in order, each once, and the first is a call's when nothing picks another.

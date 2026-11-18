@@ -187,11 +187,12 @@ class Speaker:
         audio: AudioChunk | None = None,
         progress: bool = False,
         part: ReadBackPart | None = None,
+        talker: bool = False,
     ) -> ClauseIndex | None:
         """Ask for the next clause of the open reply `reply_id`: `text` in `language`'s voice
         (or `audio`, a fixed phrase's, with no request), captioned `caption`, the read-back's
-        `part` it says, if any; its index, None when it was not asked for (once the reply has
-        ended or was closed)."""
+        `part` it says, if any, `talker` when the talker wrote it; its index, None when it was
+        not asked for (once the reply has ended or was closed)."""
         reply = self.playback.reply(reply_id)
         if reply is None or reply.ended_at is not None or not reply.open:
             return None
@@ -202,6 +203,7 @@ class Speaker:
             text=text,
             language=language,
             audio=audio,
+            talker=talker,
         )
         line = Line(speak=speak, caption=caption)
         self.playback.add(reply, line, progress=progress, part=part)

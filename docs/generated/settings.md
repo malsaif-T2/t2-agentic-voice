@@ -176,6 +176,7 @@ Text-to-speech: the adapter, a model and a voice for each language, and what is 
 | `T2V_TTS__SPOKEN_NUMBERS` | one of as_written, by_register | `as_written` | — | How a reply's numbers, times and dates are said: as_written reads each run of digits as a number (num2words' MSA in Arabic) or an ID; by_register says them in the caller's register, Saudi or MSA words in Arabic, a time as a clock says it with its part of the day, an ISO date with its weekday and month. |
 | `T2V_TTS__SPOKEN_KEY_COMBINATIONS` | true or false | `false` | — | Whether a key combination in a reply is said as its keys, its plus signs left out ("Ctrl + Shift + R" is said "Control Shift R"; in Arabic, by the Arabic names of its keys); off, it is said as written. |
 | `T2V_TTS__TRIM_SILENCE` | true or false | `false` | — | Whether the silence the model puts before its speech is trimmed; off, the audio plays as it comes. |
+| `T2V_TTS__STREAM_REPLIES` | true or false | `false` | — | Whether the talker's replies are spoken on the provider's streaming socket, one a call, each clause sent as the talker writes it and each reply one turn of the voice (ElevenLabs' Text-to-Dialogue socket, for its v3 and v4 models; D-121). Fixed lines, an action's lines and the clause cache's takes keep to one request a clause, as does a provider or model with no socket; a socket's failure turns it off for the rest of the call. Off by default until it is measured. |
 
 ## `turns`
 
