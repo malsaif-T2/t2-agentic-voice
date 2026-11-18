@@ -33,10 +33,8 @@ default (persona.py's `Names`).
   it, so «إي احجزها» or «نعم، احجزها» said over its closing question is the yes D-116 answers, as
   over the scripted agent's read-back, which declares them as its action's own;
 - **reads a caller as Saudi first**, the app's forms added (caller_register.py), unless set;
-- **says numbers, times and dates in the caller's register** (`tts.spoken_numbers =
-  "by_register"`, `SPOKEN_NUMBERS`, D-107) unless the environment sets it: "14:00" is said
-  «ثنتين الظهر» to a Saudi caller and "two in the afternoon" in English, never digit by digit,
-  since the lean agent writes times and fares in digits;
+- **speaks in Groq's Orpheus voices** (the owner, 2026-11-18) and says numbers, times and dates
+  in the caller's register (D-107), each unless the environment sets it (app_voice.py);
 - **turns on plan 010's first changes to how soon a call answers** (turned_on.py), each unless
   the environment sets it: the warm-up, Smart Turn on two threads, 0.1 s of silence after a
   progress line's speech, the early start from the detector's stop and over a reply, and for the
@@ -74,6 +72,7 @@ from t2_agentic_voice import (
 
 from flight_voice.airline.bookings import Mode
 from flight_voice.airline.system import SLOW_S, ProfileMode, SearchMode, live_today
+from flight_voice.app_voice import app_tts
 from flight_voice.booking.lines import SEND_WORDS
 from flight_voice.caller_register import REGISTER_WORDS
 from flight_voice.persona import Names, breaking
@@ -91,7 +90,6 @@ ACTIONS_PER_DAY: Final = 50
 GUARD_ON: Final = ("question_stop_drops_calls", "drop_stage_notes", "plain_speech", "retry_claims")
 REQUESTS_PER_TURN: Final = 4
 YES_OVER_READ_BACK: Final = "yes_over_read_back"
-SPOKEN_NUMBERS: Final = "by_register"
 YES_OVER_QUESTION: Final = "answer_yes_over_question"
 # The agent the app serves: today's scripted one, or the lean one beside it (D-113).
 AgentKind = Literal["scripted", "lean"]
@@ -251,7 +249,7 @@ def for_the_app(voice: VoiceSettings, *, agent: AgentKind = "scripted") -> Voice
     a day `ACTIONS_PER_DAY`, the guard's `GUARD_ON` on, its most requests a turn
     `REQUESTS_PER_TURN`, for the scripted agent `YES_OVER_READ_BACK` on and for the lean one
     (which has no read-back) `YES_OVER_QUESTION`, with the booking's `SEND_WORDS` its `words.send`,
-    `REGISTER_WORDS` for the caller's register, numbers said `SPOKEN_NUMBERS`, turned_on.py's
+    `REGISTER_WORDS` for the caller's register, app_voice.py's speech, turned_on.py's
     `TURNED_ON` (and its `READ_BACK_TURNS` for the scripted agent), each unless set, and under
     `env` dev alone the demo traveler the console's dev caller; every other setting as it was."""
     storage = StorageSettings.model_validate(
@@ -276,8 +274,7 @@ def for_the_app(voice: VoiceSettings, *, agent: AgentKind = "scripted") -> Voice
         update["llm"] = LlmSettings.model_validate(
             voice.llm.model_dump() | {"max_requests_per_turn": REQUESTS_PER_TURN}
         )
-    if "spoken_numbers" not in voice.tts.model_fields_set:
-        update["tts"] = voice.tts.model_copy(update={"spoken_numbers": SPOKEN_NUMBERS})
+    update["tts"] = app_tts(voice.tts)
     update |= turned_on(voice, read_back=agent == "scripted")
     if voice.env == "dev":
         update["server"] = ServerSettings.model_validate(

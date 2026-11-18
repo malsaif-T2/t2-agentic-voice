@@ -1485,6 +1485,8 @@ Block 0.
 - 2026-11-18, before the owner's demo: the register held for the whole call, Najdi by default in
   the flight app and MSA with `T2V_WORDS__FIXED_REGISTER=msa`; the weekday a caller said held
   over the date the model worked out; a one-day span searched as that day (D-125).
+- 2026-11-18, after the demo (it went well): the flight app's voice back to Groq's Orpheus, the
+  owner's call for their Groq credits (D-114, amended); the next goal is real flights (plan to come).
 - 2026-11-17: the text-to-speech candidates for the owner's pick by ear (D-114, branch
   `plan-010-tts`): `tts.provider` takes `elevenlabs`, `groq` and `telnyx`, each speaking the
   provider's default voices with `tts.languages` unset. The owner picked ElevenLabs v4 Turbo in

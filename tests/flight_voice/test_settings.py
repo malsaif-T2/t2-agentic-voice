@@ -12,13 +12,13 @@ from datetime import date
 from pathlib import Path
 
 import pytest
+from flight_voice.app_voice import SPOKEN_NUMBERS
 from flight_voice.settings import (
     ACTIONS_PER_DAY,
     APP_FOLDER,
     GUARD_ON,
     PREFIX,
     REQUESTS_PER_TURN,
-    SPOKEN_NUMBERS,
     TOKENS_PER_DAY,
     YES_OVER_READ_BACK,
     for_the_app,
@@ -182,18 +182,24 @@ def test_a_yes_over_the_read_back_is_held_unless_the_environment_sets_it(
     ).interruptions.yes_over_read_back
 
 
-def test_saad_speaks_in_the_owners_elevenlabs_voice_unless_the_environment_names_groq(
+def test_saad_speaks_in_groqs_voices_unless_the_environment_names_elevenlabs(
     environment: pytest.MonkeyPatch,
 ) -> None:
-    """D-114: the owner's pick by ear, the library's default, ElevenLabs' v4 Turbo in one voice
-    for every language; Groq's Orpheus, the fallback, with `T2V_TTS__PROVIDER=groq`."""
+    """The owner, 2026-11-18: back to Groq's Orpheus for its credits (app_voice.py); the
+    library's default stays ElevenLabs (D-114), and the owner's ElevenLabs voice comes back with
+    `T2V_TTS__PROVIDER=elevenlabs`."""
+    assert VoiceSettings(env="test").tts.provider == "elevenlabs"
     tts = load().voice.tts
-    assert tts.provider == "elevenlabs"
-    assert {(v.model, v.voice) for v in tts.languages.values()} == {
-        ("eleven_v4_turbo", "nhJWWCFdNdusuVUT3x19")
+    assert tts.provider == "groq" and tts.spoken_numbers == SPOKEN_NUMBERS
+    assert {tag: (v.model, v.voice) for tag, v in tts.languages.items()} == {
+        "ar-SA": ("canopylabs/orpheus-arabic-saudi", "abdullah"),
+        "ar": ("canopylabs/orpheus-arabic-saudi", "abdullah"),
+        "en": ("canopylabs/orpheus-v1-english", "troy"),
     }
-    environment.setenv("T2V_TTS__PROVIDER", "groq")
-    assert load().voice.tts.languages["ar-SA"].voice == "abdullah"
+    environment.setenv("T2V_TTS__PROVIDER", "elevenlabs")
+    tts = load().voice.tts
+    assert tts.provider == "elevenlabs" and tts.spoken_numbers == SPOKEN_NUMBERS
+    assert tts.languages["ar-SA"].voice == "nhJWWCFdNdusuVUT3x19"
 
 
 def test_numbers_and_times_are_said_in_the_callers_register_unless_set(

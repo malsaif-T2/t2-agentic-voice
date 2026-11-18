@@ -4073,6 +4073,7 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Evidence:** the listening sheet, its runs and `tts_pick.md` in the session notes of
   2026-11-17; `tests/t2_agentic_voice/adapters/test_elevenlabs_tts.py`, `test_telnyx_tts.py`,
   `tests/t2_agentic_voice/core/test_tts_providers.py`, `tests/flight_voice/test_settings.py`.
+- *Amended 2026-11-18, the owner (after the demo):* "we would like to get back to our Groq voice TTS because we still have credits there": the flight app speaks in Groq's Orpheus (abdullah, troy) unless the environment names a provider (flight_voice/app_voice.py); the library's default stays ElevenLabs, and Scribe and the talker's model are unchanged.
 
 ## D-115 · One request a turn: Scribe v3's own language and probability move the call (`stt.live_language = "hinted"`) · 2026-11-17 · Accepted (the owner's request of 2026-11-17; a library setting, off by default until run H's Scribe arms are measured, GP-18)
 
