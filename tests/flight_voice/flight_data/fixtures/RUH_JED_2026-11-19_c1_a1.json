@@ -1,0 +1,594 @@
+{
+ "params": {
+  "engine": "google_flights",
+  "type": "2",
+  "departure_id": "RUH",
+  "arrival_id": "JED",
+  "outbound_date": "2026-11-19",
+  "travel_class": "1",
+  "adults": "1",
+  "currency": "SAR",
+  "gl": "sa",
+  "hl": "en",
+  "stops": "2"
+ },
+ "status": 200,
+ "body": {
+  "search_metadata": {
+   "id": "6f3a1c0e9b2d4a5e8c7b6a01",
+   "status": "Success",
+   "json_endpoint": "https://serpapi.com/searches/0000000000000000/6f3a1c0e9b2d4a5e8c7b6a01.json",
+   "created_at": "2026-11-18 09:30:12 UTC",
+   "processed_at": "2026-11-18 09:30:12 UTC",
+   "google_flights_url": "https://www.google.com/travel/flights?hl=en&gl=sa&curr=SAR&tfs=CBwQAhoeEgoyMDI2LTExLTE5agcIARIDUlVIcgcIARIDSkVEQgEBSAFwAZgBAg",
+   "raw_html_file": "https://serpapi.com/searches/0000000000000000/6f3a1c0e9b2d4a5e8c7b6a01.html",
+   "prettify_html_file": "https://serpapi.com/searches/0000000000000000/6f3a1c0e9b2d4a5e8c7b6a01.prettify",
+   "total_time_taken": 4.82
+  },
+  "search_parameters": {
+   "engine": "google_flights",
+   "hl": "en",
+   "gl": "sa",
+   "type": "2",
+   "departure_id": "RUH",
+   "arrival_id": "JED",
+   "outbound_date": "2026-11-19",
+   "currency": "SAR",
+   "adults": 1,
+   "travel_class": 1
+  },
+  "best_flights": [
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-19 08:15"
+      },
+      "arrival_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-19 10:10"
+      },
+      "duration": 115,
+      "airplane": "Airbus A320",
+      "airline": "flyadeal",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/F3.png",
+      "travel_class": "Economy",
+      "flight_number": "F3 111",
+      "legroom": "28 in",
+      "extensions": [
+       "Below average legroom (28 in)",
+       "Carbon emissions estimate: 96 kg"
+      ]
+     }
+    ],
+    "total_duration": 115,
+    "carbon_emissions": {
+     "this_flight": 97000,
+     "typical_for_this_route": 110000,
+     "difference_percent": -12
+    },
+    "price": 899,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/F3.png",
+    "extensions": [
+     "Checked baggage for a fee"
+    ],
+    "booking_token": "WyJTWU5USEVUSUMtRVhBTVBMRS1UT0tFTiIsW1siUlVIIiwiMjAyNi0xMS0xOSIsIkpFRCIsbnVsbCwiRjMiLCIxMTEiXV1d"
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-19 10:05"
+      },
+      "arrival_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-19 12:05"
+      },
+      "duration": 120,
+      "airplane": "Airbus A320neo",
+      "airline": "Flynas",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+      "travel_class": "Economy",
+      "flight_number": "XY 17",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "Carbon emissions estimate: 90 kg"
+      ]
+     }
+    ],
+    "total_duration": 120,
+    "carbon_emissions": {
+     "this_flight": 91000,
+     "typical_for_this_route": 110000,
+     "difference_percent": -17
+    },
+    "price": 979,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+    "extensions": [
+     "Checked baggage for a fee"
+    ],
+    "booking_token": "WyJTWU5USEVUSUMtRVhBTVBMRS1UT0tFTiIsW1siUlVIIiwiMjAyNi0xMS0xOSIsIkpFRCIsbnVsbCwiWFkiLCIxNyJdXV0="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-19 02:55"
+      },
+      "arrival_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-19 04:50"
+      },
+      "duration": 115,
+      "airplane": "Airbus A321",
+      "airline": "Saudia",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+      "travel_class": "Economy",
+      "flight_number": "SV 1057",
+      "legroom": "32 in",
+      "extensions": [
+       "Above average legroom (32 in)",
+       "In-seat USB outlet",
+       "On-demand video",
+       "Carbon emissions estimate: 111 kg"
+      ]
+     }
+    ],
+    "total_duration": 115,
+    "carbon_emissions": {
+     "this_flight": 111000,
+     "typical_for_this_route": 110000,
+     "difference_percent": 1
+    },
+    "price": 1122,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+    "booking_token": "WyJTWU5USEVUSUMtRVhBTVBMRS1UT0tFTiIsW1siUlVIIiwiMjAyNi0xMS0xOSIsIkpFRCIsbnVsbCwiU1YiLCIxMDU3Il1dXQ=="
+   }
+  ],
+  "other_flights": [
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-19 05:20"
+      },
+      "arrival_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-19 07:15"
+      },
+      "duration": 115,
+      "airplane": "Airbus A320",
+      "airline": "flyadeal",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/F3.png",
+      "travel_class": "Economy",
+      "flight_number": "F3 103",
+      "legroom": "28 in",
+      "extensions": [
+       "Below average legroom (28 in)",
+       "Carbon emissions estimate: 96 kg"
+      ]
+     }
+    ],
+    "total_duration": 115,
+    "carbon_emissions": {
+     "this_flight": 97000,
+     "typical_for_this_route": 110000,
+     "difference_percent": -12
+    },
+    "price": 969,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/F3.png",
+    "extensions": [
+     "Checked baggage for a fee"
+    ],
+    "booking_token": "WyJTWU5USEVUSUMtRVhBTVBMRS1UT0tFTiIsW1siUlVIIiwiMjAyNi0xMS0xOSIsIkpFRCIsbnVsbCwiRjMiLCIxMDMiXV1d"
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-19 09:15"
+      },
+      "arrival_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-19 11:10"
+      },
+      "duration": 115,
+      "airplane": "Airbus A320",
+      "airline": "flyadeal",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/F3.png",
+      "travel_class": "Economy",
+      "flight_number": "F3 113",
+      "legroom": "28 in",
+      "extensions": [
+       "Below average legroom (28 in)",
+       "Carbon emissions estimate: 96 kg"
+      ]
+     }
+    ],
+    "total_duration": 115,
+    "carbon_emissions": {
+     "this_flight": 97000,
+     "typical_for_this_route": 110000,
+     "difference_percent": -12
+    },
+    "price": 969,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/F3.png",
+    "extensions": [
+     "Checked baggage for a fee"
+    ],
+    "booking_token": "WyJTWU5USEVUSUMtRVhBTVBMRS1UT0tFTiIsW1siUlVIIiwiMjAyNi0xMS0xOSIsIkpFRCIsbnVsbCwiRjMiLCIxMTMiXV1d"
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-19 11:30"
+      },
+      "arrival_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-19 13:30"
+      },
+      "duration": 120,
+      "airplane": "Airbus A320neo",
+      "airline": "Flynas",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+      "travel_class": "Economy",
+      "flight_number": "XY 35",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "Carbon emissions estimate: 90 kg"
+      ]
+     }
+    ],
+    "total_duration": 120,
+    "carbon_emissions": {
+     "this_flight": 91000,
+     "typical_for_this_route": 110000,
+     "difference_percent": -17
+    },
+    "price": 1119,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+    "extensions": [
+     "Checked baggage for a fee"
+    ],
+    "booking_token": "WyJTWU5USEVUSUMtRVhBTVBMRS1UT0tFTiIsW1siUlVIIiwiMjAyNi0xMS0xOSIsIkpFRCIsbnVsbCwiWFkiLCIzNSJdXV0="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-19 18:00"
+      },
+      "arrival_airport": {
+       "name": "Prince Naif Bin Abdulaziz International Airport",
+       "id": "ELQ",
+       "time": "2026-11-19 23:00"
+      },
+      "duration": 300,
+      "airplane": "Bus",
+      "airline": "Saudia",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+      "travel_class": "Economy",
+      "flight_number": "SV 3079",
+      "extensions": []
+     },
+     {
+      "departure_airport": {
+       "name": "Prince Naif Bin Abdulaziz International Airport",
+       "id": "ELQ",
+       "time": "2026-11-20 00:00"
+      },
+      "arrival_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-20 01:40"
+      },
+      "duration": 100,
+      "airplane": "Airbus A320",
+      "airline": "Saudia",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+      "travel_class": "Economy",
+      "flight_number": "SV 8607",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "Carbon emissions estimate: 94 kg"
+      ],
+      "overnight": true
+     }
+    ],
+    "layovers": [
+     {
+      "duration": 60,
+      "name": "Prince Naif Bin Abdulaziz International Airport",
+      "id": "ELQ",
+      "overnight": true
+     }
+    ],
+    "total_duration": 460,
+    "price": 1142,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+    "booking_token": "WyJTWU5USEVUSUMtRVhBTVBMRS1UT0tFTiIsW1siUlVIIiwiMjAyNi0xMS0xOSIsIkVMUSIsbnVsbCwiU1YiLCIzMDc5Il0sWyJFTFEiLCIyMDI2LTExLTIwIiwiSkVEIixudWxsLCJTViIsIjg2MDciXV1d"
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-19 18:10"
+      },
+      "arrival_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-19 20:10"
+      },
+      "duration": 120,
+      "airplane": "Airbus A320neo",
+      "airline": "Flynas",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+      "travel_class": "Economy",
+      "flight_number": "XY 33",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "Carbon emissions estimate: 90 kg"
+      ]
+     }
+    ],
+    "total_duration": 120,
+    "carbon_emissions": {
+     "this_flight": 91000,
+     "typical_for_this_route": 110000,
+     "difference_percent": -17
+    },
+    "price": 1309,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+    "extensions": [
+     "Checked baggage for a fee"
+    ],
+    "booking_token": "WyJTWU5USEVUSUMtRVhBTVBMRS1UT0tFTiIsW1siUlVIIiwiMjAyNi0xMS0xOSIsIkpFRCIsbnVsbCwiWFkiLCIzMyJdXV0="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-19 13:40"
+      },
+      "arrival_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-19 15:35"
+      },
+      "duration": 115,
+      "airplane": "Airbus A320",
+      "airline": "flyadeal",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/F3.png",
+      "travel_class": "Economy",
+      "flight_number": "F3 121",
+      "legroom": "28 in",
+      "extensions": [
+       "Below average legroom (28 in)",
+       "Carbon emissions estimate: 96 kg"
+      ],
+      "often_delayed_by_over_30_min": true
+     }
+    ],
+    "total_duration": 115,
+    "carbon_emissions": {
+     "this_flight": 97000,
+     "typical_for_this_route": 110000,
+     "difference_percent": -12
+    },
+    "price": 1399,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/F3.png",
+    "extensions": [
+     "Checked baggage for a fee"
+    ],
+    "booking_token": "WyJTWU5USEVUSUMtRVhBTVBMRS1UT0tFTiIsW1siUlVIIiwiMjAyNi0xMS0xOSIsIkpFRCIsbnVsbCwiRjMiLCIxMjEiXV1d"
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-19 07:20"
+      },
+      "arrival_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-19 09:15"
+      },
+      "duration": 115,
+      "airplane": "Airbus A321",
+      "airline": "Saudia",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+      "travel_class": "Economy",
+      "flight_number": "SV 1021",
+      "legroom": "32 in",
+      "extensions": [
+       "Above average legroom (32 in)",
+       "In-seat USB outlet",
+       "On-demand video",
+       "Carbon emissions estimate: 111 kg"
+      ]
+     }
+    ],
+    "total_duration": 115,
+    "carbon_emissions": {
+     "this_flight": 111000,
+     "typical_for_this_route": 110000,
+     "difference_percent": 1
+    },
+    "price": 1455,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+    "booking_token": "WyJTWU5USEVUSUMtRVhBTVBMRS1UT0tFTiIsW1siUlVIIiwiMjAyNi0xMS0xOSIsIkpFRCIsbnVsbCwiU1YiLCIxMDIxIl1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-19 15:25"
+      },
+      "arrival_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-19 17:20"
+      },
+      "duration": 115,
+      "airplane": "Airbus A320",
+      "airline": "Saudia",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+      "travel_class": "Economy",
+      "flight_number": "SV 1037",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "In-seat USB outlet",
+       "Carbon emissions estimate: 104 kg"
+      ]
+     }
+    ],
+    "total_duration": 115,
+    "carbon_emissions": {
+     "this_flight": 105000,
+     "typical_for_this_route": 110000,
+     "difference_percent": -5
+    },
+    "price": 1455,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+    "booking_token": "WyJTWU5USEVUSUMtRVhBTVBMRS1UT0tFTiIsW1siUlVIIiwiMjAyNi0xMS0xOSIsIkpFRCIsbnVsbCwiU1YiLCIxMDM3Il1dXQ=="
+   }
+  ],
+  "price_insights": {
+   "lowest_price": 899,
+   "price_level": "typical",
+   "typical_price_range": [
+    780,
+    1350
+   ],
+   "price_history": [
+    [
+     1762387200,
+     742
+    ],
+    [
+     1762473600,
+     742
+    ],
+    [
+     1762560000,
+     760
+    ],
+    [
+     1762646400,
+     781
+    ],
+    [
+     1762732800,
+     781
+    ],
+    [
+     1762819200,
+     799
+    ],
+    [
+     1762905600,
+     812
+    ],
+    [
+     1762992000,
+     812
+    ],
+    [
+     1763078400,
+     840
+    ],
+    [
+     1763164800,
+     861
+    ],
+    [
+     1763251200,
+     861
+    ],
+    [
+     1763337600,
+     879
+    ],
+    [
+     1763424000,
+     899
+    ]
+   ]
+  },
+  "airports": [
+   {
+    "departure": [
+     {
+      "airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH"
+      },
+      "city": "Riyadh",
+      "country": "Saudi Arabia",
+      "country_code": "SA",
+      "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:EXAMPLE_PLACEHOLDER",
+      "thumbnail": "https://encrypted-tbn0.gstatic.com/images?q=tbn:EXAMPLE_PLACEHOLDER"
+     }
+    ],
+    "arrival": [
+     {
+      "airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED"
+      },
+      "city": "Jeddah",
+      "country": "Saudi Arabia",
+      "country_code": "SA",
+      "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:EXAMPLE_PLACEHOLDER",
+      "thumbnail": "https://encrypted-tbn0.gstatic.com/images?q=tbn:EXAMPLE_PLACEHOLDER"
+     }
+    ]
+   }
+  ]
+ }
+}
