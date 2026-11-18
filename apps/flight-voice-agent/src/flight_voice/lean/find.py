@@ -87,7 +87,9 @@ Problem = Literal["past", "beyond_window", "return_before_departure", "span_too_
 _NOTES: Final[dict[Problem, str]] = {
     "past": "That day has passed.",
     "beyond_window": "Bookings are open only up to last_day.",
-    "return_before_departure": "The return is before the departure.",
+    "return_before_departure": (
+        "The day back comes before the day out: a return must be on or after the departure."
+    ),
     "span_too_long": f"A span is {MOST_DAYS} days at most, its first day before its last.",
 }
 _NOT_SERVED: Final = "Every flight starts or ends in Riyadh."

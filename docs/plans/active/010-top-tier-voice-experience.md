@@ -1467,6 +1467,15 @@ Block 0.
   before the agent saying the total, I have it on screen"): a caller turn after a reply since the
   trip was set is enough (D-113's amendment). Live, that call's mean time to first audio was
   2.54 s (8 turns; the earlier calls' 2.93 s), its search turn 2.9 s (earlier about 4.4 s).
+- 2026-11-18: merged for the demo of 10:00: OpenAI's chat models (D-112, off by default; on the
+  lean agent gpt-oss 13, gpt-5.4-mini 13 and gpt-6-luna 14 of 32, luna booking on a turn with no
+  yes in 12 of 44 bookings), Scribe v3 Live streaming (D-122, off until a live check), and a
+  clearer date-problem note with one prompt line to say why a date does not work (the owner's
+  English call: a return before the departure refused with no reason given). The one-request
+  language mode `single` failed its keep rule on transcription (MSA +1.37 points, 5 items worse
+  and none better; Saudi +1.19), so `detected` stands. The socket's measurement in the owner's
+  voice: first audio 0.19 s against HTTP's 0.23 s, gaps 0.29 against 0.31 s; renders sent for
+  the owner's ear.
 - 2026-11-17: the text-to-speech candidates for the owner's pick by ear (D-114, branch
   `plan-010-tts`): `tts.provider` takes `elevenlabs`, `groq` and `telnyx`, each speaking the
   provider's default voices with `tts.languages` unset. The owner picked ElevenLabs v4 Turbo in

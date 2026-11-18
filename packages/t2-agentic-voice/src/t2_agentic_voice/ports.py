@@ -1,7 +1,8 @@
 """The ports: the protocols an outside service is reached through, and their data types (the
 design's 6.1, 6.3, 6.4 and 6.5). Stable (D-021), `UsedTokens`, `KnowledgeBase` and `Outbox`
 provisional (the design's 5.1), as are `LanguageClassifier` and `LanguageScores` (D-086), and
-`StreamingTextToSpeech` and `SpeechStream` (D-121). A facade: it only re-exports (ARCH-FACADE)."""
+`StreamingTextToSpeech` and `SpeechStream` (D-121), and `StreamingSpeechToText` and
+`TranscriptStream` (plan 010's 5.1). A facade: it only re-exports (ARCH-FACADE)."""
 
 from t2_agentic_voice.domain.ports.chat_model import (
     ChatEvent,
@@ -26,6 +27,7 @@ from t2_agentic_voice.domain.ports.speech_to_text import (
     Transcript,
 )
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk, TextToSpeech
+from t2_agentic_voice.domain.ports.transcript_stream import StreamingSpeechToText, TranscriptStream
 
 __all__ = [
     "AudioChunk",
@@ -46,12 +48,14 @@ __all__ = [
     "Passage",
     "SpeechStream",
     "SpeechToText",
+    "StreamingSpeechToText",
     "StreamingTextToSpeech",
     "TextDelta",
     "TextToSpeech",
     "ToolCallRequest",
     "ToolSchema",
     "Transcript",
+    "TranscriptStream",
     "Usage",
     "UsedTokens",
 ]

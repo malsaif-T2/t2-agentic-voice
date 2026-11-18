@@ -114,6 +114,7 @@ class CallPipeline:
             languages=turn_languages(setup.agent, setup.settings, classifier, setup.clock),
             detect=detect_rule(setup.agent, setup.settings),
             at_stop=at_stop,
+            streaming=setup.settings.stt.streaming,  # a stream where it can be (plan 010's 5.1)
         )
         bridge = SessionBridge(events)
         timeout_s, streamed = setup.settings.tts.timeout_s, setup.settings.tts.stream_replies

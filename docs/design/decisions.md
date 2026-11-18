@@ -4271,3 +4271,56 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   - In the call (voice/tts_stream.py's `CallStream`, in the text-to-speech bridge): new setting `tts.stream_replies`, off by default. On, with a text-to-speech that streams the call's language, the session opens as the pipeline starts and closes as it ends. A clause the talker wrote (`Speak.talker`, set by `OpenReply.add_clause` alone) goes on the socket, one at a time, a reply's first as a new turn, with the same `Synthesizing`, `ClauseQueued` and `ClausePlayed` as a request, so `tts_first_audio_ms` reads the same. Fixed phrases, an action's lines (the read-back, outcomes), the echo, a repeat and the clause cache's takes keep to one request a clause; nothing spoken on a socket is kept in the clause cache. A stop cuts the clause in flight. Captions and the output guard read the text as before. A socket's failure turns it off for the rest of the call with one `tts_stream_fell_back` line (call, provider, kind, the error's name, reply, clause, whether audio had come; no text): a clause with no audio yet is requested in its place, one with some fails as a request failing mid-take does.
 - **Consequences:** nothing changes with the setting off, or with Groq's or Telnyx's text-to-speech (no socket). The flight app does not turn it on: that waits for the lead's measurement (first audio and the gaps between clauses, the session's own measure script replaying the flight agent's lines over both paths in the owner's voice) and the owner's listen, which also judges whether a flush a clause keeps the flow the study heard from one flush a line (the script renders both). A smoke on 2026-11-18 in the owner's voice (five Saudi clauses each way, one 12 s idle with a keep-alive between two replies): first audio 0.16 to 0.19 s on the socket against 0.20 to 0.23 s over HTTPS, the gaps between clauses alike (0.28 to 0.40 s, mostly the take's own trailing silence). Each open socket holds one dialogue session from ElevenLabs' own pool (14 on the free plan, 105 on Scale; past it `too_many_concurrent_requests`, which falls back). Not built: Telnyx's kept socket, a spare socket, and sending a clause before the one before it has finished.
 - **Evidence:** `tests/t2_agentic_voice/adapters/test_elevenlabs_stream.py`, `tests/t2_agentic_voice/voice/test_tts_stream.py`; ElevenLabs' Text-to-Dialogue WebSocket reference, its realtime dialogue guide, its TTS-versus-TTD WebSockets guide and its models page (read 2026-11-18); `tts_pick.md` of 2026-11-17.
+
+## D-122 · A call heard over one Scribe v3 Live stream, each turn committed where its request would go (`stt.streaming`) · 2026-11-18 · Accepted (the owner's "Do both the streaming ones", 2026-11-17, plan 010's 5.1 behind a probe; a library setting, off by default until the lead's and the owner's live check, GP-18)
+
+- **Context:** the whole-call study of 2026-11-17 measured the held request to transcript live at p50 635 ms and p95 1,202 ms (study rank 6). The probe ran over the golden set's dev split: 292 variants at 5e973f6, a timing run under both locks, at real-time pace, one session and one manual commit per clip (probe-dev/summary.json).
+  - Live commit to final transcript: p50 249.9 ms, p95 301.6 ms. Batch Scribe v3 send to answer: p50 567.5 ms, p95 812.2 ms (both on the variants with speech).
+  - WER, live against batch: Arabic 9.64 % against 13.7 % (Saudi 12.04 against 15.72, MSA 5.15 against 6.19, mixed 9.71 against 18.93); English 4.81 % against 3.72 %.
+  - Paired by variant: Arabic 48 better, 20 worse, 136 the same; English 4, 3 and 68.
+  - One live TimeoutError in 292 (its session never opened).
+  - The registered rule: p50 gain 317.6 ms; WER delta Arabic -4.06 points, English +1.09; worth_building true.
+  - The committed language only echoed the named one: per records.jsonl, 203 ar=ar, 75 en=en, 14 null, none different. Realtime gives no language probability.
+- **Decision:**
+  - **The port.** A new optional port, `StreamingSpeechToText.open_stream(language, prompt, sample_rate)` returning a `SpeechStream` (`feed`, `commit() -> int`, `committed(n)`, `failure`, `aclose`; domain/ports/speech_stream.py, provisional, in the ports facade). The batch `SpeechToText` is unchanged, and stays each provider's fallback.
+  - **The adapter.** `ElevenLabsSTT` implements it with Scribe v3 Live, in the probe's protocol (adapters/elevenlabs_live.py, elevenlabs_live_wire.py):
+    - the realtime WebSocket, the key in its `xi-api-key` header, no proxy, a logger that logs nothing;
+    - the query: `scribe_v3_live`, `pcm_<rate>`, manual commit, the call's language, `include_language_detection`, keyterms (50 of at most 20 characters);
+    - `session_started` awaited before the stream is handed over;
+    - 20 ms chunks in order; a commit is an empty chunk marked `commit: true`;
+    - answers matched to commits in order; one with no commit waiting is dropped;
+    - a silence keepalive after 5 s with nothing fed;
+    - any error message fails every commit waiting, named by its type only.
+  - **When a call streams.** Under the new setting `stt.streaming` (off by default), on a provider that streams, with no switch rule and no classifier (`live_language = "session"`, or a mode that runs as session). The bridge (voice/stt_stream.py, stt_streamed.py):
+    - opens the stream at the session's `ListenIn`, and again in the language a later `ListenIn` names;
+    - feeds it each turn's audio from its pre-roll, and between turns as much silence, a pre-roll late;
+    - streams a turn opened once the stream has heard 2 s of the call. Its `held` and `turn` requests commit the stream where today's request would go: at the detector's stop under `turns.early_at_stop`, at the hold with the early start, at the close otherwise. Its `Transcribed` is the joined words of all the turn's commits.
+  - **A pause Smart Turn calls unfinished, or speech resumed in the hold.** The commit's words are never handed alone, and the turn's next commit joins them, so each turn is answered once, whole (D-120).
+  - **What still goes by request:**
+    - an overlap's window, part and own request;
+    - a turn opened before the stream's 2 s lead;
+    - a turn past 30 s of audio since the last commit.
+
+    The audio of such a turn is committed at its close and its words dropped. So is 20 s of silence with no commit; a turn opening within 1 s of that commit takes its words.
+  - **When the stream fails.** A lost socket, a provider error, a commit unanswered within 1.5 s, or a failed open: the stream is closed and logged once (`stt_stream_lost`: at, kind, reason, commits). The turn waiting goes as a batch request after all, timed from its commit, and so does the rest of the call.
+  - **Under `detected`, `classified`, `hinted` or `single`** the call is heard by request as today, and the runtime's start logs `streaming_off`.
+  - **The apps.** The flight app does not turn it on until the lead's and the owner's live check.
+- **Consequences:**
+  - **Time.** A streamed turn's transcript should come about 300 ms sooner at p50, and its p95 tail shrink. This is the probe's estimate, not yet measured live.
+  - **What goes to ElevenLabs.** The whole call's microphone audio goes there while a call streams, silence and speech over the agent included (SECURITY.md and data-and-privacy.md, ElevenLabs rows).
+  - **Cost.** ElevenLabs bills every second of the stream: about 5 to 7.5 times today's Scribe seconds, still about a cent a call (the study's check). The call report's usage still counts streamed turns as requests (TD-153's area).
+  - **Concurrency.** Each live call holds one realtime session (Creator plan 15, Pro 30).
+  - **Unverified, for the live check:**
+    - Several commits in one session. The probe made one per session, and ElevenLabs warns that "committing manually several times in a short sequence can degrade model performance". Under `early_at_stop` every pause commits, so `commit_throttled` would show as `stt_stream_lost reason=commit_throttled`.
+    - Whether every commit of silence is answered. If not, the next streamed turn waits 1.5 s and the call falls back (`reason=no_final`).
+    - The accuracy of a turn joined from several commits.
+  - **Left for later.** Partial transcripts (5.1's overlap and end-of-turn part) and 5.3's language from the stream: they would be additions to the port.
+- **Evidence:**
+  - the probe: scratchpad p010/sttlive/probe-dev/summary.json and records.jsonl, its code in p010/sttlive/probe/;
+  - ElevenLabs' realtime pages (read 2026-11-18);
+  - tests:
+    - `tests/t2_agentic_voice/adapters/test_elevenlabs_live.py`;
+    - `tests/t2_agentic_voice/voice/test_stt_stream.py`;
+    - `tests/t2_agentic_voice/voice/test_stt_stream_fallback.py`;
+    - `tests/t2_agentic_voice/test_facades.py`.
+- *Evidence, the lead's full dev probe (2026-11-18, 292 variants, at 5e973f6):* commit to final p50 250 / p95 302 ms against batch Scribe's 568 / 812 ms; WER Arabic 9.6 % against 13.7 % (Saudi 12.0 / 15.7, MSA 5.2 / 6.2, mixed 9.7 / 18.9), English 4.8 % against 3.7 %; one live timeout in 292. Off until a live check by the lead and the owner.

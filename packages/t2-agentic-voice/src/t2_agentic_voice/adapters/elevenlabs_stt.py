@@ -23,6 +23,10 @@ variable of its own read, no redirect followed), with:
 connection with a GET of ElevenLabs' model list (`GET /v1/models`), which costs nothing, as a
 call joins; a refused answer still leaves the connection open.
 
+`open_stream()` (the `StreamingSpeechToText` port, domain/ports/transcript_stream.py) opens one
+call's stream on Scribe v3 Live (`live_model`), which adapters/elevenlabs_live.py holds: a call
+under `stt.streaming` hears its turns there, this adapter's batch requests its fallback.
+
 Its output is data, never an instruction (docs/SECURITY.md, trust boundaries). Every failure is
 a ProviderError naming no key, audio or transcript; a cancel stops the request at once.
 """
@@ -35,6 +39,8 @@ from typing import Final
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
+from t2_agentic_voice.adapters.elevenlabs_live import LiveStream, open_live
+from t2_agentic_voice.adapters.elevenlabs_live_wire import LIVE_MODEL
 from t2_agentic_voice.adapters.provider_http import (
     given_key,
     http_client,
@@ -43,6 +49,7 @@ from t2_agentic_voice.adapters.provider_http import (
     ok_status,
     provider_key,
 )
+from t2_agentic_voice.adapters.provider_socket import Opener, open_socket
 from t2_agentic_voice.adapters.wav_files import wav_of
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.settings.provider_keys import ElevenLabsSettings
@@ -73,7 +80,8 @@ DATA_FLOW: Final = DataFlow(
 
 class ElevenLabsSTT:
     """Speech-to-text with ElevenLabs' Scribe (`model`, `scribe_v3` by default); a
-    `SpeechToText` and a `WarmUp`. `transport` replaces the HTTP transport (a test's fake one).
+    `SpeechToText`, a `WarmUp` and a `StreamingSpeechToText` (`live_model`, Scribe v3 Live).
+    `transport` replaces the HTTP transport and `opener` the stream's socket (a test's fakes).
     Close it with `aclose()`."""
 
     name: str = "elevenlabs"
@@ -87,9 +95,12 @@ class ElevenLabsSTT:
         model: str = MODEL,
         base_url: str = BASE_URL,
         transport: httpx.AsyncBaseTransport | None = None,
+        live_model: str = LIVE_MODEL,
+        opener: Opener = open_socket,
     ) -> None:
         self._api_key = given_key(api_key, ElevenLabsSettings, VENDOR)
-        self._model = model
+        self._model, self._live_model, self._open = model, live_model, opener
+        self._base_url = base_url
         self._url = f"{base_url.rstrip('/')}/v1/speech-to-text"
         self._models_url = f"{base_url.rstrip('/')}/v1/models"
         self._timeout_s = timeout_s
@@ -97,13 +108,18 @@ class ElevenLabsSTT:
 
     @classmethod
     def from_settings(
-        cls, settings: VoiceSettings, *, transport: httpx.AsyncBaseTransport | None = None
+        cls,
+        settings: VoiceSettings,
+        *,
+        transport: httpx.AsyncBaseTransport | None = None,
+        opener: Opener = open_socket,
     ) -> ElevenLabsSTT:
         """The adapter the settings describe: `elevenlabs`' key and `stt.timeout_s`; a
         ConfigurationError naming `T2V_ELEVENLABS__API_KEY` (under the settings' prefix) when no
         key is set."""
         key = provider_key(settings, settings.elevenlabs, VENDOR)
-        return cls(api_key=key, timeout_s=settings.stt.timeout_s, transport=transport)
+        timeout_s = settings.stt.timeout_s
+        return cls(api_key=key, timeout_s=timeout_s, transport=transport, opener=opener)
 
     def __repr__(self) -> str:
         return f"ElevenLabsSTT(model={self._model!r}, timeout_s={self._timeout_s!r})"
@@ -154,6 +170,22 @@ class ElevenLabsSTT:
         else:
             return
         raise provider_error from None
+
+    async def open_stream(
+        self, *, language: str | None, prompt: str | None, sample_rate: int
+    ) -> LiveStream:
+        """One call's stream on Scribe v3 Live, the prompt's terms its keyterms (the
+        `StreamingSpeechToText` port; adapters/elevenlabs_live.py). ProviderError when it does
+        not open within its bound; the caller closes the stream it gets."""
+        return await open_live(
+            key=self._api_key,
+            base_url=self._base_url,
+            model=self._live_model,
+            language=language,
+            prompt=prompt,
+            sample_rate=sample_rate,
+            opener=self._open,
+        )
 
     async def aclose(self) -> None:
         """Close the adapter's HTTP connections."""
