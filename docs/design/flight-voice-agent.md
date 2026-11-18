@@ -181,7 +181,7 @@ apps/flight-voice-agent/
     index.html                   the page's markup, no inline script or style            <=150
     app.css                      the page's look, light and dark, right to left          <=300
     app.js                       the call: VoiceClient, state, captions, orb             <=300
-    cards.js                     the three segments the cards fill, as text              <=200
+    cards.js                     the three segments the cards fill, as text, and links  <=220
     bookings.js                  "Your trips": fetch, list, reference filter             <=200
     texts.js                     every fixed text of the page, Arabic and English        <=200
     mark.svg                     our own airline mark (simple, ours)
@@ -1103,7 +1103,11 @@ panel:   Your trips: each booking (route, dates, travelers, cabin, fare, referen
   once "Your trips", loaded at the call's start and again at each state after that card or a
   read-back, holds a booking it did not (`bookings.js`'s `Made`; none when the list did not
   load at the start). A leg's card after it forgets that booking, so a later trip of the call
-  never shows it.
+  never shows it. On the real network the review card `booking_link` sends carries the trip's
+  booking links (D-126, plan 011): each is shown below the card's rows as a link styled as a
+  button, its label as text, opening its url in a new tab with no opener, and that review waits
+  for no yes (the trip is booked on the airline's site). A link comes only from a card's link,
+  never from its text.
 - **The language toggle** sets the call's starting language (`VoiceClient.start({language})`)
   and the page's texts and direction. Mid-call, the caller switches by voice (plan 010's 2.5).
 - **"Your trips"** refreshes when a call starts and ends, after a read-back until the booking

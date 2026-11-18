@@ -19,6 +19,11 @@
 // the direction of its own first strong character (dir="auto"). A row's mark is one of `MARKS`
 // or none: set as the row's `data-mark`, which the page's style maps to a look, and shown as a
 // word of the page's own (`texts.js`), never as markup; any other is dropped.
+//
+// A card's links (D-126: the trip's booking links, one a leg) are shown below its rows, each a
+// link styled as a button, its label as text, opening its url in a new tab with no opener. A
+// link is only ever built from a link's url as the library's client checked it (an https
+// address), never from a card's text; one that is not https is dropped.
 
 export const SLOTS = ["outbound", "return", "review"];
 export const MARKS = ["best", "chosen", "unavailable"];
@@ -41,6 +46,16 @@ export function rowsOf(card) {
     }));
 }
 
+// A card's links, each its label and url: one whose label is no text or whose url is not an
+// https address is left out.
+export function linksOf(card) {
+  if (!Array.isArray(card?.links)) return [];
+  return card.links
+    .filter((link) => link && typeof link === "object" && text(link.label))
+    .filter((link) => text(link.url).startsWith("https://"))
+    .map((link) => ({ label: link.label, url: link.url }));
+}
+
 // A card's steps, the texts among them.
 export function stepsOf(card) {
   return Array.isArray(card?.steps) ? card.steps.map(text).filter(Boolean) : [];
@@ -59,6 +74,11 @@ const picked = (rows) => rows.filter((row) => row.mark === "chosen");
 // Whether a card's rows are the whole trip's: a row with a value and no mark is its total.
 export const complete = (rows) => rows.some((row) => row.value && !row.mark);
 
+// Whether a card waits for the caller's yes: the whole trip's review, with no booking links (a
+// trip with them is booked on the airline's site, D-126).
+export const waitsForYes = (card) =>
+  card?.slot === "review" && complete(rowsOf(card)) && !linksOf(card).length;
+
 export class Cards {
   // The segments shown in `list` (an ol), their section `section` hidden while there are none;
   // `marks()` gives the words a row's mark is shown with, in the page's language.
@@ -72,8 +92,14 @@ export class Cards {
   // A new card, in place of its segment's (the module's comment).
   add(card) {
     if (!card || typeof card !== "object") return;
-    const kept = { title: text(card.title), rows: rowsOf(card), steps: stepsOf(card) };
+    const kept = {
+      title: text(card.title),
+      rows: rowsOf(card),
+      steps: stepsOf(card),
+      links: linksOf(card),
+    };
     const slot = SLOTS.includes(card.slot) ? card.slot : "extra";
+    if (kept.links.length) this.status = ""; // the caller books on the airline's site
     if (slot === "review") this.review(kept);
     else if (slot === "extra") this.shown.extra = kept;
     else this.leg(slot, kept);
@@ -139,6 +165,14 @@ export class Cards {
     return line;
   }
 
+  link(link) {
+    const node = part("a", "card-link", link.label);
+    node.setAttribute("href", link.url);
+    node.setAttribute("target", "_blank");
+    node.setAttribute("rel", "noopener noreferrer");
+    return node;
+  }
+
   segment(slot, card) {
     const item = document.createElement("li");
     item.className = "card";
@@ -154,6 +188,12 @@ export class Cards {
       lines.replaceChildren(...card.steps.map((said) => this.step(said)));
     }
     item.append(title, lines);
+    if (card.links?.length) {
+      const links = document.createElement("div");
+      links.className = "card-links";
+      links.replaceChildren(...card.links.map((link) => this.link(link)));
+      item.append(links);
+    }
     if (slot === "review" && this.status) item.append(part("p", "card-status", this.status));
     return item;
   }
