@@ -178,9 +178,10 @@ APPS: tuple[tuple[str, type[BaseModel], str], ...] = (
     ),
     (
         "The flight-booking agent's own settings (apps/flight-voice-agent, "
-        "flight_voice/settings.py), read by its server, under FLIGHT_VOICE_: its access code, its "
-        "page, the mock airline's today and modes, and the persona's names. Not the library's: "
-        "the prefix T2V_ is the library's alone.",
+        "flight_voice/settings.py), read by its server, under FLIGHT_VOICE_: the flight data's "
+        "source (flight_data/settings.py), its access code, its page, the mock airline's today "
+        "and modes, and the persona's names. Not the library's: the prefix T2V_ is the "
+        "library's alone.",
         FlightSettings,
         FLIGHT_PREFIX,
     ),

@@ -7,8 +7,12 @@ owner types on the page (required, at least 16 characters, made with `GENERATOR`
 allowed to frame the page, the token route's tokens a day (50), the airline's today (`live`, or
 a date pinned), the mock airline's modes (its bookings' writes and lookup, its searches, its
 profile, a slow read's seconds), the agent served (`agent`: `scripted`, today's, by default, or
-`lean`, the model-led one beside it, D-113), and the persona's names, the owner's picks by
-default (persona.py's `Names`).
+`lean`, the model-led one beside it, D-113), the persona's names, the owner's picks by default
+(persona.py's `Names`), and the flight data's (flight_data/settings.py's `FlightDataFields`:
+the source, `mock` by default, SerpApi's key, its deadlines, span and cache).
+
+The library's settings as the app runs them are voice_settings.py's `for_the_app`; this module
+re-exports it and its constants (`AgentKind`, `AGENTS`, `PREFIX`, ...).
 
 `load` also, whatever else sets them:
 - **nests the runtime's folder** under `<storage.var_dir>/flight` (`APP_FOLDER`): its used
@@ -41,7 +45,13 @@ default (persona.py's `Names`).
   scripted agent alone a 1.8 s fallback end of a turn (3 s while a read-back awaits its answer);
 - **under `env` dev alone**, names the demo traveler the test console's dev caller, so a call the
   console starts is the traveler's, as a page's call is;
-- **refuses a name that breaks the lines' rule** (persona.py's `breaking`), naming its setting.
+- **refuses a name that breaks the lines' rule** (persona.py's `breaking`), naming its setting;
+- **refuses a flight data source it cannot run** (flight_data/settings.py's `refused_source`):
+  `serpapi` with no key, the scripted agent on a source other than the mock, `recorded` with
+  today live.
+
+`load_flight_data` reads the flight data's settings alone, for the opt-in live smoke run
+(flight_data/smoke.py), which needs no access code.
 
 A blank value counts as unset, as the library's do. The token route signs every token with the
 join key `T2V_JOIN__CURRENT_KID` names, so that one is required too. Every failure is one
@@ -57,43 +67,46 @@ from pathlib import Path
 from typing import Final, Literal
 
 from pydantic import Field, SecretStr, ValidationError, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from t2_agentic_voice import (
-    ConfigurationError,
-    GuardSettings,
-    InterruptionSettings,
-    LimitSettings,
-    LlmSettings,
-    ServerSettings,
-    StorageSettings,
-    VoiceSettings,
-    WordSettings,
-)
+from pydantic_settings import SettingsConfigDict
+from t2_agentic_voice import ConfigurationError, ServerSettings, VoiceSettings
 
 from flight_voice.airline.bookings import Mode
 from flight_voice.airline.system import SLOW_S, ProfileMode, SearchMode, live_today
-from flight_voice.app_voice import app_tts
-from flight_voice.booking.lines import SEND_WORDS
-from flight_voice.caller_register import REGISTER_WORDS
+from flight_voice.flight_data.settings import FlightDataFields, refused_source
 from flight_voice.persona import Names, breaking
-from flight_voice.traveler import demo_caller
-from flight_voice.turned_on import turned_on
+from flight_voice.voice_settings import (
+    ACTIONS_PER_DAY,
+    AGENTS,
+    APP_FOLDER,
+    GUARD_ON,
+    PREFIX,
+    REQUESTS_PER_TURN,
+    YES_OVER_QUESTION,
+    YES_OVER_READ_BACK,
+    AgentKind,
+    for_the_app,
+)
 
-# The app's prefix: one the library's settings never use.
-PREFIX: Final = "FLIGHT_VOICE_"
-# The app's own folder under the library's `storage.var_dir`.
-APP_FOLDER: Final = "flight"
+__all__ = [
+    "ACTIONS_PER_DAY",
+    "AGENTS",
+    "APP_FOLDER",
+    "GENERATOR",
+    "GUARD_ON",
+    "PREFIX",
+    "REQUESTS_PER_TURN",
+    "TOKENS_PER_DAY",
+    "YES_OVER_QUESTION",
+    "YES_OVER_READ_BACK",
+    "AgentKind",
+    "AppSettings",
+    "Settings",
+    "for_the_app",
+    "load",
+    "load_flight_data",
+]
+
 TOKENS_PER_DAY: Final = 50
-ACTIONS_PER_DAY: Final = 50
-# The library's guard settings the app turns on, its most model requests a turn, and its
-# interruption setting it turns on, each unless set.
-GUARD_ON: Final = ("question_stop_drops_calls", "drop_stage_notes", "plain_speech", "retry_claims")
-REQUESTS_PER_TURN: Final = 4
-YES_OVER_READ_BACK: Final = "yes_over_read_back"
-YES_OVER_QUESTION: Final = "answer_yes_over_question"
-# The agent the app serves: today's scripted one, or the lean one beside it (D-113).
-AgentKind = Literal["scripted", "lean"]
-AGENTS: Final[tuple[AgentKind, ...]] = ("scripted", "lean")
 MIN_ACCESS_CODE_CHARS: Final = 16
 GENERATOR: Final = 'python -c "import secrets; print(secrets.token_urlsafe(24))"'
 # A name: one line of at most 40 characters, with no control character, brace or dollar.
@@ -109,8 +122,9 @@ def _name(default: str, what: str) -> str:
     return Field(default=default, pattern=NAME_PATTERN, description=what)
 
 
-class AppSettings(BaseSettings):
-    """The flight agent's own settings, read-only once loaded."""
+class AppSettings(FlightDataFields):
+    """The flight agent's own settings, read-only once loaded, the flight data's among them
+    (flight_data/settings.py)."""
 
     model_config = SettingsConfigDict(
         env_prefix=PREFIX,
@@ -241,46 +255,31 @@ def load(env_file: Path | None = None) -> Settings:
             "listening or send word, or a booking's claim. FIX: choose another name.",
             details={"settings": [*broken]},
         )
+    source = refused_source(app)
+    if source is not None:
+        raise source
     return Settings(app=app, voice=for_the_app(voice, agent=app.agent))
 
 
-def for_the_app(voice: VoiceSettings, *, agent: AgentKind = "scripted") -> VoiceSettings:
-    """`voice` as the app runs `agent`: its folder nested (`APP_FOLDER`), its bookings a caller
-    a day `ACTIONS_PER_DAY`, the guard's `GUARD_ON` on, its most requests a turn
-    `REQUESTS_PER_TURN`, for the scripted agent `YES_OVER_READ_BACK` on and for the lean one
-    (which has no read-back) `YES_OVER_QUESTION`, with the booking's `SEND_WORDS` its `words.send`,
-    `REGISTER_WORDS` for the caller's register, app_voice.py's speech, turned_on.py's
-    `TURNED_ON` (and its `READ_BACK_TURNS` for the scripted agent), each unless set, and under
-    `env` dev alone the demo traveler the console's dev caller; every other setting as it was."""
-    storage = StorageSettings.model_validate(
-        voice.storage.model_dump() | {"var_dir": voice.storage.var_dir / APP_FOLDER}
+class _FlightDataOnly(FlightDataFields):
+    model_config = SettingsConfigDict(
+        env_prefix=PREFIX,
+        env_ignore_empty=True,
+        extra="ignore",
+        frozen=True,
+        hide_input_in_errors=True,
     )
-    update: dict[str, object] = {"storage": storage}
-    if "actions_per_caller_per_day" not in voice.limits.model_fields_set:
-        update["limits"] = LimitSettings.model_validate(
-            voice.limits.model_dump() | {"actions_per_caller_per_day": ACTIONS_PER_DAY}
-        )
-    if on := {name: True for name in GUARD_ON if name not in voice.guard.model_fields_set}:
-        update["guard"] = GuardSettings.model_validate(voice.guard.model_dump() | on)
-    yes = YES_OVER_READ_BACK if agent == "scripted" else YES_OVER_QUESTION
-    if yes not in voice.interruptions.model_fields_set:
-        update["interruptions"] = InterruptionSettings.model_validate(
-            voice.interruptions.model_dump() | {yes: True}
-        )
-    words = REGISTER_WORDS | ({"send": SEND_WORDS} if agent == "lean" else {})
-    if unset := {k: v for k, v in words.items() if k not in voice.words.model_fields_set}:
-        update["words"] = WordSettings.model_validate(voice.words.model_dump() | unset)
-    if "max_requests_per_turn" not in voice.llm.model_fields_set:
-        update["llm"] = LlmSettings.model_validate(
-            voice.llm.model_dump() | {"max_requests_per_turn": REQUESTS_PER_TURN}
-        )
-    update["tts"] = app_tts(voice.tts)
-    update |= turned_on(voice, read_back=agent == "scripted")
-    if voice.env == "dev":
-        update["server"] = ServerSettings.model_validate(
-            voice.server.model_dump() | {"dev_caller": demo_caller()}
-        )
-    return voice.model_copy(update=update)
+
+
+def load_flight_data(env_file: Path | None = None) -> FlightDataFields:
+    """The flight data's settings alone, from the environment and `env_file` when given;
+    ConfigurationError naming each one that cannot load, never its value."""
+    refused: ConfigurationError | None = None
+    try:
+        return _FlightDataOnly(_env_file=env_file, _env_file_encoding="utf-8")
+    except ValidationError as error:
+        refused = _cannot_load(error)
+    raise refused
 
 
 def _cannot_load(error: ValidationError) -> ConfigurationError:
