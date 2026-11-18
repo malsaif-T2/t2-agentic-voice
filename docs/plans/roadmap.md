@@ -24,7 +24,7 @@ decisions (`D-NNN`), which are permanent. Living docs cite only milestones in th
 | M6 | Reliability and operations | planned |
 | M7 | The rehearsal: the owner's script passes | planned |
 | M9 | The voice experience at the level of top-tier voice agents | in progress ([010](active/010-top-tier-voice-experience.md)) |
-| M10 | Real flights of the Saudi airlines, and a link to book them | planned (proposal: [011](active/011-real-flights.md)) |
+| M10 | Real flights of the Saudi airlines, and a link to book them | in progress ([011](active/011-real-flights.md)) |
 
 Status is `planned`, `in progress` (with links to its active plans) or `done` (with links to
 its completed plans). Between milestones, [garbage-collection rounds](../harness/garbage-collection.md)
@@ -403,7 +403,7 @@ tester days read by the calls report meet its targets.
 owner's demo, their manager set the next goal: real flights, availability and prices of the Saudi
 airlines, for an internal agent of the company that searches and informs; in place of booking, a
 link to book the flight on the airline's site (booking through the agent a later phase). Plan 011,
-proposed.
+approved the same day.
 - The lean agent over a flight-data port: the mock behind it for the tests, a recorded provider
   for the evals, a live provider (SerpApi's Google Flights first) for calls.
 - A booking link in place of `book_trip`; the persona the company's travel assistant.

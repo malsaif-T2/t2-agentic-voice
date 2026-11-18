@@ -5,8 +5,8 @@ Status: active · Milestone: M10 · Started: 2026-11-18
 *Drafted on 2026-11-18, after the owner's demo, from the goal their manager set that day; built
 from a research round of four topics, each checked again by a skeptic against its sources (the
 report: the lead's notes, `real_flights/research_report.md`), and a map of the flight app's seam
-with the mock airline. A proposal: nothing is built until the owner approves it and answers the
-questions marked as due first.*
+with the mock airline. Approved by the owner on 2026-11-18 with their answers below ("The owner's
+decisions").*
 
 ## Goal
 
@@ -73,7 +73,23 @@ trip agreed". The owner's live call ends the plan.
 Each phase is a block, built in its own worktree, reviewed by an agent that did not write it,
 fixed, gated and merged; at most two builders at once.
 
-## Proposal for the owner (not started)
+## The owner's decisions
+
+- 2026-11-18, the goal (their manager's): "use real data for real flights, availability and
+  prices for different Saudi Airlines … an internal agent for our company to search flights and
+  provide information … lets keep the reservation as providing a link to book the flight".
+- 2026-11-18, the source: "Did you consider "Almosafer". If it is not good lets proceed with
+  SerpApi. I will see what I can do about a proper provider later." Almosafer has no public API
+  (its corporate arm, Almosafer Business, integrates partners by agreement; its affiliate deep
+  links run through an affiliate network, listed as paused), so SerpApi it is, behind a port a
+  proper provider can take later.
+- 2026-11-18, the link: a button on the call page's card ("Button on the card"), so Saad says the
+  link is ready and never reads it out; cards carry a link (a library change, out of the guard's
+  spoken text).
+- 2026-11-18, the scope: Saudi domestic and international routes, connecting flights too, and
+  other airlines on Saudi routes, not only the four.
+
+## The proposal as approved
 
 **The data.** No airline offers a public API, and every GDS or NDC route (Amadeus Enterprise, the
 only one with all four carriers; Sabre and Travelport miss the low-cost ones; Travelfusion) needs a
@@ -94,12 +110,9 @@ the flight number to pick; an airline's own prefilled search replaces it where P
 
 ## Open questions (each asked when the work needs it)
 
-1. *Due now (Phase 0):* is a Google Flights scraper acceptable for the company's internal tool, and
-   will the owner create the SerpApi account (free tier for the spike) and put its key in `.env`?
-2. *Due now:* how does the link reach the caller, since Saad never mentions a screen (2026-11-09)?
-   A button on the call page's card, an app page, or a message (email or chat)?
-3. *Due now:* which routes: Saudi domestic only, or international too; connecting flights or
-   nonstop only; other airlines on Saudi routes (Emirates, flydubai and the like) or the four only?
+1. *Answered 2026-11-18:* the source (SerpApi), the link (a button on the card) and the scope (all
+   routes, connections, every airline); see "The owner's decisions". The owner creates the
+   SerpApi account and puts its key in `.env` as `FLIGHT_VOICE_SERPAPI_KEY`.
 4. *Phase 2:* a cap on a span of days searched live (about 14 days)?
 5. *Phase 3:* the persona's name and greeting; whether the traveler profile goes or becomes the
    employee's; whether the scripted agent retires or stays on the mock.
@@ -108,12 +121,13 @@ the flight number to pick; an airline's own prefilled search replaces it where P
 ## Progress log
 
 - 2026-11-18: the goal set; the research round (aggregators, the Saudi airlines, booking links,
-  schedule data) done and checked; the seam mapped; this proposal written. Next: the owner's answers
-  to questions 1–3, then Phase 0.
+  schedule data) done and checked; the seam mapped; this proposal written; approved the same day
+  with the owner's answers. Next: Phase 1 (offline, no key needed) on its own branch from
+  plan-010-integration; Phase 0 once the SerpApi key is in `.env`.
 
 ## Decision log
 
 - 2026-11-18: SerpApi's Google Flights API first, SearchApi.io the spare, behind one port; the
   alternatives (Duffel, Amadeus, Sabre, Travelport, Kiwi, Skyscanner, Travelpayouts, Wego, schedule
-  APIs) are closed to us, miss carriers, or give no prices (the research report). Proposed, not yet
-  approved.
+  APIs) are closed to us, miss carriers, or give no prices (the research report); Almosafer has no
+  public API. Approved by the owner.
