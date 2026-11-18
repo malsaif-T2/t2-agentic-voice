@@ -77,7 +77,7 @@ def _fixture() -> dict[str, Any]:
 
 
 def _message_objects() -> dict[str, type[BaseModel]]:
-    """The objects the messages nest (a card's option rows), by name."""
+    """The objects the messages nest (a card's option rows and links), by name."""
     objects = dict[str, type[BaseModel]]()
     for model in (*CLIENT_MESSAGES, *SESSION_MESSAGES):
         _fields(model, objects, skip=ENVELOPE)
@@ -99,7 +99,7 @@ def test_the_data_channels_messages_are_the_lists() -> None:
         for model in models:
             assert model.model_config.get("strict") is strict, model
             assert get_args(model.model_fields["v"].annotation) == (PROTOCOL,), model
-    assert list(objects) == ["CardRow"]  # a session's card nests its option rows; nothing else
+    assert list(objects) == ["CardRow", "CardLink"]  # a card's option rows and links; nothing else
     for name, nested in objects.items():
         assert _fields(nested, {}) == fixture["objects"][name], name
         assert nested.model_config.get("strict") is None, name

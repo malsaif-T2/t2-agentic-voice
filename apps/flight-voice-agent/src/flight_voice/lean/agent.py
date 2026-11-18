@@ -2,12 +2,14 @@
 setting `FLIGHT_VOICE_AGENT` is `lean` (server.py), and what run F plays under `--agent lean`.
 
 It speaks as today's agent does (the same languages, greetings, progress lines, pronunciation of
-the airline's code and vocabulary, agent.py's and persona.py's), in Riyadh's time zone, with its
+the airline's code and vocabulary, agent.py's and persona.py's; on the real network the greeting
+is the real network's, Saad as T2's flight assistant), in Riyadh's time zone, with its
 own short instructions and calendar (prompt.py) and its tools over its sources (deps.py):
-`find_flights`, `choose_flights`, `book_trip` (only where the line books: the mock) and today's
-`traveler_profile`. On the real network the vocabulary's terms are the network's own (they
-replace persona.py's, so the speech-to-text prompt keeps its stop words) and its pronunciations
-are added to the airline code's. It declares no action, so the
+`find_flights`, `choose_flights`, `book_trip` (only where the line books: the mock), on the
+real network `booking_link` in its place (the link to book the trip on the airline's site,
+D-126), and today's `traveler_profile`. On the real network the vocabulary's terms are the
+network's own (they replace persona.py's, so the speech-to-text prompt keeps its stop words)
+and its pronunciations are added to the airline code's. It declares no action, so the
 library adds no action rules to its prompt and reads back nothing; `book_trip` books once the
 booking check holds. A chat model still decides a short overlap the rule would let go on
 (`ask_on_uncertain_overlaps`, D-069): the voice layer is the same as today's.
@@ -37,6 +39,7 @@ from flight_voice.airline.system import live_today
 from flight_voice.lean import prompt
 from flight_voice.lean.book import book_trip
 from flight_voice.lean.booking_check import OBSERVED
+from flight_voice.lean.booking_link import booking_link
 from flight_voice.lean.choose import choose_flights
 from flight_voice.lean.deps import LeanDeps
 from flight_voice.lean.find import find_flights
@@ -44,7 +47,7 @@ from flight_voice.persona import Names
 from flight_voice.tools.profile import traveler_profile
 
 NAME: Final = "flight-lean"
-VERSION: Final = "lean-2026-11-18.3"
+VERSION: Final = "lean-2026-11-18.5"
 
 __all__ = ["NAME", "OBSERVED", "VERSION", "calendar_watch", "declare", "lean_tools"]
 
@@ -66,12 +69,15 @@ def calendar_watch(
 
 
 def lean_tools(deps: LeanDeps) -> tuple[Tool, ...]:
-    """The tools over `deps`: `book_trip` only where the line books."""
+    """The tools over `deps`: `book_trip` only where the line books, `booking_link` only on the
+    real network."""
     booking = (book_trip(deps),) if deps.bookable else ()
+    linking = (booking_link(deps),) if deps.network == "real" else ()
     return (
         find_flights(deps),
         choose_flights(deps),
         *booking,
+        *linking,
         traveler_profile(deps.airline),
     )
 
@@ -86,7 +92,7 @@ def declare(deps: LeanDeps, names: Names | None = None) -> VoiceAgent:
     return VoiceAgent(
         name=NAME,
         version=VERSION,
-        languages=languages(named),
+        languages=languages(named, deps.network),
         pronounce=pronounce,
         instructions=prompt.instructions(
             named, today, deps.data.last_day(today), network=deps.network

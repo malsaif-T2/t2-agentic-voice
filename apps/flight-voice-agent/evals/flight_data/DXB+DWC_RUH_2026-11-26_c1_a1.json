@@ -1,0 +1,674 @@
+{
+ "params": {
+  "engine": "google_flights",
+  "type": "2",
+  "departure_id": "DXB,DWC",
+  "arrival_id": "RUH",
+  "outbound_date": "2026-11-26",
+  "travel_class": "1",
+  "adults": "1",
+  "currency": "SAR",
+  "gl": "sa",
+  "hl": "en",
+  "stops": "2"
+ },
+ "status": 200,
+ "body": {
+  "search_metadata": {
+   "id": "6afddae53c40064b44e0d18d",
+   "status": "Success",
+   "json_endpoint": "https://serpapi.com/searches/gUyEJoViiaL1NXLYi95yQ7HImJjHI-Ue-CVX_6RkLVU/6afddae53c40064b44e0d18d.json",
+   "markdown_endpoint": "https://serpapi.com/searches/gUyEJoViiaL1NXLYi95yQ7HImJjHI-Ue-CVX_6RkLVU/6afddae53c40064b44e0d18d.md",
+   "created_at": "2026-11-18 17:05:41 UTC",
+   "processed_at": "2026-11-18 17:05:41 UTC",
+   "google_flights_url": "https://www.google.com/travel/flights?hl=en&gl=sa&curr=SAR&tfs=CBwQAhopEgoyMDI2LTExLTI2KAFqBwgBEgNEWEJqBwgBEgNEV0NyBwgBEgNSVUhAAUgBcAGYAQI&tfu=EgIIAQ",
+   "raw_html_file": "https://serpapi.com/searches/gUyEJoViiaL1NXLYi95yQ7HImJjHI-Ue-CVX_6RkLVU/6afddae53c40064b44e0d18d.html",
+   "prettify_html_file": "https://serpapi.com/searches/gUyEJoViiaL1NXLYi95yQ7HImJjHI-Ue-CVX_6RkLVU/6afddae53c40064b44e0d18d.prettify",
+   "total_time_taken": 2.04
+  },
+  "search_parameters": {
+   "engine": "google_flights",
+   "hl": "en",
+   "gl": "sa",
+   "type": "2",
+   "departure_id": "DXB,DWC",
+   "arrival_id": "RUH",
+   "outbound_date": "2026-11-26",
+   "travel_class": 1,
+   "adults": 1,
+   "stops": 2,
+   "currency": "SAR"
+  },
+  "best_flights": [
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-26 12:10"
+      },
+      "arrival_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 13:20"
+      },
+      "duration": 130,
+      "airline": "Riyadh Air",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/RX.png",
+      "travel_class": "Economy",
+      "flight_number": "RX 242"
+     }
+    ],
+    "total_duration": 130,
+    "carbon_emissions": {
+     "typical_for_this_route": 99000
+    },
+    "price": 455,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/RX.png",
+    "booking_token": "WyJDalJJY0ZOTlptVnhaVjl6YzNkQlEwb3RUSGRDUnkwdExTMHRMUzB0TFMxNWFYUndPRUZCUVVGQlIzSTVNblZqUzNZelZVMUJFZ1ZTV0RJME1ob0xDSnZqQWhBQ0dnTlRRVkk0SEhEVlhnPT0iLFtbIkRYQiIsIjIwMjYtMTEtMjYiLCJSVUgiLG51bGwsIlJYIiwiMjQyIl1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-26 19:35"
+      },
+      "arrival_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 20:30"
+      },
+      "duration": 115,
+      "airline": "Riyadh Air",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/RX.png",
+      "travel_class": "Economy",
+      "flight_number": "RX 244"
+     }
+    ],
+    "total_duration": 115,
+    "carbon_emissions": {
+     "typical_for_this_route": 99000
+    },
+    "price": 455,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/RX.png",
+    "booking_token": "WyJDalJJY0ZOTlptVnhaVjl6YzNkQlEwb3RUSGRDUnkwdExTMHRMUzB0TFMxNWFYUndPRUZCUVVGQlIzSTVNblZqUzNZelZVMUJFZ1ZTV0RJME5Cb0xDSnZqQWhBQ0dnTlRRVkk0SEhEVlhnPT0iLFtbIkRYQiIsIjIwMjYtMTEtMjYiLCJSVUgiLG51bGwsIlJYIiwiMjQ0Il1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-26 12:50"
+      },
+      "arrival_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 13:50"
+      },
+      "duration": 120,
+      "airplane": "Airbus A320",
+      "airline": "flyadeal",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/F3.png",
+      "travel_class": "Economy",
+      "flight_number": "F3 506",
+      "legroom": "28 in",
+      "extensions": [
+       "Below average legroom (28 in)",
+       "In-seat USB outlet",
+       "Carbon emissions estimate: 94 kg"
+      ],
+      "often_delayed_by_over_30_min": true
+     }
+    ],
+    "total_duration": 120,
+    "carbon_emissions": {
+     "this_flight": 94000,
+     "typical_for_this_route": 99000,
+     "difference_percent": -5
+    },
+    "price": 457,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/F3.png",
+    "booking_token": "WyJDalJJY0ZOTlptVnhaVjl6YzNkQlEwb3RUSGRDUnkwdExTMHRMUzB0TFMxNWFYUndPRUZCUVVGQlIzSTVNblZqUzNZelZVMUJFZ1ZHTXpVd05ob0xDT2ZrQWhBQ0dnTlRRVkk0SEhDTVh3PT0iLFtbIkRYQiIsIjIwMjYtMTEtMjYiLCJSVUgiLG51bGwsIkYzIiwiNTA2Il1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-26 15:30"
+      },
+      "arrival_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 16:55"
+      },
+      "duration": 145,
+      "airplane": "Airbus A320neo",
+      "airline": "Flynas",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+      "travel_class": "Economy",
+      "flight_number": "XY 218",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "In-seat USB outlet",
+       "Carbon emissions estimate: 86 kg"
+      ],
+      "often_delayed_by_over_30_min": true
+     }
+    ],
+    "total_duration": 145,
+    "carbon_emissions": {
+     "this_flight": 86000,
+     "typical_for_this_route": 99000,
+     "difference_percent": -13
+    },
+    "price": 541,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+    "booking_token": "WyJDalJJY0ZOTlptVnhaVjl6YzNkQlEwb3RUSGRDUnkwdExTMHRMUzB0TFMxNWFYUndPRUZCUVVGQlIzSTVNblZqUzNZelZVMUJFZ1ZZV1RJeE9Cb0xDS0dtQXhBQ0dnTlRRVkk0SEhERWNBPT0iLFtbIkRYQiIsIjIwMjYtMTEtMjYiLCJSVUgiLG51bGwsIlhZIiwiMjE4Il1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-26 13:20"
+      },
+      "arrival_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 14:25"
+      },
+      "duration": 125,
+      "airplane": "Airbus A320",
+      "airline": "Saudia",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+      "travel_class": "Economy",
+      "flight_number": "SV 597",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "Free Wi-Fi",
+       "In-seat power & USB outlets",
+       "Stream media to your device",
+       "Carbon emissions estimate: 116 kg"
+      ],
+      "often_delayed_by_over_30_min": true
+     }
+    ],
+    "total_duration": 125,
+    "carbon_emissions": {
+     "this_flight": 117000,
+     "typical_for_this_route": 99000,
+     "difference_percent": 18
+    },
+    "price": 614,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+    "booking_token": "WyJDalJJY0ZOTlptVnhaVjl6YzNkQlEwb3RUSGRDUnkwdExTMHRMUzB0TFMxNWFYUndPRUZCUVVGQlIzSTVNblZqUzNZelZVMUJFZ1ZUVmpVNU54b0xDUGZlQXhBQ0dnTlRRVkk0SEhEU2Z3PT0iLFtbIkRYQiIsIjIwMjYtMTEtMjYiLCJSVUgiLG51bGwsIlNWIiwiNTk3Il1dXQ=="
+   }
+  ],
+  "other_flights": [
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-26 20:50"
+      },
+      "arrival_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 21:50"
+      },
+      "duration": 120,
+      "airplane": "Airbus A320",
+      "airline": "flyadeal",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/F3.png",
+      "travel_class": "Economy",
+      "flight_number": "F3 508",
+      "legroom": "28 in",
+      "extensions": [
+       "Below average legroom (28 in)",
+       "In-seat USB outlet",
+       "Carbon emissions estimate: 94 kg"
+      ]
+     }
+    ],
+    "total_duration": 120,
+    "carbon_emissions": {
+     "this_flight": 94000,
+     "typical_for_this_route": 99000,
+     "difference_percent": -5
+    },
+    "price": 568,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/F3.png",
+    "booking_token": "WyJDalJJY0ZOTlptVnhaVjl6YzNkQlEwb3RUSGRDUnkwdExTMHRMUzB0TFMxNWFYUndPRUZCUVVGQlIzSTVNblZqUzNZelZVMUJFZ1ZHTXpVd09Cb0xDSUs3QXhBQ0dnTlRRVkk0SEhDSmRnPT0iLFtbIkRYQiIsIjIwMjYtMTEtMjYiLCJSVUgiLG51bGwsIkYzIiwiNTA4Il1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-26 11:30"
+      },
+      "arrival_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 12:40"
+      },
+      "duration": 130,
+      "airplane": "Airbus A320neo",
+      "airline": "Flynas",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+      "travel_class": "Economy",
+      "flight_number": "XY 202",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "In-seat USB outlet",
+       "Carbon emissions estimate: 86 kg"
+      ],
+      "often_delayed_by_over_30_min": true
+     }
+    ],
+    "total_duration": 130,
+    "carbon_emissions": {
+     "this_flight": 86000,
+     "typical_for_this_route": 99000,
+     "difference_percent": -13
+    },
+    "price": 582,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+    "booking_token": "WyJDalJJY0ZOTlptVnhaVjl6YzNkQlEwb3RUSGRDUnkwdExTMHRMUzB0TFMxNWFYUndPRUZCUVVGQlIzSTVNblZqUzNZelZVMUJFZ1ZZV1RJd01ob0xDSmpHQXhBQ0dnTlRRVkk0SEhDR2VRPT0iLFtbIkRYQiIsIjIwMjYtMTEtMjYiLCJSVUgiLG51bGwsIlhZIiwiMjAyIl1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-26 16:15"
+      },
+      "arrival_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 17:25"
+      },
+      "duration": 130,
+      "airplane": "Airbus A320neo",
+      "airline": "Flynas",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+      "travel_class": "Economy",
+      "flight_number": "XY 206",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "In-seat USB outlet",
+       "Carbon emissions estimate: 86 kg"
+      ],
+      "often_delayed_by_over_30_min": true
+     }
+    ],
+    "total_duration": 130,
+    "carbon_emissions": {
+     "this_flight": 86000,
+     "typical_for_this_route": 99000,
+     "difference_percent": -13
+    },
+    "price": 582,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+    "booking_token": "WyJDalJJY0ZOTlptVnhaVjl6YzNkQlEwb3RUSGRDUnkwdExTMHRMUzB0TFMxNWFYUndPRUZCUVVGQlIzSTVNblZqUzNZelZVMUJFZ1ZZV1RJd05ob0xDSmpHQXhBQ0dnTlRRVkk0SEhDR2VRPT0iLFtbIkRYQiIsIjIwMjYtMTEtMjYiLCJSVUgiLG51bGwsIlhZIiwiMjA2Il1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-26 22:30"
+      },
+      "arrival_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 23:35"
+      },
+      "duration": 125,
+      "airplane": "Airbus A321",
+      "airline": "Saudia",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+      "travel_class": "Economy",
+      "flight_number": "SV 553",
+      "legroom": "32 in",
+      "extensions": [
+       "Above average legroom (32 in)",
+       "Free Wi-Fi",
+       "Carbon emissions estimate: 125 kg"
+      ],
+      "often_delayed_by_over_30_min": true
+     }
+    ],
+    "total_duration": 125,
+    "carbon_emissions": {
+     "this_flight": 126000,
+     "typical_for_this_route": 99000,
+     "difference_percent": 27
+    },
+    "price": 614,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+    "booking_token": "WyJDalJJY0ZOTlptVnhaVjl6YzNkQlEwb3RUSGRDUnkwdExTMHRMUzB0TFMxNWFYUndPRUZCUVVGQlIzSTVNblZqUzNZelZVMUJFZ1ZUVmpVMU14b0xDUGZlQXhBQ0dnTlRRVkk0SEhEU2Z3PT0iLFtbIkRYQiIsIjIwMjYtMTEtMjYiLCJSVUgiLG51bGwsIlNWIiwiNTUzIl1dXQ=="
+   }
+  ],
+  "price_insights": {
+   "lowest_price": 455,
+   "price_level": "typical",
+   "typical_price_range": [
+    130,
+    480
+   ],
+   "price_history": [
+    [
+     1789761600,
+     321
+    ],
+    [
+     1789848000,
+     321
+    ],
+    [
+     1789934400,
+     321
+    ],
+    [
+     1790020800,
+     321
+    ],
+    [
+     1790107200,
+     313
+    ],
+    [
+     1790193600,
+     114
+    ],
+    [
+     1790280000,
+     114
+    ],
+    [
+     1790366400,
+     114
+    ],
+    [
+     1790452800,
+     114
+    ],
+    [
+     1790539200,
+     114
+    ],
+    [
+     1790625600,
+     114
+    ],
+    [
+     1790712000,
+     114
+    ],
+    [
+     1790798400,
+     114
+    ],
+    [
+     1790884800,
+     114
+    ],
+    [
+     1790971200,
+     114
+    ],
+    [
+     1791057600,
+     114
+    ],
+    [
+     1791144000,
+     114
+    ],
+    [
+     1791230400,
+     285
+    ],
+    [
+     1791316800,
+     286
+    ],
+    [
+     1791403200,
+     286
+    ],
+    [
+     1791489600,
+     286
+    ],
+    [
+     1791576000,
+     385
+    ],
+    [
+     1791662400,
+     385
+    ],
+    [
+     1791748800,
+     385
+    ],
+    [
+     1791835200,
+     385
+    ],
+    [
+     1791921600,
+     385
+    ],
+    [
+     1792008000,
+     385
+    ],
+    [
+     1792094400,
+     385
+    ],
+    [
+     1792180800,
+     385
+    ],
+    [
+     1792267200,
+     385
+    ],
+    [
+     1792353600,
+     386
+    ],
+    [
+     1792440000,
+     493
+    ],
+    [
+     1792526400,
+     421
+    ],
+    [
+     1792612800,
+     385
+    ],
+    [
+     1792699200,
+     385
+    ],
+    [
+     1792785600,
+     385
+    ],
+    [
+     1792872000,
+     385
+    ],
+    [
+     1792958400,
+     385
+    ],
+    [
+     1793044800,
+     385
+    ],
+    [
+     1793131200,
+     373
+    ],
+    [
+     1793217600,
+     373
+    ],
+    [
+     1793304000,
+     374
+    ],
+    [
+     1793390400,
+     374
+    ],
+    [
+     1793476800,
+     374
+    ],
+    [
+     1793563200,
+     478
+    ],
+    [
+     1793649600,
+     479
+    ],
+    [
+     1793736000,
+     479
+    ],
+    [
+     1793822400,
+     478
+    ],
+    [
+     1793908800,
+     478
+    ],
+    [
+     1793995200,
+     478
+    ],
+    [
+     1794081600,
+     440
+    ],
+    [
+     1794168000,
+     478
+    ],
+    [
+     1794254400,
+     479
+    ],
+    [
+     1794340800,
+     479
+    ],
+    [
+     1794427200,
+     410
+    ],
+    [
+     1794513600,
+     412
+    ],
+    [
+     1794600000,
+     411
+    ],
+    [
+     1794686400,
+     324
+    ],
+    [
+     1794772800,
+     323
+    ],
+    [
+     1794859200,
+     456
+    ],
+    [
+     1794945600,
+     455
+    ]
+   ]
+  },
+  "airports": [
+   {
+    "departure": [
+     {
+      "airport": {
+       "id": "DXB",
+       "name": "Dubai International Airport"
+      },
+      "city": "Dubai",
+      "country": "United Arab Emirates",
+      "country_code": "AE",
+      "image": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcRegWMQBRhDOeg2gvll8nGXsG1-OPqD2V0EvCN1Ni2Poe9hGY8CBps9mRaAyrAz8Jvsvl292aI62fq43A",
+      "thumbnail": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcQDaD8FERvoI4iorjkWbED9zAq7S3m9hD1t5vGNU5Jznr1Kl1em9SIs9c9VkujJF5_EDvC5mKyqcQ9B8PApW9tiwfzhK_pC2qvRBND2Plo"
+     },
+     {
+      "airport": {
+       "id": "DWC",
+       "name": "Al Maktoum International Airport (DWC)"
+      },
+      "city": "Dubai",
+      "country": "United Arab Emirates",
+      "country_code": "AE",
+      "image": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcRegWMQBRhDOeg2gvll8nGXsG1-OPqD2V0EvCN1Ni2Poe9hGY8CBps9mRaAyrAz8Jvsvl292aI62fq43A",
+      "thumbnail": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcQDaD8FERvoI4iorjkWbED9zAq7S3m9hD1t5vGNU5Jznr1Kl1em9SIs9c9VkujJF5_EDvC5mKyqcQ9B8PApW9tiwfzhK_pC2qvRBND2Plo"
+     }
+    ],
+    "arrival": [
+     {
+      "airport": {
+       "id": "RUH",
+       "name": "King Khalid International Airport"
+      },
+      "city": "Riyadh",
+      "country": "Saudi Arabia",
+      "country_code": "SA",
+      "image": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcQcIKZwEhurQayMMY8REMG-ngE3R6B7fyPp1jtMDsXsJYk5zv8dSIdXyJGqoJ4Wo0MUSRm45GGd_Rgpaw",
+      "thumbnail": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcRkqG9nigWgHbtogOWlLR9sM2gVNqss9UYTiMlAyXVUbPB1qhGrjSDgIL0emclGmrDY-3s16sKVBFy0MLsPOo7o9iWTif-cYJLylIBFEm8"
+     }
+    ]
+   }
+  ]
+ }
+}

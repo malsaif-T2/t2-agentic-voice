@@ -1,0 +1,766 @@
+{
+ "params": {
+  "engine": "google_flights",
+  "type": "2",
+  "departure_id": "LHR,LGW,STN",
+  "arrival_id": "RUH",
+  "outbound_date": "2026-11-26",
+  "travel_class": "1",
+  "adults": "1",
+  "currency": "SAR",
+  "gl": "sa",
+  "hl": "en",
+  "stops": "2"
+ },
+ "status": 200,
+ "body": {
+  "search_metadata": {
+   "id": "6afddaecaa25544a50ae5ade",
+   "status": "Success",
+   "json_endpoint": "https://serpapi.com/searches/qInWwt2CWp46PyVN2f1n99GxqYG7YWF2KtsTwi0Ijcg/6afddaecaa25544a50ae5ade.json",
+   "markdown_endpoint": "https://serpapi.com/searches/qInWwt2CWp46PyVN2f1n99GxqYG7YWF2KtsTwi0Ijcg/6afddaecaa25544a50ae5ade.md",
+   "created_at": "2026-11-18 17:05:48 UTC",
+   "processed_at": "2026-11-18 17:05:48 UTC",
+   "google_flights_url": "https://www.google.com/travel/flights?hl=en&gl=sa&curr=SAR&tfs=CBwQAhoyEgoyMDI2LTExLTI2KAFqBwgBEgNMSFJqBwgBEgNMR1dqBwgBEgNTVE5yBwgBEgNSVUhAAUgBcAGYAQI&tfu=EgIIAQ",
+   "raw_html_file": "https://serpapi.com/searches/qInWwt2CWp46PyVN2f1n99GxqYG7YWF2KtsTwi0Ijcg/6afddaecaa25544a50ae5ade.html",
+   "prettify_html_file": "https://serpapi.com/searches/qInWwt2CWp46PyVN2f1n99GxqYG7YWF2KtsTwi0Ijcg/6afddaecaa25544a50ae5ade.prettify",
+   "total_time_taken": 3.27
+  },
+  "search_parameters": {
+   "engine": "google_flights",
+   "hl": "en",
+   "gl": "sa",
+   "type": "2",
+   "departure_id": "LHR,LGW,STN",
+   "arrival_id": "RUH",
+   "outbound_date": "2026-11-26",
+   "travel_class": 1,
+   "adults": 1,
+   "stops": 2,
+   "currency": "SAR"
+  },
+  "best_flights": [
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "London Stansted Airport",
+       "id": "STN",
+       "time": "2026-11-26 12:35"
+      },
+      "arrival_airport": {
+       "name": "Sabiha Gökçen International Airport",
+       "id": "SAW",
+       "time": "2026-11-26 19:30"
+      },
+      "duration": 235,
+      "airplane": "Airbus A321neo",
+      "airline": "AJet",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/VF.png",
+      "travel_class": "Economy",
+      "flight_number": "VF 1988",
+      "legroom": "28 in",
+      "extensions": [
+       "Below average legroom (28 in)",
+       "Carbon emissions estimate: 158 kg"
+      ]
+     },
+     {
+      "departure_airport": {
+       "name": "Sabiha Gökçen International Airport",
+       "id": "SAW",
+       "time": "2026-11-26 22:35"
+      },
+      "arrival_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-27 02:40"
+      },
+      "duration": 245,
+      "airplane": "Airbus A321neo",
+      "airline": "AJet",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/VF.png",
+      "travel_class": "Economy",
+      "flight_number": "VF 213",
+      "legroom": "28 in",
+      "extensions": [
+       "Below average legroom (28 in)",
+       "Carbon emissions estimate: 169 kg"
+      ],
+      "overnight": true
+     }
+    ],
+    "layovers": [
+     {
+      "duration": 185,
+      "name": "Sabiha Gökçen International Airport",
+      "id": "SAW"
+     }
+    ],
+    "total_duration": 665,
+    "carbon_emissions": {
+     "this_flight": 328000,
+     "typical_for_this_route": 399000,
+     "difference_percent": -18
+    },
+    "price": 1386,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/VF.png",
+    "booking_token": "WyJDalJJT0RKelQwSkVNbmd6V210QlIxQlFaMEZDUnkwdExTMHRMUzB0YjNsamJHNHlNa0ZCUVVGQlIzSTVNblUwU1dGa1VHbEJFZ3hXUmpFNU9EaDhWa1l5TVRNYUN3aTZ1Z2dRQWhvRFUwRlNPQnh3dnFBQyIsW1siU1ROIiwiMjAyNi0xMS0yNiIsIlNBVyIsbnVsbCwiVkYiLCIxOTg4Il0sWyJTQVciLCIyMDI2LTExLTI2IiwiUlVIIixudWxsLCJWRiIsIjIxMyJdXV0="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "Heathrow Airport",
+       "id": "LHR",
+       "time": "2026-11-26 09:30"
+      },
+      "arrival_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 19:15"
+      },
+      "duration": 405,
+      "airplane": "Boeing 787",
+      "airline": "Riyadh Air",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/RX.png",
+      "travel_class": "Economy",
+      "flight_number": "RX 402",
+      "legroom": "31 in",
+      "extensions": [
+       "Average legroom (31 in)",
+       "Free Wi-Fi",
+       "In-seat USB outlet",
+       "On-demand video",
+       "Carbon emissions estimate: 310 kg"
+      ],
+      "often_delayed_by_over_30_min": true
+     }
+    ],
+    "total_duration": 405,
+    "carbon_emissions": {
+     "this_flight": 310000,
+     "typical_for_this_route": 399000,
+     "difference_percent": -22
+    },
+    "price": 2060,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/RX.png",
+    "booking_token": "WyJDalJJT0RKelQwSkVNbmd6V210QlIxQlFaMEZDUnkwdExTMHRMUzB0YjNsamJHNHlNa0ZCUVVGQlIzSTVNblUwU1dGa1VHbEJFZ1ZTV0RRd01ob0xDUC9JREJBQ0dnTlRRVkk0SEhEbnJBTT0iLFtbIkxIUiIsIjIwMjYtMTEtMjYiLCJSVUgiLG51bGwsIlJYIiwiNDAyIl1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "Heathrow Airport",
+       "id": "LHR",
+       "time": "2026-11-26 09:30"
+      },
+      "arrival_airport": {
+       "name": "Bahrain International Airport",
+       "id": "BAH",
+       "time": "2026-11-26 19:10"
+      },
+      "duration": 400,
+      "airplane": "Boeing 787",
+      "airline": "Gulf Air",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/GF.png",
+      "travel_class": "Economy",
+      "flight_number": "GF 2",
+      "legroom": "32 in",
+      "extensions": [
+       "Above average legroom (32 in)",
+       "Free Wi-Fi",
+       "In-seat power & USB outlets",
+       "On-demand video",
+       "Carbon emissions estimate: 315 kg"
+      ]
+     },
+     {
+      "departure_airport": {
+       "name": "Bahrain International Airport",
+       "id": "BAH",
+       "time": "2026-11-26 19:50"
+      },
+      "arrival_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 21:15"
+      },
+      "duration": 85,
+      "airplane": "Airbus A321neo",
+      "airline": "Gulf Air",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/GF.png",
+      "travel_class": "Economy",
+      "flight_number": "GF 169",
+      "legroom": "31 in",
+      "extensions": [
+       "Average legroom (31 in)",
+       "Free Wi-Fi",
+       "In-seat power & USB outlets",
+       "On-demand video",
+       "Carbon emissions estimate: 59 kg"
+      ]
+     }
+    ],
+    "layovers": [
+     {
+      "duration": 40,
+      "name": "Bahrain International Airport",
+      "id": "BAH"
+     }
+    ],
+    "total_duration": 525,
+    "carbon_emissions": {
+     "this_flight": 374000,
+     "typical_for_this_route": 399000,
+     "difference_percent": -6
+    },
+    "price": 2322,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/GF.png",
+    "booking_token": "WyJDalJJT0RKelQwSkVNbmd6V210QlIxQlFaMEZDUnkwdExTMHRMUzB0YjNsamJHNHlNa0ZCUVVGQlIzSTVNblUwU1dGa1VHbEJFZ2xIUmpKOFIwWXhOamthQ3dqWWxRNFFBaG9EVTBGU09CeHdydU1EIixbWyJMSFIiLCIyMDI2LTExLTI2IiwiQkFIIixudWxsLCJHRiIsIjIiXSxbIkJBSCIsIjIwMjYtMTEtMjYiLCJSVUgiLG51bGwsIkdGIiwiMTY5Il1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "Heathrow Airport",
+       "id": "LHR",
+       "time": "2026-11-26 10:00"
+      },
+      "arrival_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-26 19:30"
+      },
+      "duration": 390,
+      "airplane": "Boeing 777",
+      "airline": "Saudia",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+      "travel_class": "Economy",
+      "flight_number": "SV 110",
+      "legroom": "32 in",
+      "extensions": [
+       "Above average legroom (32 in)",
+       "Wi-Fi for a fee",
+       "In-seat power & USB outlets",
+       "On-demand video",
+       "Carbon emissions estimate: 399 kg"
+      ]
+     }
+    ],
+    "total_duration": 390,
+    "carbon_emissions": {
+     "this_flight": 399000,
+     "typical_for_this_route": 399000,
+     "difference_percent": 0
+    },
+    "price": 3461,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+    "booking_token": "WyJDalJJT0RKelQwSkVNbmd6V210QlIxQlFaMEZDUnkwdExTMHRMUzB0YjNsamJHNHlNa0ZCUVVGQlIzSTVNblUwU1dGa1VHbEJFZ1ZUVmpFeE1Cb0xDT09QRlJBQ0dnTlRRVkk0SEhESjBBVT0iLFtbIkxIUiIsIjIwMjYtMTEtMjYiLCJSVUgiLG51bGwsIlNWIiwiMTEwIl1dXQ=="
+   }
+  ],
+  "other_flights": [
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "Heathrow Airport",
+       "id": "LHR",
+       "time": "2026-11-26 15:30"
+      },
+      "arrival_airport": {
+       "name": "Hamad International Airport",
+       "id": "DOH",
+       "time": "2026-11-27 01:15"
+      },
+      "duration": 405,
+      "airplane": "Boeing 777",
+      "airline": "Qatar Airways",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/QR.png",
+      "travel_class": "Economy",
+      "flight_number": "QR 110",
+      "legroom": "31 in",
+      "extensions": [
+       "Average legroom (31 in)",
+       "In-seat power & USB outlets",
+       "On-demand video",
+       "Carbon emissions estimate: 395 kg"
+      ]
+     },
+     {
+      "departure_airport": {
+       "name": "Hamad International Airport",
+       "id": "DOH",
+       "time": "2026-11-28 00:30"
+      },
+      "arrival_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-28 02:20"
+      },
+      "duration": 110,
+      "airplane": "Boeing 787",
+      "airline": "Qatar Airways",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/QR.png",
+      "travel_class": "Economy",
+      "flight_number": "QR 1938",
+      "legroom": "31 in",
+      "extensions": [
+       "Average legroom (31 in)",
+       "Wi-Fi for a fee",
+       "In-seat power & USB outlets",
+       "On-demand video",
+       "Carbon emissions estimate: 49 kg"
+      ],
+      "overnight": true
+     }
+    ],
+    "layovers": [
+     {
+      "duration": 1395,
+      "name": "Hamad International Airport",
+      "id": "DOH"
+     }
+    ],
+    "total_duration": 1910,
+    "carbon_emissions": {
+     "this_flight": 445000,
+     "typical_for_this_route": 399000,
+     "difference_percent": 12
+    },
+    "price": 1858,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/QR.png",
+    "booking_token": "WyJDalJJT0RKelQwSkVNbmd6V210QlIxQlFaMEZDUnkwdExTMHRMUzB0YjNsamJHNHlNa0ZCUVVGQlIzSTVNblUwU1dGa1VHbEJFZ3hSVWpFeE1IeFJVakU1TXpnYUN3aXFxd3NRQWhvRFUwRlNPQnh3NVlJRCIsW1siTEhSIiwiMjAyNi0xMS0yNiIsIkRPSCIsbnVsbCwiUVIiLCIxMTAiXSxbIkRPSCIsIjIwMjYtMTEtMjgiLCJSVUgiLG51bGwsIlFSIiwiMTkzOCJdXV0="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "London Gatwick Airport",
+       "id": "LGW",
+       "time": "2026-11-26 08:40"
+      },
+      "arrival_airport": {
+       "name": "Hamad International Airport",
+       "id": "DOH",
+       "time": "2026-11-26 18:10"
+      },
+      "duration": 390,
+      "airplane": "Boeing 787",
+      "airline": "Qatar Airways",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/QR.png",
+      "travel_class": "Economy",
+      "flight_number": "QR 330",
+      "ticket_also_sold_by": [
+       "British Airways"
+      ],
+      "legroom": "31 in",
+      "extensions": [
+       "Average legroom (31 in)",
+       "Wi-Fi for a fee",
+       "In-seat power & USB outlets",
+       "On-demand video",
+       "Carbon emissions estimate: 293 kg"
+      ]
+     },
+     {
+      "departure_airport": {
+       "name": "Hamad International Airport",
+       "id": "DOH",
+       "time": "2026-11-28 00:30"
+      },
+      "arrival_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-28 02:20"
+      },
+      "duration": 110,
+      "airplane": "Boeing 787",
+      "airline": "Qatar Airways",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/QR.png",
+      "travel_class": "Economy",
+      "flight_number": "QR 1938",
+      "legroom": "31 in",
+      "extensions": [
+       "Average legroom (31 in)",
+       "Wi-Fi for a fee",
+       "In-seat power & USB outlets",
+       "On-demand video",
+       "Carbon emissions estimate: 49 kg"
+      ],
+      "overnight": true
+     }
+    ],
+    "layovers": [
+     {
+      "duration": 1820,
+      "name": "Hamad International Airport",
+      "id": "DOH"
+     }
+    ],
+    "total_duration": 2320,
+    "carbon_emissions": {
+     "this_flight": 343000,
+     "typical_for_this_route": 399000,
+     "difference_percent": -14
+    },
+    "price": 2052,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/QR.png",
+    "booking_token": "WyJDalJJT0RKelQwSkVNbmd6V210QlIxQlFaMEZDUnkwdExTMHRMUzB0YjNsamJHNHlNa0ZCUVVGQlIzSTVNblUwU1dGa1VHbEJFZ3hSVWpNek1IeFJVakU1TXpnYUN3aTl3Z3dRQWhvRFUwRlNPQnh3aWFzRCIsW1siTEdXIiwiMjAyNi0xMS0yNiIsIkRPSCIsbnVsbCwiUVIiLCIzMzAiXSxbIkRPSCIsIjIwMjYtMTEtMjgiLCJSVUgiLG51bGwsIlFSIiwiMTkzOCJdXV0="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "London Stansted Airport",
+       "id": "STN",
+       "time": "2026-11-26 10:55"
+      },
+      "arrival_airport": {
+       "name": "Istanbul Airport",
+       "id": "IST",
+       "time": "2026-11-26 17:55"
+      },
+      "duration": 240,
+      "airplane": "Boeing 737MAX 8 Passenger",
+      "airline": "Turkish Airlines",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/TK.png",
+      "travel_class": "Economy",
+      "flight_number": "TK 1242",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "Wi-Fi for a fee",
+       "In-seat USB outlet",
+       "On-demand video",
+       "Carbon emissions estimate: 204 kg"
+      ]
+     },
+     {
+      "departure_airport": {
+       "name": "Istanbul Airport",
+       "id": "IST",
+       "time": "2026-11-26 21:10"
+      },
+      "arrival_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-27 00:55"
+      },
+      "duration": 225,
+      "airplane": "Airbus A330",
+      "airline": "Turkish Airlines",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/TK.png",
+      "travel_class": "Economy",
+      "flight_number": "TK 140",
+      "legroom": "31 in",
+      "extensions": [
+       "Average legroom (31 in)",
+       "Wi-Fi for a fee",
+       "In-seat power & USB outlets",
+       "On-demand video",
+       "Carbon emissions estimate: 226 kg"
+      ]
+     }
+    ],
+    "layovers": [
+     {
+      "duration": 195,
+      "name": "Istanbul Airport",
+      "id": "IST"
+     }
+    ],
+    "total_duration": 660,
+    "carbon_emissions": {
+     "this_flight": 432000,
+     "typical_for_this_route": 399000,
+     "difference_percent": 8
+    },
+    "price": 2296,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/TK.png",
+    "booking_token": "WyJDalJJT0RKelQwSkVNbmd6V210QlIxQlFaMEZDUnkwdExTMHRMUzB0YjNsamJHNHlNa0ZCUVVGQlIzSTVNblUwU1dGa1VHbEJFZ3hVU3pFeU5ESjhWRXN4TkRBYUN3akRnUTRRQWhvRFUwRlNPQnh3L3QwRCIsW1siU1ROIiwiMjAyNi0xMS0yNiIsIklTVCIsbnVsbCwiVEsiLCIxMjQyIl0sWyJJU1QiLCIyMDI2LTExLTI2IiwiUlVIIixudWxsLCJUSyIsIjE0MCJdXV0="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "Heathrow Airport",
+       "id": "LHR",
+       "time": "2026-11-26 21:40"
+      },
+      "arrival_airport": {
+       "name": "Bahrain International Airport",
+       "id": "BAH",
+       "time": "2026-11-27 07:20"
+      },
+      "duration": 400,
+      "airplane": "Boeing 787",
+      "airline": "Gulf Air",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/GF.png",
+      "travel_class": "Economy",
+      "flight_number": "GF 6",
+      "legroom": "32 in",
+      "extensions": [
+       "Above average legroom (32 in)",
+       "Free Wi-Fi",
+       "In-seat power & USB outlets",
+       "On-demand video",
+       "Carbon emissions estimate: 315 kg"
+      ],
+      "overnight": true
+     },
+     {
+      "departure_airport": {
+       "name": "Bahrain International Airport",
+       "id": "BAH",
+       "time": "2026-11-27 11:40"
+      },
+      "arrival_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-27 13:05"
+      },
+      "duration": 85,
+      "airplane": "Airbus A320",
+      "airline": "Gulf Air",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/GF.png",
+      "travel_class": "Economy",
+      "flight_number": "GF 163",
+      "legroom": "32 in",
+      "extensions": [
+       "Above average legroom (32 in)",
+       "In-seat power outlet",
+       "Stream media to your device",
+       "Carbon emissions estimate: 72 kg"
+      ]
+     }
+    ],
+    "layovers": [
+     {
+      "duration": 260,
+      "name": "Bahrain International Airport",
+      "id": "BAH"
+     }
+    ],
+    "total_duration": 745,
+    "carbon_emissions": {
+     "this_flight": 388000,
+     "typical_for_this_route": 399000,
+     "difference_percent": -3
+    },
+    "price": 2322,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/GF.png",
+    "booking_token": "WyJDalJJT0RKelQwSkVNbmd6V210QlIxQlFaMEZDUnkwdExTMHRMUzB0YjNsamJHNHlNa0ZCUVVGQlIzSTVNblUwU1dGa1VHbEJFZ2xIUmpaOFIwWXhOak1hQ3dqWWxRNFFBaG9EVTBGU09CeHdydU1EIixbWyJMSFIiLCIyMDI2LTExLTI2IiwiQkFIIixudWxsLCJHRiIsIjYiXSxbIkJBSCIsIjIwMjYtMTEtMjciLCJSVUgiLG51bGwsIkdGIiwiMTYzIl1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "Heathrow Airport",
+       "id": "LHR",
+       "time": "2026-11-26 11:25"
+      },
+      "arrival_airport": {
+       "name": "Istanbul Airport",
+       "id": "IST",
+       "time": "2026-11-26 18:15"
+      },
+      "duration": 230,
+      "airplane": "Airbus A350",
+      "airline": "Turkish Airlines",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/TK.png",
+      "travel_class": "Economy",
+      "flight_number": "TK 1980",
+      "legroom": "31 in",
+      "extensions": [
+       "Average legroom (31 in)",
+       "Wi-Fi for a fee",
+       "In-seat USB outlet",
+       "On-demand video",
+       "Carbon emissions estimate: 175 kg"
+      ]
+     },
+     {
+      "departure_airport": {
+       "name": "Istanbul Airport",
+       "id": "IST",
+       "time": "2026-11-26 21:10"
+      },
+      "arrival_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-27 00:55"
+      },
+      "duration": 225,
+      "airplane": "Airbus A330",
+      "airline": "Turkish Airlines",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/TK.png",
+      "travel_class": "Economy",
+      "flight_number": "TK 140",
+      "legroom": "31 in",
+      "extensions": [
+       "Average legroom (31 in)",
+       "Wi-Fi for a fee",
+       "In-seat power & USB outlets",
+       "On-demand video",
+       "Carbon emissions estimate: 226 kg"
+      ]
+     }
+    ],
+    "layovers": [
+     {
+      "duration": 175,
+      "name": "Istanbul Airport",
+      "id": "IST"
+     }
+    ],
+    "total_duration": 630,
+    "carbon_emissions": {
+     "this_flight": 402000,
+     "typical_for_this_route": 399000,
+     "difference_percent": 1
+    },
+    "price": 2490,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/TK.png",
+    "booking_token": "WyJDalJJT0RKelQwSkVNbmd6V210QlIxQlFaMEZDUnkwdExTMHRMUzB0YjNsamJHNHlNa0ZCUVVGQlIzSTVNblUwU1dGa1VHbEJFZ3hVU3pFNU9EQjhWRXN4TkRBYUN3aVJtUThRQWhvRFUwRlNPQnh3c29ZRSIsW1siTEhSIiwiMjAyNi0xMS0yNiIsIklTVCIsbnVsbCwiVEsiLCIxOTgwIl0sWyJJU1QiLCIyMDI2LTExLTI2IiwiUlVIIixudWxsLCJUSyIsIjE0MCJdXV0="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "Heathrow Airport",
+       "id": "LHR",
+       "time": "2026-11-26 14:55"
+      },
+      "arrival_airport": {
+       "name": "Hamad International Airport",
+       "id": "DOH",
+       "time": "2026-11-27 00:40"
+      },
+      "duration": 405,
+      "airplane": "Airbus A350",
+      "airline": "Qatar Airways",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/QR.png",
+      "travel_class": "Economy",
+      "flight_number": "QR 8",
+      "ticket_also_sold_by": [
+       "British Airways"
+      ],
+      "legroom": "31 in",
+      "extensions": [
+       "Average legroom (31 in)",
+       "In-seat power & USB outlets",
+       "On-demand video",
+       "Carbon emissions estimate: 331 kg"
+      ]
+     },
+     {
+      "departure_airport": {
+       "name": "Hamad International Airport",
+       "id": "DOH",
+       "time": "2026-11-27 01:35"
+      },
+      "arrival_airport": {
+       "name": "King Khalid International Airport",
+       "id": "RUH",
+       "time": "2026-11-27 03:25"
+      },
+      "duration": 110,
+      "airplane": "Airbus A320",
+      "airline": "Qatar Airways",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/QR.png",
+      "travel_class": "Economy",
+      "flight_number": "QR 1238",
+      "legroom": "31 in",
+      "extensions": [
+       "Average legroom (31 in)",
+       "In-seat power & USB outlets",
+       "On-demand video",
+       "Carbon emissions estimate: 80 kg"
+      ],
+      "overnight": true,
+      "often_delayed_by_over_30_min": true
+     }
+    ],
+    "layovers": [
+     {
+      "duration": 55,
+      "name": "Hamad International Airport",
+      "id": "DOH"
+     }
+    ],
+    "total_duration": 570,
+    "carbon_emissions": {
+     "this_flight": 412000,
+     "typical_for_this_route": 399000,
+     "difference_percent": 3
+    },
+    "price": 4471,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/QR.png",
+    "booking_token": "WyJDalJJT0RKelQwSkVNbmd6V210QlIxQlFaMEZDUnkwdExTMHRMUzB0YjNsamJHNHlNa0ZCUVVGQlIzSTVNblUwU1dGa1VHbEJFZ3BSVWpoOFVWSXhNak00R2dzSXY2UWJFQUlhQTFOQlVqZ2NjT09pQnc9PSIsW1siTEhSIiwiMjAyNi0xMS0yNiIsIkRPSCIsbnVsbCwiUVIiLCI4Il0sWyJET0giLCIyMDI2LTExLTI3IiwiUlVIIixudWxsLCJRUiIsIjEyMzgiXV1d"
+   }
+  ],
+  "airports": [
+   {
+    "departure": [
+     {
+      "airport": {
+       "id": "LHR",
+       "name": "Heathrow Airport"
+      },
+      "city": "London",
+      "country": "United Kingdom",
+      "country_code": "GB",
+      "image": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcRpN9RbtOSTDqKIPxWc_D6rdSysaWVh6d-NW7yz7yFXKRwh5RN5BpNIoXEwH1XVcFdLWqn6Sm8_Y_zmeg",
+      "thumbnail": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcQYH83YXny8hR4M7k5BMFq4vUT6LNtVABQzgs2pg-hcpSZq3oMBOQK3xh591AAJv2Qx4uvFZUGqOVt4kuoCUOklISunmndJleOoSef_7QE"
+     },
+     {
+      "airport": {
+       "id": "LGW",
+       "name": "London Gatwick Airport"
+      },
+      "city": "London",
+      "country": "United Kingdom",
+      "country_code": "GB",
+      "image": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcRpN9RbtOSTDqKIPxWc_D6rdSysaWVh6d-NW7yz7yFXKRwh5RN5BpNIoXEwH1XVcFdLWqn6Sm8_Y_zmeg",
+      "thumbnail": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcQYH83YXny8hR4M7k5BMFq4vUT6LNtVABQzgs2pg-hcpSZq3oMBOQK3xh591AAJv2Qx4uvFZUGqOVt4kuoCUOklISunmndJleOoSef_7QE"
+     },
+     {
+      "airport": {
+       "id": "STN",
+       "name": "London Stansted Airport"
+      },
+      "city": "London",
+      "country": "United Kingdom",
+      "country_code": "GB",
+      "image": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcRpN9RbtOSTDqKIPxWc_D6rdSysaWVh6d-NW7yz7yFXKRwh5RN5BpNIoXEwH1XVcFdLWqn6Sm8_Y_zmeg",
+      "thumbnail": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcQYH83YXny8hR4M7k5BMFq4vUT6LNtVABQzgs2pg-hcpSZq3oMBOQK3xh591AAJv2Qx4uvFZUGqOVt4kuoCUOklISunmndJleOoSef_7QE"
+     }
+    ],
+    "arrival": [
+     {
+      "airport": {
+       "id": "RUH",
+       "name": "King Khalid International Airport"
+      },
+      "city": "Riyadh",
+      "country": "Saudi Arabia",
+      "country_code": "SA",
+      "image": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcQcIKZwEhurQayMMY8REMG-ngE3R6B7fyPp1jtMDsXsJYk5zv8dSIdXyJGqoJ4Wo0MUSRm45GGd_Rgpaw",
+      "thumbnail": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcRkqG9nigWgHbtogOWlLR9sM2gVNqss9UYTiMlAyXVUbPB1qhGrjSDgIL0emclGmrDY-3s16sKVBFy0MLsPOo7o9iWTif-cYJLylIBFEm8"
+     }
+    ]
+   }
+  ]
+ }
+}

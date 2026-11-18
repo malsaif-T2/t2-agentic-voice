@@ -14,7 +14,7 @@
 // cards and notices included, is set with textContent.
 
 import { VoiceClient } from "./voice/client/1/t2v-client.js";
-import { Cards, complete, rowsOf } from "./cards.js";
+import { Cards, linksOf, waitsForYes } from "./cards.js";
 import { Made, Trips, startOver } from "./bookings.js";
 import { fill, wordsOf } from "./texts.js";
 
@@ -125,12 +125,12 @@ async function reviewed(now) {
   cards.setStatus(ref ? fill(words().bookedRef, { ref }) : waiting);
 }
 
-// A card, in its segment (cards.js): a leg's card lists a new leg, so the last booking is
-// forgotten; the whole trip's review card waits for the yes.
+// A card, in its segment (cards.js): a new leg forgets the last booking; the trip's review waits
+// for the yes, unless it carries booking links (D-126): those are booked on the airline's site.
 function carded(card) {
   cards.add(card);
-  if (card?.slot === "outbound" || card?.slot === "return") made.forget();
-  if (card?.slot === "review" && complete(rowsOf(card)) && !made.reference) {
+  if (card?.slot === "outbound" || card?.slot === "return" || linksOf(card).length) made.forget();
+  if (waitsForYes(card) && !made.reference) {
     made.ask();
     cards.setStatus(words().waiting);
   }

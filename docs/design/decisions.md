@@ -4367,3 +4367,24 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   The Najdi lines also say «فيه», «عندنا» and «اللي» in place of «يوجد», «لدينا» and «الذي», with
   a listing written for them, and never to repeat the caller's words back (the owner's calls of
   2026-11-18: "it actually isn't Najdi and feels unnatural").
+
+## D-126 · A card may carry links, out of the guard's spoken text · 2026-11-18 · Accepted (the owner's "Button on the card", 2026-11-18, plan 011; a new optional field, which changes nothing for a team that sets none, GP-18)
+
+- **Context:** plan 011 gives the caller a link to book the chosen flight on the airline's site
+  in place of booking it. The owner chose on 2026-11-18 how it reaches the caller: "Button on
+  the card", so the agent says the link is ready and never reads it out. A card had no way to
+  carry an address, and a voice agent must never say one.
+- **Decision:** `CardLink(label, url)`, public at the package root: a `label` of 1 to 40
+  characters with no digit (so it holds no number the guard would have to back) and an https
+  `url` with a host, of printable ASCII and at most 2048 characters, of any host.
+  `Card.links`, at most 2 (one a leg of a round trip), none by default. The label is one of the
+  card's texts, which the output guard reads; the url never is. `t2v/1`'s `card` carries them
+  as `links`, and the reference client hands the page each one it checked, dropping one that
+  is not one. A page shows each as a link of its label to its url, in a new tab with no opener,
+  and never builds a link from text.
+- **Consequences:** no setting (GP-18: a card with no links is as it was, its texts and its
+  payload but the empty `links` the same). The flight app's real network gives the trip's card
+  a Google Flights link per leg (`booking_link`); the dev page and the dev console show links
+  too. Only https is taken, so a `javascript:` or `data:` address never reaches a page.
+- **Evidence:** tests/t2_agentic_voice/domain/test_card_links.py,
+  tests/t2_agentic_voice/test_browser_card_links.py.

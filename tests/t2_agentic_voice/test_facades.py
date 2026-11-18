@@ -201,7 +201,7 @@ NAMES = {
 # (`ActionContext`, `HeardConsent`, `RecordedAction`, `ConversationLine`), the words of its
 # declaration (`Say`, `ReadBack`, `Claims`, `Spoken`), and `ActionRejected` and `ActionNotSent`.
 # Plan 010 adds the key groups of the providers measured beside Groq (D-100), and the warm-up's
-# group (TD-089).
+# group (TD-089); plan 011 a card's links (`CardLink`, D-126).
 ROOT_NAMES = {
     "TelnyxSettings",
     "NabrahSettings",
@@ -213,6 +213,7 @@ ROOT_NAMES = {
     "CallContext",
     "Caller",
     "Card",
+    "CardLink",
     "CardRow",
     "Claims",
     "CohereSettings",

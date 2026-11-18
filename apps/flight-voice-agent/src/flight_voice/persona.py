@@ -1,5 +1,8 @@
 """The flight agent's persona: its names, the owner's of 2026-11-16 (Saad / سعد, the voice
-assistant of T2 Air / طيران تي تو), and every text built from them.
+assistant of T2 Air / طيران تي تو), and every text built from them. On the real network (plan
+011, the owner's of 2026-11-18: "Saad, T2 flight assistant") the greeting names Saad the flight
+assistant of T2, the company, whose name is the airline's code (`$company`, said «تي تو» in
+Arabic: `airline_code_said_ar`); the mock and run F keep T2 Air's.
 
 The names are settings (settings.py, `Names` here), so nothing in agent.py holds one. Each text
 that holds a name is built from them with `string.Template` (`$persona`, `$airline`,
@@ -47,6 +50,19 @@ GREETINGS: Final[dict[Tag, Template]] = {
         "Hi $traveler, this is $persona, $airline's voice assistant. Where would you like to fly?"
     ),
 }
+# The real network's greetings (plan 011): Saad, T2's flight assistant, who finds flights of
+# every airline. hala ..., ma'ak ..., musaa'id ar-riHlaat fi .... ween waddak tsaafir?: hello
+# ..., ... here, the flight assistant at .... Where would you like to travel?
+REAL_GREETINGS: Final[dict[Tag, Template]] = {
+    "ar-SA": Template("هلا $traveler، معك $persona، مساعد الرحلات في $company. وين ودّك تسافر؟"),
+    "en": Template(
+        "Hi $traveler, this is $persona, the $company flight assistant. "
+        "Where would you like to fly?"
+    ),
+}
+# Which network a call is on: the mock airline's, or the real airlines' (lean/results.py's).
+Network = Literal["mock", "real"]
+NETWORKS: Final[tuple[Network, ...]] = ("mock", "real")
 # The progress lines the tools name (lean/find.py, tools/search.py, cabins.py: `searching`;
 # calendar.py: `fares`; lean/find.py on the real network, whose search takes longer:
 # `searching_live`), each in a few short wordings, one said each time, never the one the
@@ -116,6 +132,8 @@ def _fill(names: Names, traveler: Traveler) -> dict[str, str]:
         "persona_ar": names.persona_name_ar,
         "airline": names.airline_name_en,
         "airline_ar": names.airline_name_ar,
+        "company": names.airline_code,
+        "company_ar": names.airline_code_said_ar,
         "traveler": traveler.first_en,
         "traveler_ar": traveler.first_ar,
         "tier": traveler.tier,
@@ -128,12 +146,15 @@ def filled(names: Names, traveler: Traveler = TRAVELER) -> dict[str, str]:
     return _fill(names, traveler)
 
 
-def greeting(tag: Tag, names: Names, traveler: Traveler = TRAVELER) -> str:
-    """The greeting of a call held in `tag`, in its own script's names."""
+def greeting(
+    tag: Tag, names: Names, traveler: Traveler = TRAVELER, network: Network = "mock"
+) -> str:
+    """The greeting of a call held in `tag` on `network`, in its own script's names."""
     filled = _fill(names, traveler)
     if tag != "en":
-        filled |= {k: filled[f"{k}_ar"] for k in ("persona", "airline", "traveler")}
-    return GREETINGS[tag].substitute(filled)
+        filled |= {k: filled[f"{k}_ar"] for k in ("persona", "airline", "company", "traveler")}
+    held = GREETINGS if network == "mock" else REAL_GREETINGS
+    return held[tag].substitute(filled)
 
 
 def instructions(names: Names, traveler: Traveler = TRAVELER) -> dict[ReplyTag, str]:
@@ -160,10 +181,13 @@ def vocabulary(names: Names) -> Vocabulary:
 
 
 def spoken_lines(names: Names, traveler: Traveler = TRAVELER) -> dict[Tag, tuple[str, ...]]:
-    """Each line a call speaks as written, by language: its greeting, then each wording of
-    its progress lines."""
+    """Each line a call speaks as written, by language: its greeting on each network, then
+    each wording of its progress lines."""
     return {
-        tag: (greeting(tag, names, traveler), *(w for line in PROGRESS[tag].values() for w in line))
+        tag: (
+            *(greeting(tag, names, traveler, network) for network in NETWORKS),
+            *(w for line in PROGRESS[tag].values() for w in line),
+        )
         for tag in TAGS
     }
 

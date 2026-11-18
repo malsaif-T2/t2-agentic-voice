@@ -1,0 +1,45 @@
+{
+ "params": {
+  "engine": "google_flights_calendar",
+  "type": "2",
+  "departure_id": "RUH",
+  "arrival_id": "LHR",
+  "date_range_start": "2026-11-19",
+  "date_range_end": "2027-01-15",
+  "travel_class": "1",
+  "adults": "1",
+  "currency": "SAR",
+  "gl": "sa",
+  "hl": "en"
+ },
+ "status": 200,
+ "body": {
+  "search_metadata": {
+   "id": "6afdb5503c714ce02a3e2242",
+   "status": "Success",
+   "json_endpoint": "https://serpapi.com/searches/exBKO8c_qBSS11-1kXSFGJhHwXljCLhQr6m9egLjI38/6afdb5503c714ce02a3e2242.json",
+   "markdown_endpoint": "https://serpapi.com/searches/exBKO8c_qBSS11-1kXSFGJhHwXljCLhQr6m9egLjI38/6afdb5503c714ce02a3e2242.md",
+   "created_at": "2026-11-18 14:25:20 UTC",
+   "processed_at": "2026-11-18 14:25:20 UTC",
+   "google_flights_calendar_url": "https://www.google.com/travel/flights?tfs=CBwQARoSagcIARIDUlVIcgcIARIDTEhSQAFIAXABggELCP___________wGYAQI&tfu=KgIIAw&hl=en&gl=sa&curr=SAR",
+   "raw_html_file": "https://serpapi.com/searches/exBKO8c_qBSS11-1kXSFGJhHwXljCLhQr6m9egLjI38/6afdb5503c714ce02a3e2242.html",
+   "prettify_html_file": "https://serpapi.com/searches/exBKO8c_qBSS11-1kXSFGJhHwXljCLhQr6m9egLjI38/6afdb5503c714ce02a3e2242.prettify",
+   "total_time_taken": 1.53
+  },
+  "search_parameters": {
+   "engine": "google_flights_calendar",
+   "hl": "en",
+   "gl": "sa",
+   "type": "2",
+   "departure_id": "RUH",
+   "arrival_id": "LHR",
+   "date_range_start": "2026-11-19",
+   "date_range_end": "2027-01-15",
+   "currency": "SAR"
+  },
+  "search_information": {
+   "flights_results_state": "Fully empty"
+  },
+  "error": "Google Flights Calendar hasn't returned any results for this query."
+ }
+}

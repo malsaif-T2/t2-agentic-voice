@@ -124,9 +124,41 @@ the flight number to pick; an airline's own prefilled search replaces it where P
   schedule data) done and checked; the seam mapped; this proposal written; approved the same day
   with the owner's answers. Next: Phase 1 (offline, no key needed) on its own branch from
   plan-010-integration; Phase 0 once the SerpApi key is in `.env`.
+- 2026-11-18, block C1 (after Phase 0): a span is one SerpApi fare-calendar search (a price a
+  day, no flight count, so the count is left out; day by day only when the calendar prices
+  none, as RUH-LHR's and RUH-DXB's did); deadlines 8 s from Phase 0's 1.1-4.1 s (one recording
+  search took 6.8 s and two timed out on a cold start, then answered from SerpApi's cache);
+  Phase 0's answers as parser fixtures; the app's recorded set (13 answers, 15 searches) in
+  `apps/flight-voice-agent/evals/flight_data/`; the real network's persona, Saad, the T2 flight
+  assistant (the owner's); an airline the caller names after a listing that left flights out
+  comes from find_flights with airline.
+- 2026-11-18, block C (C1 and Phase 3) on branch plan-011-block-c. Phase 0 in one line: SerpApi
+  answered RUH-JED, RUH-DMM, JED-DXB, RUH-LHR and RUH-AHB in 1.1-4.1 s with every carrier and
+  its flight numbers, a party's price as the whole party's, one fare-calendar search for a span
+  (none for RUH-LHR), and the Google Flights `q=` link filtered to one airline opened exactly
+  that airline's flights at SerpApi's prices. C1 as the entry above. Phase 3: cards carry links
+  (the library's `CardLink`, D-126, the owner's "Button on the card"), the flight page shows them
+  as button-styled links, `flight_data/links.py` builds a leg's link, and the real network's
+  `booking_link` replaces `book_trip` there (the mock keeps `book_trip`, run F unchanged); the
+  real instructions offer the link after the trip's summary. Next: the review, the lead's
+  browser check of the open points below, and Phase 4.
 
 ## Decision log
 
+- 2026-11-18 (Phase 3): a connection of two marketing carriers names both in the link's `q`
+  ("on Qatar Airways and British Airways"), since the first alone may filter out the itinerary
+  picked; only the one-carrier form was checked in a browser. The party and the cabin stay out
+  of `q` (no source says Google reads "for 2 adults" or "in business" there), so the page opens
+  for one adult in economy and the agent says the price is confirmed on the airline's site.
+  Open for the lead to check in a browser: the two-carrier `q`, a city of several airports
+  ("Flights to London from RUH ..."), `hl=ar`, and whether a party or cabin in `q` is read.
+  A review card with links waits for no yes on the page; `booking_link` declares the booking's
+  claims and backs none, so the guard holds every booking claim on the real network.
+
+- 2026-11-18 (C1): a day the fare calendar does not price is no flight inside the run of days
+  it priced and unknown outside it, never no flights; a calendar that failed is said as failed,
+  not read day by day (that would double the wait). The calendar's price for a party is taken
+  as the party's, as a day's is (not checked live).
 - 2026-11-18: SerpApi's Google Flights API first, SearchApi.io the spare, behind one port; the
   alternatives (Duffel, Amadeus, Sabre, Travelport, Kiwi, Skyscanner, Travelpayouts, Wego, schedule
   APIs) are closed to us, miss carriers, or give no prices (the research report); Almosafer has no

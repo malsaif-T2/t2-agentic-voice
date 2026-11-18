@@ -18,4 +18,7 @@ can take its place later.
   request's params or a body. `trip_days` searches both legs of a trip at once: a failed return
   comes back as a value beside the outbound, a failed outbound is raised, and a cancellation
   propagates.
+- `links.py`: a leg's booking link (`leg_link`, D-126), the Google Flights search for that leg,
+  one way, on its day, filtered to its marketing carrier(s), from which the caller books on the
+  airline's site.
 """

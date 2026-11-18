@@ -1,7 +1,9 @@
 """The cache of a live source's answers (flight_data/cache.py), on a fake clock: an entry lives
 `ttl_s`, one fetch serves every caller of the same day, a failure is never stored, a caller who
 is cancelled does not cancel the shared fetch, the least recently used entry goes first, a span
-fills each day's entry, and `aclose` cancels what is running and closes the source."""
+fills each day's entry, a span's calendar is kept under its key for the same ttl (a calendar
+that priced no day too, the span then read day by day), and `aclose` cancels what is running
+and closes the source."""
 
 from __future__ import annotations
 
@@ -11,8 +13,9 @@ from datetime import date, timedelta
 import pytest
 from flight_voice.flight_data.cache import CachedFlightData
 from flight_voice.flight_data.fanout import DayFn, span_of
+from flight_voice.flight_data.model import Money
 from flight_voice.flight_data.port import FlightDataUnavailableError
-from flight_voice.flight_data.queries import DayFares, DayOffers, OfferQuery, SpanQuery
+from flight_voice.flight_data.queries import DayFare, DayFares, DayOffers, OfferQuery, SpanQuery
 
 from tests.flight_voice.flight_data.serpapi_support import DAY, Clock, offers, query
 
@@ -29,6 +32,8 @@ class Inner:
         self.gate: asyncio.Event | None = None
         self.failing = False
         self.closed = False
+        self.priced: DayFares | None = None
+        self.calendars: list[str] = []
 
     def last_day(self, today: date) -> date:
         return today + timedelta(330)
@@ -46,6 +51,12 @@ class Inner:
 
     async def days(self, q: SpanQuery) -> DayFares:
         return await self.span(self.day, q)
+
+    async def calendar(self, q: SpanQuery) -> DayFares | None:
+        self.calendars.append(q.key())
+        if self.failing:
+            raise FlightDataUnavailableError("days", "http_error", 503)
+        return self.priced
 
     async def span(self, day_fn: DayFn, q: SpanQuery) -> DayFares:
         return await span_of(day_fn, q, span_days=self.span_days, concurrency=3, deadline_s=1)
@@ -172,6 +183,55 @@ def test_a_span_fills_each_days_entry_and_the_inner_cut_holds() -> None:
     fares = asyncio.run(scene())
     assert len(fares.days) == 3 and fares.checked_last == DAY + timedelta(2)
     assert len(inner.fetched) == 3
+
+
+def _span(days: int = 5) -> SpanQuery:
+    q = query()
+    last = DAY + timedelta(days - 1)
+    return SpanQuery(origin=q.origin, destination=q.destination, first=DAY, last=last)
+
+
+def test_a_calendar_is_kept_under_the_spans_key_for_the_ttl() -> None:
+    cache, inner, clock = _cached(ttl_s=60)
+    span = _span()
+    priced = DayFare(day=DAY, lowest=Money(amount=429), flights=None)
+    inner.priced = DayFares(query=span, status="ok", days=(priced,))
+
+    async def scene() -> tuple[DayFares, DayFares]:
+        first = await cache.days(span)
+        again = await cache.days(span)
+        clock.now += 61
+        await cache.days(span)
+        return first, again
+
+    first, again = asyncio.run(scene())
+    assert first is again and first.days[0].lowest == Money(amount=429)
+    assert inner.calendars == [span.key(), span.key()] and inner.fetched == []
+
+
+def test_a_calendar_that_priced_no_day_is_kept_and_the_span_read_day_by_day() -> None:
+    cache, inner, _ = _cached()
+    span = _span()
+
+    async def scene() -> None:
+        await cache.days(span)
+        await cache.days(span)
+
+    asyncio.run(scene())
+    assert inner.calendars == [span.key()] and len(inner.fetched) == 3
+
+
+def test_a_failed_calendar_is_never_kept() -> None:
+    cache, inner, _ = _cached()
+    inner.failing = True
+
+    async def scene() -> None:
+        for _ in range(2):
+            with pytest.raises(FlightDataUnavailableError):
+                await cache.days(_span())
+
+    asyncio.run(scene())
+    assert len(inner.calendars) == 2
 
 
 def test_the_inner_sources_facts_are_passed_on_and_aclose_cancels_and_closes() -> None:

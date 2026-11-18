@@ -22,7 +22,8 @@ held over its date (weekday.py). Then:
   its id, and a pick it drops in `lost`; with the outbound chosen it gives the return's flights.
   The call's trip is read again after the search (another tool may have written it meanwhile),
   takes the search in one assignment, and is marked for the booking check. Its card is the
-  outbound segment.
+  outbound segment. On the real network, a listing that leaves flights out (`more`), for every
+  airline, notes that one airline's flights come from another search (`MORE_REAL`).
 - **A span** (span.py): nothing is written to the trip.
 
 A source that does not answer is a `ToolError` that says the search failed (`SEARCH_DOWN` when
@@ -101,6 +102,12 @@ RETURN_UNKNOWN: Final = (
     "again with the same days to check it."
 )
 LOST: Final = "A flight chosen before is no longer offered with seats for everyone: choose again."
+# On the real network, a day's options are some of its flights (plan 011: asked for flyadeal
+# after a listing of 6 of 15, the model once answered from the 2 it was given, of 4).
+MORE_REAL: Final = (
+    "options are only some of the day's flights: for one airline's, call find_flights again "
+    "with airline (instant)."
+)
 # A search waits for the slower of its legs; the library's default limit is 5 s.
 TIMEOUT_S: Final = 25.0
 
@@ -230,7 +237,12 @@ def find_flights(deps: LeanDeps) -> Tool:
         )
         way_back = _return(made, back, came, tag)
         listed = (went.data, *([way_back] if isinstance(way_back, LegList) else []))
-        notes = [full_note(listed, party, kept), LOST if change.lost else None]
+        some = deps.network == "real" and airline is None and any(leg.more for leg in listed)
+        notes = [
+            full_note(listed, party, kept),
+            LOST if change.lost else None,
+            MORE_REAL if some else None,
+        ]
         found = Found(
             route=said,
             route_msa=msa,

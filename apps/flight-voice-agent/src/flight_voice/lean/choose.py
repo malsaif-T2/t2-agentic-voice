@@ -47,7 +47,8 @@ DESCRIPTION: Final = (
     "is chosen. It books nothing: book_trip books."
 )
 DESCRIPTION_REAL: Final = DESCRIPTION.replace(
-    " It books nothing: book_trip books.", " It books nothing."
+    " It books nothing: book_trip books.",
+    " It books nothing: booking_link gives the link to book it.",
 )
 _OUT: Final = "The id of the outbound flight the caller chose."
 _BACK: Final = "The id of the return flight the caller chose."

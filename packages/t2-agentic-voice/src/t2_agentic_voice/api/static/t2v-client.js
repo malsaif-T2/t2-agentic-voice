@@ -40,8 +40,9 @@
 // A reply says its answer short aloud and sends the whole to the screen as a `card`: a title,
 // its steps in order, its option rows in order (each a title, a detail and a value, text or
 // null, and a mark of CARD_MARKS or null, which a page maps to a style, never to markup) and
-// the source they come from (null when there is none), handed to the page as one `card` event,
-// a card that is not one dropped, a row that is not one dropped from its card. A page shows it beside the captions,
+// the source they come from (null when there is none), and its links (each a label and an https
+// url, D-126), handed to the page as one `card` event, a card that is not one dropped, a row or
+// a link that is not one dropped from its card. A page shows it beside the captions,
 // a new card in place of the last. The `state` is one of t2v/1's four, `thinking` while the
 // agent's talker or one of its tools works on a reply that has no audio yet; any other is
 // dropped.
@@ -542,8 +543,9 @@ function iceServer(server) {
 
 // A `card` as the page gets it, its fields as voice/protocol.py's `ShowCard` holds them (a
 // title of at least one character, its steps a list of text, its rows a list, none from a
-// session that sends no rows, its source text or null, and its slot one of CARD_SLOT's shape or
-// null, null from a session that sends none), or null for a message that is not one.
+// session that sends no rows, its source text or null, its slot one of CARD_SLOT's shape or
+// null, null from a session that sends none, and its links a list, none from a session that
+// sends none), or null for a message that is not one.
 function cardOf(message) {
   const { title, steps, source } = message;
   if (typeof title !== "string" || title === "") return null;
@@ -553,7 +555,51 @@ function cardOf(message) {
   if (!Array.isArray(rows)) return null;
   const slot = message.slot === undefined ? null : message.slot;
   if (slot !== null && !(typeof slot === "string" && CARD_SLOT.test(slot))) return null;
-  return { v: PROTOCOL, type: "card", title, steps: [...steps], rows: rowsOf(rows), source, slot };
+  const links = message.links === undefined ? [] : message.links;
+  if (!Array.isArray(links)) return null;
+  return {
+    v: PROTOCOL,
+    type: "card",
+    title,
+    steps: [...steps],
+    rows: rowsOf(rows),
+    source,
+    slot,
+    links: linksOf(links),
+  };
+}
+
+// The most links a card carries and the longest url of one (domain/cards.py's `MAX_LINKS` and
+// `MAX_URL`, D-126).
+const MAX_LINKS = 2;
+const MAX_URL = 2048;
+
+// A card's links, each kept only when it is one as `CardLink` holds it: a label of 1 to 40
+// characters with no digit, and an https url with a host, of at most MAX_URL characters of
+// printable ASCII and no space; at most MAX_LINKS of them, in order. A page opens a link only
+// from its url, never from text.
+function linksOf(links) {
+  const label = (value) =>
+    typeof value === "string" &&
+    value.trim() !== "" &&
+    [...value].length <= 40 &&
+    !/\p{Nd}/u.test(value);
+  const https = (value) => {
+    if (typeof value !== "string" || value.length > MAX_URL || !/^[!-~]+$/.test(value)) {
+      return false;
+    }
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" && url.hostname !== "";
+    } catch {
+      return false;
+    }
+  };
+  return links
+    .filter((l) => l !== null && typeof l === "object" && !Array.isArray(l))
+    .filter((l) => label(l.label) && https(l.url))
+    .slice(0, MAX_LINKS)
+    .map((l) => ({ label: l.label, url: l.url }));
 }
 
 // The slot a card may name on the page (domain/cards.py's `CardSlot`, D-110): lowercase letters
@@ -737,8 +783,9 @@ function devPage(page) {
     shown.item.textContent = `${c.speaker}: ${shown.parts.filter(Boolean).join(" ")}`;
   };
   // The newest card in place of the last: its title, its steps numbered, its rows (each its
-  // texts on one line, its mark as the line's data-mark) and its source, each line in the
-  // direction of its own first strong character (dir="auto").
+  // texts on one line, its mark as the line's data-mark), its source and its links (each a link
+  // of its label to its url, opened in a new tab), each line in the direction of its own first
+  // strong character (dir="auto").
   const card = (c) => {
     const text = (tag, value) => {
       const node = page.createElement(tag);
@@ -755,7 +802,16 @@ function devPage(page) {
       rows[0].append(item);
     }
     const source = c.source === null ? [] : [text("p", `Source: ${c.source}`)];
-    $("card").replaceChildren(text("h3", c.title), steps, ...rows, ...source);
+    const links = c.links.map((l) => {
+      const link = text("a", l.label);
+      link.setAttribute("href", l.url);
+      link.setAttribute("target", "_blank");
+      link.setAttribute("rel", "noopener noreferrer");
+      const line = page.createElement("p");
+      line.append(link);
+      return line;
+    });
+    $("card").replaceChildren(text("h3", c.title), steps, ...rows, ...source, ...links);
   };
   const volume = (v) => ($("volume").textContent = `${Math.round(v.level * 100)}%`);
   $("start").addEventListener("click", async () => {

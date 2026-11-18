@@ -4,8 +4,8 @@ settings (flight_data/settings.py) can name them with no import cycle; settings.
 every one of them, and its docstring says what `load` does with them.
 
 `for_the_app` adds the booking's send words and `answer_yes_over_question` for the lean agent
-only when it can book (`bookable`: the mock airline; the real network books on the airline's
-own site until plan 011's Phase 3).
+only when it can book (`bookable`: the mock airline; on the real network the caller books on the
+airline's own site, from the link `booking_link` gives, D-126).
 """
 
 from __future__ import annotations

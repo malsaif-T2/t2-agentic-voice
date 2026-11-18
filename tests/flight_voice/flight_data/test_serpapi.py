@@ -156,7 +156,7 @@ def test_no_retry_after_a_500_that_came_late() -> None:
     clock = Clock()
 
     async def late(request: httpx.Request) -> httpx.Response:
-        clock.now += 6.5  # 13 s of deadline, 6.5 left: under RETRY_LEFT_S
+        clock.now += 4.5  # 8 s of deadline, 3.5 left: under RETRY_LEFT_S
         return httpx.Response(500)
 
     wire = Wire(late, answering())
@@ -263,7 +263,9 @@ def test_a_span_is_cut_to_span_days_and_the_rest_left_to_the_tools() -> None:
     assert fares.query == q
     assert fares.checked_last == DAY + timedelta(2)
     assert [d.lowest.amount for d in fares.days if d.lowest] == [899, 899, 899]
-    assert sorted(r.url.params["outbound_date"] for r in wire.requests) == [
+    calendar, *days = wire.requests  # the day's body holds no calendar prices: day by day
+    assert calendar.url.params["engine"] == "google_flights_calendar"
+    assert sorted(r.url.params["outbound_date"] for r in days) == [
         "2026-11-19",
         "2026-11-20",
         "2026-11-21",

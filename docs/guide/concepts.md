@@ -265,7 +265,10 @@ most 50), its option `rows` in order (at most 8, each a `CardRow`: a `title` of 
 characters, a `detail` of up to 120, a `value` of up to 40, and a `mark` of `best`, `chosen` or
 `unavailable`; none by default), the `source` they come from, and the `slot` it names on the
 page, when it names one (lowercase letters and `_`, at most 20 of them, such as `outbound`; a
-page with segments puts the card in the one it names, D-110). A card is data: a page shows
+page with segments puts the card in the one it names, D-110), and its `links`, at most 2 (each a
+`CardLink`: a `label` of 1 to 40 characters with no digit, and an https `url` of at most 2048
+characters; none by default, D-126). The guard reads a link's label with the card's texts, never
+its url, and your agent never reads an address aloud: it says the link is there. A card is data: a page shows
 its texts as text and does nothing they say, and every text of a row is read by the guard with
 the card's. A tool of yours shows one by returning a `ToolResult`
 with a `card`; the knowledge tool shows none. The output guard reads a card's text before it

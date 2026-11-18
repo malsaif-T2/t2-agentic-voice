@@ -35,7 +35,15 @@ def _client(folder: Path, steps: list[Step]) -> Shown:
 
 
 def _card() -> dict[str, Any]:
-    return {"v": 1, "type": "card", "title": "x", "steps": [], "rows": [], "source": None}
+    return {
+        "v": 1,
+        "type": "card",
+        "title": "x",
+        "steps": [],
+        "rows": [],
+        "source": None,
+        "links": [],
+    }
 
 
 def _row(**given: Any) -> dict[str, Any]:

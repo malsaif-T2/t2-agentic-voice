@@ -236,18 +236,20 @@ def test_the_mock_lines_change_only_on_another_search_and_a_price_as_given(tag: 
 @pytest.mark.parametrize("tag", TAGS)
 def test_the_real_lines_name_every_airline_and_book_nothing(tag: Tag) -> None:
     text = instructions(Names(), TODAY, LAST, network="real")[tag]
-    assert "$" not in text and "the travel assistant of T2 Air" in text
+    assert "$" not in text and "the flight assistant of T2" in text and "T2 Air" not in text
     for gone in ("Every flight starts or ends in Riyadh.", "ask whether to book", "book_trip"):
         assert gone not in text, gone
     for held in (
         "and others, nonstop or with one stop",
-        "the airline's own site books it",
+        "Want the link to book it?",
+        "Call booking_link when the caller agrees or asks for the link; any yes is a yes.",
+        "the caller books on the airline's own site from the link",
         "never say a trip is booked",
         '"Saudia 1020"',
         "unknown_days",
         "checked_last",
         "the airlines do not show flights that far ahead yet",
-        "Hotels, cars, visas, seats on the plane, meals, baggage, booking",
+        "Hotels, cars, visas, seats on the plane, meals, baggage, or changes to a past booking",
         "Say a price as the tool gives it; never divide or multiply one.",
     ):
         assert held in text, held
@@ -255,9 +257,9 @@ def test_the_real_lines_name_every_airline_and_book_nothing(tag: Tag) -> None:
     assert opened in text and "Bookings are open" not in text and "الحجز مفتوح" not in text
     if tag == "ar-SA":
         assert "«فيها ترانزيت في دبي ساعتين»" in text
-        # The register's examples close on a question that books nothing (decision 8).
+        # The register's examples close on the link's offer, which books nothing (D-126).
         assert "أحجز" not in text
-        assert "«تبي أشوف لك يوم ثاني؟»" in text and "«هل أبحث لك عن يوم آخر؟»" in text
+        assert "«تبي رابط الحجز؟»" in text and "«هل تريد رابط الحجز؟»" in text
 
 
 def test_no_basis_of_a_price_holds_a_digit_word() -> None:
@@ -298,8 +300,9 @@ def test_the_real_network_declares_its_own_terms_and_no_booking() -> None:
         pronounce={"SV": {"en": "ess vee", "ar": "إس في"}},
     )
     agent = declare(deps)
-    assert [t.name for t in agent.tools] == ["find_flights", "choose_flights", "traveler_profile"]
+    names = [t.name for t in agent.tools]
+    assert names == ["find_flights", "choose_flights", "booking_link", "traveler_profile"]
     assert agent.vocabulary is not None and agent.vocabulary.terms == ("Riyadh", "Saudia", "T2 Air")
     assert dict(agent.pronounce)["SV"] == {"en": "ess vee", "ar": "إس في"}
     assert "T2" in dict(agent.pronounce)
-    assert "the travel assistant of" in render_prompt(agent, "en")
+    assert "the flight assistant of T2, the company" in render_prompt(agent, "en")

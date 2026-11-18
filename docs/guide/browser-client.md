@@ -62,7 +62,7 @@ that throws is logged to the console and the others still run.
 | `hello` | `{call_id, languages}`, once the data channel opens: the call's languages, its own first |
 | `state` | `{state}`: `listening`; `thinking`, while a reply asked for has no audio yet (the talker or one of its tools at work) or a turn's transcript is awaited; `speaking` (below, "The agent thinking"); or `confirming`, while an action's read-back waits for the caller's answer and nothing plays ([tools-and-actions.md](tools-and-actions.md)) |
 | `caption` | `{speaker, text, final, turn_id, reply_id, clause, cut}`: the caller's turn once heard (`speaker` `caller`, named by `turn_id`), or the agent's reply clause by clause as each starts playing (`agent`, named by `reply_id` and `clause`); `cut` is true for an agent's clause a stop cut while it played, sent again with the mark (below) |
-| `card` | `{title, steps, rows, source, slot}`: an extra a tool of your own returned, for a client with a screen, its steps a list of text in order (empty when its source lists none), its `rows` the options it lists, each `{title, detail, value, mark}` (empty when it lists none), `source` the document it comes from, `null` when there is none, and `slot` the page segment it names (D-110), `null` when it names none (below, "Cards") |
+| `card` | `{title, steps, rows, source, slot, links}`: an extra a tool of your own returned, for a client with a screen, its steps a list of text in order (empty when its source lists none), its `rows` the options it lists, each `{title, detail, value, mark}` (empty when it lists none), `source` the document it comes from, `null` when there is none, `slot` the page segment it names (D-110), `null` when it names none, and `links` its links, each `{label, url}` (empty when it has none, D-126) (below, "Cards") |
 | `duck` | `{level}`: the caller is speaking over the agent, whose voice now plays at `level` (0 to 1) of its volume until the session decides |
 | `unduck` | `{}`: the session has decided, and the agent's voice is back to full volume |
 | `volume` | `{level}`: the client changed the agent's volume, 1 at full; the client's own event, sent on each change, whatever caused it |
@@ -125,7 +125,13 @@ the rest; a card from a session that sends no rows has an empty list. A card may
 `slot` on the page (D-110): lowercase letters and `_`, at most 20 of them (`outbound`, say), or
 `null`, `null` too from a session that sends none, and the client drops a card whose slot is of
 another shape. A page with segments of its own puts the card in the one its slot names (the
-flight page has three); a page that knows no such slot shows it where it shows every card. Map a mark to a style
+flight page has three); a page that knows no such slot shows it where it shows every card. A
+card's `links` (a tool's `CardLink`s, at most 2, D-126) come each as `{label, url}`: a label of
+1 to 40 characters with no digit, and an https url with a host, of at most 2048 characters of
+printable ASCII; the client drops a link that is not one, and a card from a session that sends
+none has an empty list. Show each as a link of its label (as text) to its url, opened in a new
+tab (`target="_blank"`, `rel="noopener noreferrer"`), and never build a link from a card's
+text; the dev page and the dev console do so below the card. Map a mark to a style
 (Ole5's widget and the dev page set it as the line's `data-mark`), never to markup, and show a
 row's texts as text, as every other text of the card. Show it beside the captions, a new card in place of the
 last, and every text as text (`textContent`): a passage's steps are the knowledge base's words,
