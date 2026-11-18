@@ -1444,6 +1444,14 @@ Block 0.
   the flow the TTS study heard from one flush per line is for the owner's ear (the measure
   script's socket, socket-end and HTTP renders). Size debt: adapters/elevenlabs_stream.py 335
   lines, speaker.py 371, clause_cache.py 318, under the cap, to split in the next pass.
+- 2026-11-18: the fresh lean practice run, f-dev-lean-4 (gpt-oss-120b at medium, 5e973f6): 24 of
+  32 passed (from 13), 3 violations, all "a booking claimed before the store held one" at turn 2
+  (f01, f30); a second round of diagnoses and fixes follows. Scribe v3 Live's full dev probe (292
+  variants, a timing run, at 5e973f6, cents): commit to final p50 250 / p95 302 ms against batch
+  568 / 812 ms; WER Arabic 9.6 % live against 13.7 % batch (Saudi 12.0 / 15.7, MSA 5.2 / 6.2, mixed
+  9.7 / 18.9), English 4.8 % against 3.7 %; one live timeout in 292. It clears the bar (at least
+  250 ms faster at p50, no more than 2 points worse in either language), so the streaming port is
+  built, off by default, and turned on only after a live check.
 - 2026-11-17: the text-to-speech candidates for the owner's pick by ear (D-114, branch
   `plan-010-tts`): `tts.provider` takes `elevenlabs`, `groq` and `telnyx`, each speaking the
   provider's default voices with `tts.languages` unset. The owner picked ElevenLabs v4 Turbo in
