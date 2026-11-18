@@ -45,7 +45,7 @@ from flight_voice.persona import Names
 from flight_voice.tools.profile import traveler_profile
 
 NAME: Final = "flight-lean"
-VERSION: Final = "lean-2026-11-18.4"
+VERSION: Final = "lean-2026-11-18.5"
 
 __all__ = ["NAME", "OBSERVED", "VERSION", "calendar_watch", "declare", "lean_tools"]
 

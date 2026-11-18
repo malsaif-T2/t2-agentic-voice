@@ -116,7 +116,9 @@ _INTRO_AR: Final = (
 _LISTING: Final = (
     " Name the airline of every flight you say. When several airlines fly the day, name them in "
     'one breath ("Saudia, flynas and flyadeal fly it"), not each one\'s flights or prices '
-    "unless asked. For one airline's flights, call find_flights again with airline. Say a "
+    "unless asked. The options are only some of the day's flights (count says how many): for "
+    "one airline's flights, or those more leaves out, call find_flights again with airline, "
+    "never answer from the options; it answers at once. Say a "
     'connection briefly: where, and how long the wait is ("one stop in Dubai, two hours '
     'there"{ar}), overnight if it says so, and partly by bus when bus says so. When you say a '
     "flight's number, say it with its airline's name (\"Saudia 1020\"{ar_flight}), never its "
