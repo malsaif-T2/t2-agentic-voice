@@ -1624,8 +1624,9 @@ same airline, trip state, persona, names, words and page, compared on live calls
 kept. The setting `FLIGHT_VOICE_AGENT` chooses it (`scripted` by default, or `lean`); the server
 declares the agent chosen and, for the lean one, registers its booking check's observers
 (`AgentSpeechEnded`, `UserTurnEnded`, `CallEnded`). Its settings path turns on
-`guard.plain_speech`, `guard.drop_stage_notes`, `guard.question_stop_drops_calls`, four model
-requests a turn and `tts.spoken_numbers = "by_register"` (D-107: the times and fares it writes in
+`guard.plain_speech`, `guard.drop_stage_notes` (a sentence opening as the reasoning does, "We
+need…", after an Arabic sentence is a leak after a space too: f-dev-lean-4's f25 said one),
+`guard.question_stop_drops_calls`, four model requests a turn and `tts.spoken_numbers = "by_register"` (D-107: the times and fares it writes in
 digits are said as words in the caller's register, "14:00" «ثنتين الظهر»), as the scripted
 agent's does, and not the yes held over a read-back, which it has none of: it turns on `interruptions.answer_yes_over_question` instead (D-116), so a yes
 said over its closing question ("Shall I book it?", «أحجزها لك؟») is answered once the reply
@@ -1643,7 +1644,8 @@ own.
    that the booking matches what was said"). `book_trip` books the trip chosen so far only when
    the trip is complete (every leg chosen, seats for the travelers in the cabin); since the trip
    was last completed or changed, a reply of the agent states its total (the number, in digits
-   or in words, normalized as the guard normalizes, through the `languages` facade); that reply
+   or in words, normalized as the guard normalizes, through the `languages` facade, a space
+   before three digits a thousands mark as the comma is: "3 080", f-dev-lean-4's f09); that reply
    played at least up to the total (where the total ends, over the text's length, is at most its
    `played_fraction`); and the caller spoke after that reply (a turn heard after it ended, or,
    for a reply cut short, a later turn heard before it ended: a turn that cuts a reply can end
@@ -1674,7 +1676,15 @@ would mislead: a full flight, a route not served, a date outside the window):
   register (`route`, with `route_msa` beside a Saudi reply's), the fares' basis in it
   (`fares_are`, with `fares_are_msa`: "per person, each way" on a round trip, "per person" on a
   one way, «للشخص، رايح بس», «للشخص، ذهاب فقط»; no English digit word, as "910, one way" reads
-  as one number to the output guard, f-dev-lean-3), and the outbound flights with the return day's in the same shape: each a stable id
+  as one number to the output guard, f-dev-lean-3), and the outbound flights, with a round
+  trip's return by its day alone and a note that its flights come with `choose_flights` once the
+  outbound is chosen, or with its `list_leg` when the caller asks about the way back first
+  (given both days' flights, the model listed both in one reply, over the words a reply may
+  have, and took one pick for both legs: f-dev-lean-4, 34 of 38 round-trip listings, f30's and
+  f09's wrong bookings); a search that keeps a leg's pick (its route and day the same) names it
+  in `chosen` by its id, and with the outbound's kept gives the return's flights, so a new
+  return day after the outbound pick never asks for the way out again: each outbound flight a
+  stable id
   (`T2-401-2026-11-19`), its name and aircraft (said only when asked, as the card shows them),
   its times, its length, its fare per person, `seats_ok`, `nonstop` and `part_of_day`, with
   `count`, `first_departs`, `last_departs` and `cheapest_id`; the trip takes
@@ -1685,22 +1695,29 @@ would mislead: a full flight, a route not served, a date outside the window):
   writes nothing, and its card is the outbound segment's calendar. Its
   refusals are data: `not_served` with the cities, `date_problem` naming the window,
   `cabin_not_offered`, `no_flights` with the nearest days.
-- `choose_flights` (`lean/choose.py`) takes `outbound_id`, `return_id`, `cabin` and `travelers`,
-  each optional: the model resolves the caller's pick itself from the options it was given. It
+- `choose_flights` (`lean/choose.py`) takes `outbound_id`, `return_id`, `cabin`, `travelers`
+  and `list_leg` (a leg's flights the caller asks to hear, listed without choosing: the way
+  back's before the way out is chosen too, leg by leg being the default, never a rule), each
+  optional: the model resolves the caller's pick itself from the options it was given. It
   gives the trip so far: the route and the trip's kind (`trip`, with `trip_msa` beside a Saudi
   reply's), each chosen leg's id, name, aircraft, day, times, length, `nonstop` and fare
   (`book_trip`'s `already_booked` gives the legs booked in the same shape), the travelers, the
   cabin,
-  `missing` (each listed again in `listed`), `lost` (a leg a change left with no seats, by its
-  departure time) and, once complete, `total`; a changed cabin or traveler count prices the trip
+  `missing` (the first of it listed again in `listed`, one leg at a time: the outbound's until
+  it is chosen, then the return's; `list_leg`'s leg in its place), a full flight's note as
+  `find_flights` gives it when a leg listed has one, `lost` (a leg a change left with no seats,
+  by its departure time) and, once complete, `total`; a changed cabin or traveler count prices the trip
   again. Its card is the return segment with the outbound pick kept beside it, then the review.
   Its refusals, nothing written: `nothing_listed`, `unknown_id` and `no_seats` with the leg's
-  other ids, fares and seats, `cabin_not_offered`.
+  other ids, fares and seats, `cabin_not_offered`. Its description says it books nothing, and
+  `book_trip` books: told only that it returns the trip, the model said «حجزت لك» of a trip
+  chosen with its total (f-dev-lean-4, f01 and f30, the run's three violations).
 - `book_trip` (`lean/book.py`) takes nothing: the booking check, then the store. It gives
-  `booked` with its total alone, the caller having just heard the trip, and the review card
-  ending "Booked · Reference ..."; its data holds no reference (the owner's ruling of
-  2026-11-17: said only when the caller asks; f-dev-lean-3 read it out unasked in 14 of 41
-  bookings), which the model reads from `traveler_profile` when asked. Else `not_confirmed`,
+  `booked` with its total, the caller having just heard the trip, and the review card
+  ending "Booked · Reference ...", and its data holds the reference: the owner ruled on
+  2026-11-18 that saying it unasked is fine ("it is not a hard requirement"), after a booking
+  result with no reference left f20's caller told there was none (f-dev-lean-4); run F's lean
+  `reference` fails only a turn that asks for it and is not answered with it. Else `not_confirmed`,
   `incomplete`, `refused` (the store's reason), `unknown` (a write that did not answer and was
   not found by its request ID) or `already_booked` (the booking and the trip as it was booked,
   never the call's trip changed since, but for its reference).
@@ -1718,15 +1735,23 @@ the Najdi way («…طعش»), a bare number naming a day that day. The defaults
 traveler) never asked and said in the summary; the return asked only when not said. One leg's
 day listed at a time, briefly (its count, its first and last departures, the cheapest by time
 and fare, each flight once; the others only when asked; `fares_are` once a call): on a round
-trip the way out first, then the way back once it is chosen, as `listed` gives it. A span by its
+trip the way out first, then the way back once it is chosen, as `listed` gives it, and the way
+back first when the caller asks about it (`list_leg`). A span by its
 departures and its two cheapest days (a span past two weeks, given week by week, by its two
 cheapest days and an offer to look at a week). The pick resolved by the model for the leg picked,
 asked with the fares only when truly unclear, one of two that fit it alike taken and named. The
 trip confirmed in one sentence (the route, each leg's day and time, the cabin, the travelers,
 the total choose_flights gives, never a sum of the model's), booked only after any yes; a pick or
 change after it made in the same reply and said with its new total; a booking said in a few
-words.
-Facts only from tool results of this call; a reference only when asked. The register first:
+words. A trip only chosen is said as chosen, in Saudi words («اخترت لك…», «رحلتك من الرياض
+لجدة…»), a booking word («حجزت», «تم الحجز») only once `book_trip` has booked, and the booking
+question in each register («تبيني أحجزها؟», «هل أحجزها لك؟»); the failure line's example has its
+MSA twin; the reference of the booking just made is read from `traveler_profile` too; and a
+caller who asks to go on in the other language gets `switch_language` when the agent has it,
+the reply already in that language or not (f10: the call never moved, so its short yes was
+answered under the English tag; the talker now tells the session of every switch the tool
+makes, agent/turn.py).
+Facts only from tool results of this call. The register first:
 Najdi to a Saudi caller, MSA in every reply to an MSA caller, short ones too, never a Saudi form
 named there, each result's `_msa` field said in place of the one beside it; and the greeting
 rule copied from today's instructions. No example copies a line

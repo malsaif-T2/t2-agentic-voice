@@ -28,8 +28,8 @@ books the changed trip.
 
 **A total stated** (`stated_at`): the reply's text normalized as the output guard normalizes it
 (the `languages` facade's `normalize_digits` and `normalize_arabic`, a thousands mark between
-digits taken out first) holds the total as a whole number, or in words in English, Saudi Arabic
-or MSA (`speak_number`).
+digits taken out first, a space before three digits among them: "3 080" is 3080) holds the total
+as a whole number, or in words in English, Saudi Arabic or MSA (`speak_number`).
 
 Each call also keeps how its booking went (`Ledger`): the booking made and the trip as it was
 booked (so a trip changed after the booking is never told as the one booked), or a write whose
@@ -55,8 +55,11 @@ MAX_CALLS: Final = 64
 # The events the app observes for the check.
 OBSERVED: Final[tuple[type[Event], ...]] = (AgentSpeechEnded, UserTurnEnded, CallEnded)
 # A thousands mark between digits: the comma, the apostrophe, the Arabic thousands separator
-# (U+066C) and the right single quotation mark (U+2019), named by their code points.
-_MARKS: Final = ",'" + chr(0x066C) + chr(0x2019)
+# (U+066C) and the right single quotation mark (U+2019), and a space, a no-break space (U+00A0),
+# a thin space (U+2009) or a narrow no-break space (U+202F), named by their code points; each
+# only before exactly three digits. The model writes "3 080" now and then (f-dev-lean-4, f09),
+# and a total so written was never found, so the caller's yes booked nothing.
+_MARKS: Final = ",'" + "".join(chr(c) for c in (0x066C, 0x2019, 0x20, 0xA0, 0x2009, 0x202F))
 _THOUSANDS: Final = re.compile(rf"(?<=[0-9])[{_MARKS}](?=[0-9]{{3}}(?![0-9]))")
 _SPACES: Final = re.compile(r"\s+")
 

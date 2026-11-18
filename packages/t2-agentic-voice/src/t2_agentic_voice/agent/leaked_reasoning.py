@@ -22,6 +22,13 @@ a2-dev saw too («…حالياً.We need to respond accordingly.…»).
   letter after it, in a reply in Arabic script; in any language, at one anywhere that opens a
   stage word (`STAGE_WORDS`, in any case); and at a "<" that opens a tag (`TAGS`, or a tool's or
   an action's name, after "<" or "</"). Arabic in parentheses («(الأرخص)») never begins one.
+  In a reply in Arabic script, a sentence that opens as the reasoning does (`TELLS`) after text
+  written in Arabic script (the reply's text before it, its earlier requests' too, has more
+  Arabic letters than Latin ones) begins one after a space too: an English "We need to
+  check…" after an Arabic sentence is never said (run F's f25, f-dev-lean-4: «حجزت الرحلة
+  بنجاح. We need to check if everything follows guidelines. …» was said whole). An English
+  reply, under an Arabic tag too (a caller who speaks English on a call that did not move),
+  keeps the glued rule alone: there "Let me check" is speech.
 - **What goes.** From a leak's first character, every piece of the model's text in that request
   goes, unspoken and unblocked; what came before it is said. The reply then stops as a blocked
   clause's `drop_rest` stops it (agent/turn.py): the model's stream is closed, no tool of that
@@ -102,10 +109,18 @@ _NOTES: Final = tuple(f"{b}{word.casefold()}" for b in BRACKETS for word in STAG
 _ENDS = rf"^\s*|{AFTER_WORD}(?P<glued>[{SENTENCE_ENDS}])|[{SENTENCE_ENDS}]\s+"
 _START = re.compile(rf"(?:{_ENDS})(?=\S)")
 _NOTE_START = re.compile(rf"(?:{_ENDS}|(?=[(\[<]))(?=\S)")
+# The letters that tell a text written in Arabic script from one in Latin.
+_ARABIC_LETTER: Final = re.compile("[\u0621-\u063a\u0641-\u064a\u0671-\u06d3]")
+_LATIN_LETTER: Final = re.compile("[A-Za-z]")
 
 
 def _latin_capital(char: str) -> bool:
     return "A" <= char <= "Z"
+
+
+def _letters(text: str) -> tuple[int, int]:
+    """How many Arabic letters and how many Latin ones `text` holds."""
+    return len(_ARABIC_LETTER.findall(text)), len(_LATIN_LETTER.findall(text))
 
 
 class LeakedReasoning:
@@ -123,6 +138,7 @@ class LeakedReasoning:
         self._longest_note = max((len(note) for note in self._notes), default=0)
         self._text = ""  # all the text fed, held part and leak included
         self._given = 0  # how much of it was given
+        self._before = (0, 0)  # the Arabic and Latin letters of the reply's earlier requests
         self.found = False  # a leak began: nothing more of the model's text is said
         self.dropped = 0  # the characters dropped from the leak on
 
@@ -143,6 +159,8 @@ class LeakedReasoning:
         """What is held at the end of one request's text, which never became a leak; the next
         request's text starts anew."""
         given = "" if self.found else self._give(closing=True)
+        arabic, latin = _letters(self._text)
+        self._before = (self._before[0] + arabic, self._before[1] + latin)
         self._text, self._given = "", 0
         return given
 
@@ -157,7 +175,9 @@ class LeakedReasoning:
             at = start.end()
             if at < self._given:
                 continue
-            verdict = self._leaks(self._text[at:], glued=start.group("glued") is not None)
+            glued = start.group("glued") is not None
+            tells = glued or (self._arabic and self._stage_notes and self._after_arabic(at))
+            verdict = self._leaks(self._text[at:], glued=glued, tells=tells)
             if verdict is None and not closing:
                 until = at  # held until it is a leak or cannot be one
                 break
@@ -169,12 +189,18 @@ class LeakedReasoning:
         given, self._given = self._text[self._given : until], max(self._given, until)
         return given
 
-    def _leaks(self, sentence: str, *, glued: bool) -> bool | None:
-        """Whether `sentence`, the text from a sentence's start, is a leak; None while too
-        little of it has come to tell."""
+    def _after_arabic(self, at: int) -> bool:
+        """Whether the reply's text before `at`, its earlier requests' too, is written in
+        Arabic script: more Arabic letters than Latin ones (the module's docstring)."""
+        arabic, latin = _letters(self._text[:at])
+        return arabic + self._before[0] > latin + self._before[1]
+
+    def _leaks(self, sentence: str, *, glued: bool, tells: bool) -> bool | None:
+        """Whether `sentence`, the text from a sentence's start, is a leak, read for `TELLS`
+        when `tells` (else for `ROLES` alone); None while too little of it has come to tell."""
         if self._notes and sentence[:1] in (*BRACKETS, "<"):
             return self._note(sentence, glued=glued)
-        openings = TELLS if glued else ROLES
+        openings = TELLS if tells else ROLES
         if any(sentence.startswith(opening) for opening in openings):
             return True
         if glued and self._arabic and sentence and _latin_capital(sentence[0]):

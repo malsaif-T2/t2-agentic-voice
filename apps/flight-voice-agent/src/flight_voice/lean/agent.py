@@ -41,7 +41,7 @@ from flight_voice.tools.profile import traveler_profile
 from flight_voice.trip import TripBook
 
 NAME: Final = "flight-lean"
-VERSION: Final = "lean-2026-11-18.1"
+VERSION: Final = "lean-2026-11-18.2"
 
 __all__ = ["NAME", "OBSERVED", "VERSION", "calendar_watch", "declare", "lean_tools"]
 

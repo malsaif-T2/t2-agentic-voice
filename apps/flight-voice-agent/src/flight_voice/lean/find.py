@@ -12,10 +12,18 @@ have one). Then:
 
 - **A day:** the route, the cabin, the travelers, the fares' basis (`fares_are`: per person,
   each way on a round trip; results.py) and the outbound flights (results.py's `LegList`), with
-  the return day's in the same shape when a return is given. The call's trip takes the route,
-  the days, the travelers, the cabin and the options, in one assignment, and is marked for the
-  booking check; a search with no return makes it one way. Its card is the outbound segment;
-  the return segment's comes once the outbound is chosen (choose.py).
+  the return's day alone when a return is given (`ReturnDay`): its flights come with
+  `choose_flights` once the outbound is chosen (choose.py's `listed`), one leg at a time, as a
+  phone agent gives them, or with its `list_leg` when the caller asks about the way back first.
+  Given both days' flights side by side, the model listed both in one reply, over the words a
+  reply may have, and took one pick for both legs (f-dev-lean-4: 34 of 38 round-trip listings,
+  and f30's and f09's wrong bookings). A search that keeps a leg's pick (its route and day the
+  same: a new return day after the outbound pick) names it in `chosen`, by its id, and with
+  the outbound chosen gives the return's flights (`LegList`); with the return's pick alone
+  kept, its day says so. A full flight in a leg listed has a note. The call's trip takes the
+  route, the days, the travelers, the cabin and both legs' options, in one assignment, and is
+  marked for the booking check; a search with no return makes it one way. Its card is the
+  outbound segment; the return segment's comes once the outbound is chosen.
 - **A span** (span.py), of up to two months: the route's daily departure times and the two
   cheapest days with their fares; for two weeks or less each day with its weekday, its flight
   count and its lowest fare and the days with no flight, for longer each week's days with a
@@ -37,15 +45,19 @@ from flight_voice.airline.airports import Airport, airport, find_airport, served
 from flight_voice.airline.schedule import CABINS, Cabin, Departure, flights, route_served, window
 from flight_voice.airline.system import Airline, AirlineUnavailableError
 from flight_voice.lean.booking_check import BookingCheck
+from flight_voice.lean.choose import LEGS
 from flight_voice.lean.results import (
     Built,
+    Day,
     LegList,
     _Data,
     day_of,
     fares_are,
+    full_note,
     lean_result,
     leg_list,
     leg_options,
+    option_id,
     route_said,
 )
 from flight_voice.lean.span import MOST_DAYS, DaySpan, span_search
@@ -54,12 +66,13 @@ from flight_voice.said import Tag, register
 from flight_voice.tools import cards
 from flight_voice.tools.results import SEARCH_FAILED
 from flight_voice.tools.search import nearest_days
-from flight_voice.trip import TripBook, TripDraft
+from flight_voice.trip import LegKind, TripBook, TripDraft
 
 FIND_FLIGHTS: Final = "find_flights"
 DESCRIPTION: Final = (
-    "Find the flights of a trip: one day's flights each way, or what flies over a span of days. "
-    "Call it as soon as you know where the caller goes and the day they leave."
+    "Find the flights of a trip: the day they leave's flights, with the day they come back, "
+    "or what flies over a span of days. Call it as soon as you know where the caller goes and "
+    "the day they leave."
 )
 _CITY: Final = "The city they go to, in any language, or its code."
 _ORIGIN: Final = "The city they leave from; Riyadh unless they said another."
@@ -78,6 +91,19 @@ _NOTES: Final[dict[Problem, str]] = {
     "span_too_long": f"A span is {MOST_DAYS} days at most, its first day before its last.",
 }
 _NOT_SERVED: Final = "Every flight starts or ends in Riyadh."
+RETURN_LISTED: Final = (
+    "Its flights come with choose_flights once the outbound is chosen, or with its list_leg "
+    "when the caller asks about the way back first."
+)
+RETURN_KEPT: Final = "The return flight chosen before is kept; its id is in chosen."
+
+
+class ReturnDay(_Data):
+    """A round trip's return as a search gives it before the outbound is chosen: its day alone
+    (the module's docstring)."""
+
+    day: Day
+    note: str = RETURN_LISTED
 
 
 class Found(_Data):
@@ -91,7 +117,8 @@ class Found(_Data):
     fares_are: str
     fares_are_msa: str | None = None
     outbound: LegList
-    return_: LegList | None = Field(default=None, alias="return")
+    return_: LegList | ReturnDay | None = Field(default=None, alias="return")
+    chosen: dict[LegKind, str] | None = None
     note: str | None = None
 
 
@@ -180,6 +207,8 @@ def find_flights(airline: Airline, trips: TripBook, check: BookingCheck) -> Tool
         check.mark(ctx.call_id, made)
         said, msa = route_said((start.code, end.code), tag)
         basis, basis_msa = fares_are(tag, round_trip=back is not None)
+        outbound, way_back = leg_list(depart, out, tag), _return(made, back, home, tag)
+        listed = (outbound, *([way_back] if isinstance(way_back, LegList) else []))
         found = Found(
             route=said,
             route_msa=msa,
@@ -187,9 +216,10 @@ def find_flights(airline: Airline, trips: TripBook, check: BookingCheck) -> Tool
             fares_are_msa=basis_msa,
             cabin=kept,
             travelers=party,
-            outbound=leg_list(depart, out, tag),
-            return_=None if home is None or back is None else leg_list(back, home, tag),
-            note=_full_note(out, home, party, kept),
+            outbound=outbound,
+            return_=way_back,
+            chosen=_kept(made, airline.code),
+            note=full_note(listed, party, kept),
         )
         card = cards.options_card("outbound", out.card, (start.code, end.code), depart, kept, tag)
         return lean_result(found, card)
@@ -235,9 +265,22 @@ def _written(
     return made if home is None else made.listed("return", home.shown)
 
 
-def _full_note(out: Built, home: Built | None, travelers: int, cabin: Cabin) -> str | None:
-    """The note on a full flight: only when one is."""
-    listed = (*out.data, *(() if home is None else home.data))
-    if all(o.seats_ok for o in listed):
+def _return(
+    made: TripDraft, back: date | None, home: Built | None, tag: Tag
+) -> LegList | ReturnDay | None:
+    """A round trip's return as the search gives it: its flights when the outbound's pick is
+    kept, else its day alone, saying so when the return's pick is kept (the module's
+    docstring)."""
+    if back is None or home is None:
         return None
-    return f"A flight with seats_ok false has no seats for {travelers} in {cabin}."
+    if made.chosen_outbound is not None:
+        return leg_list(back, home, tag)
+    note = RETURN_LISTED if made.chosen_return is None else RETURN_KEPT
+    return ReturnDay(day=day_of(back, tag), note=note)
+
+
+def _kept(made: TripDraft, code: str) -> dict[LegKind, str] | None:
+    """The legs whose pick the search kept, by their ids; None when it kept none."""
+    picks = ((leg, made.chosen(leg)) for leg in LEGS)
+    kept = {leg: option_id(code, pick.flight, pick.day) for leg, pick in picks if pick}
+    return kept or None

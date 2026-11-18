@@ -115,7 +115,8 @@ def test_a_whole_call_books_the_trip_once_the_caller_agreed() -> None:
     assert [(leg.flight, leg.day) for leg in booking.legs] == [(101, DAY)]
     assert booking.total_sar == TOTAL and booking.traveler_id == "T-0001"
     (booked,) = _results(llm, "book_trip")
-    assert booked == {"status": "booked", "total": TOTAL}  # no reference: said only when asked
+    # No reference, said only when asked: where it is, with no number (f-dev-lean-4, f20).
+    assert booked["status"] == "booked" and booked["total"] == TOTAL and booked["reference"]
 
 
 def test_a_booking_before_the_summary_books_nothing_then_the_yes_books() -> None:

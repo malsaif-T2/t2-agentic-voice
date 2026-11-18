@@ -99,8 +99,10 @@ class GuardSettings(Group):
             "runs: in a reply in Arabic script, a parenthesis or bracket glued to a sentence's "
             "end with a capital Latin letter after it; in any language, one that opens a stage "
             'word ("(Waiting", "[No output"); and a "<" that opens a tag ("<action", "<data", '
-            "or a tool's or an action's name). Arabic in parentheses never counts. Off: none "
-            "counts."
+            "or a tool's or an action's name). Arabic in parentheses never counts. In a reply in "
+            'Arabic script, a sentence that opens as the reasoning does ("We need", "The user") '
+            "after text written in Arabic script counts after a space too, not only glued; an "
+            "English reply keeps the glued rule alone. Off: none counts."
         ),
     )
     plain_speech: bool = Field(

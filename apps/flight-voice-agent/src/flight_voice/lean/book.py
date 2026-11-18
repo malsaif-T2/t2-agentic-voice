@@ -16,12 +16,11 @@ reason; and a trip whose total was not said, played and answered is `not_confirm
 the one fixed text the lean tools hold (`NOT_CONFIRMED`). Then the store books it, priced again,
 under a request ID of the call's own: a refusal is `refused`; a write that does not answer
 within `WRITE_S` is looked up by its request ID (when the store can find one), and `unknown`
-when nothing is found. A booking made returns its status and its total alone, as the caller has
-just heard the trip, and the review card marked booked with its reference. Its data holds no
-reference, which the model read out unasked as it confirmed (f-dev-lean-3, 14 of 41 bookings;
-the owner, 2026-11-17: "it should only say the reference when asked"): asked for it, the model
-reads it from `traveler_profile`, whose bookings list it. A booking already made is told whole,
-its trip as it was booked, but for its reference.
+when nothing is found. A booking made returns its status, its total (the caller has just
+heard the trip) and its reference, and the review card marked booked with its reference: the
+owner ruled on 2026-11-18 that saying the reference unasked is fine ("it is not a hard
+requirement"), after a pointer in its place left f20's caller told there was none
+(f-dev-lean-4). A booking already made is told whole, its trip and reference as it was booked.
 
 The tool finishes when a barge-in comes (`on_interrupt="finish"`), so a write is never cut in
 half; a write begun is counted before it is sent, so a call cut off mid-write is `unknown`.
@@ -79,14 +78,18 @@ def booked_card(draft: TripDraft, airline: Airline, reference: str, tag: Tag) ->
 
 
 def _booked(booking: Booking, draft: TripDraft, airline: Airline, tag: Tag) -> ToolResult:
-    """A booking just made: its status and total alone (the module's docstring)."""
-    answer: dict[str, JsonValue] = {"status": "booked", "total": booking.total_sar}
+    """A booking just made: its status, its total and its reference (the module's docstring)."""
+    answer: dict[str, JsonValue] = {
+        "status": "booked",
+        "total": booking.total_sar,
+        "reference": booking.reference,
+    }
     return lean_result(answer, booked_card(draft, airline, booking.reference, tag))
 
 
 def _already(booking: Booking, draft: TripDraft, airline: Airline, tag: Tag) -> ToolResult:
-    """A booking made before in this call, told whole as it was booked (`draft`), but for its
-    reference."""
+    """A booking made before in this call, told whole as it was booked (`draft`), its reference
+    too."""
     said, msa = route_said((booking.origin, booking.destination), tag)
     kind, kind_msa = trip_said(booking.return_date is None, tag)
     answer: dict[str, JsonValue] = {
@@ -99,7 +102,7 @@ def _already(booking: Booking, draft: TripDraft, airline: Airline, tag: Tag) -> 
         "travelers": booking.travelers,
         "cabin": booking.cabin,
     }
-    answer |= chosen_legs(airline, draft, tag)
+    answer |= chosen_legs(airline, draft, tag) | {"reference": booking.reference}
     return lean_result(answer, booked_card(draft, airline, booking.reference, tag))
 
 

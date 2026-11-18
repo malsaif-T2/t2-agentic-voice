@@ -2,8 +2,9 @@
 D-038's amendment): the rest of the turn is in the language the caller asked for (the next
 request's system prompt and its closing line, every later clause's tag), and `LanguageMoved`
 tells the session, once, after the tool's result; what was said before the call keeps its
-language; a switch to the language the reply is in already, or one that failed, moves nothing.
-Every line is written for the test."""
+language; a switch to the language the reply is in already rebuilds nothing of the reply but
+still tells the session, so a call held in another language moves (an English call whose
+caller asked in Arabic); one that failed moves nothing. Every line is written for the test."""
 
 from __future__ import annotations
 
@@ -53,10 +54,23 @@ def test_after_the_switch_the_rest_of_the_turn_is_in_the_new_language() -> None:
     assert second.messages[-1].content.endswith(REPLY_LINES["en"])
 
 
-def test_a_switch_to_the_replys_own_language_moves_nothing() -> None:
+def test_a_switch_to_the_replys_own_language_rebuilds_nothing_and_tells_the_session() -> None:
     model = FakeChat(calls(call(NAME, language="ar")), said("تمام، وش تبي؟"))
     events = reply(_talker(model), TURN)
-    assert "LanguageMoved" not in kinds(events)
+    assert [e for e in events if isinstance(e, LanguageMoved)] == [LanguageMoved(language="ar-SA")]
+    assert {e.language for e in events if isinstance(e, SpokenClause)} == {"ar-SA"}
+    assert INSTRUCTIONS["ar-SA"] in model.requests[1].messages[0].content
+
+
+def test_an_english_call_asked_in_arabic_is_told_to_move() -> None:
+    # Run F's f10 (f-dev-lean-4): the turn's Arabic words put the reply in Arabic before any
+    # switch, so a switch there was never told, the call stayed English, and the short yes after
+    # it was answered under the English tag.
+    asked = TalkerTurn(turn_id=1, words="طيب كمل معي بالعربي لو سمحت")
+    model = FakeChat(calls(call(NAME, language="ar")), said("أبشر، وين ودك تسافر؟"))
+    chat = talker(model, language_tool(TWO), language="en", declared=agent(languages=TWO))
+    events = reply(chat, asked)
+    assert [e for e in events if isinstance(e, LanguageMoved)] == [LanguageMoved(language="ar-SA")]
     assert {e.language for e in events if isinstance(e, SpokenClause)} == {"ar-SA"}
 
 

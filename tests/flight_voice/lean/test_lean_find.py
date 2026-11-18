@@ -1,6 +1,8 @@
 """The lean agent's `find_flights` (flight_voice/lean/find.py, span.py), run through the
-library's own runner: a day's flights each way as plain data (stable ids, times, fares, seats,
-the count, the first and last times, the cheapest), the trip written and one way with no return,
+library's own runner: the outbound day's flights as plain data (stable ids, times, fares, seats,
+the count, the first and last times, the cheapest) and a round trip's return by its day alone,
+its flights listed in the trip for choose_flights; a search that keeps a pick names it, with the
+return's flights once the outbound is chosen; the trip written and one way with no return,
 the route and the fares' basis in the caller's register, the basis with no digit word beside a
 fare, the outbound card; a span of days with each day's count and
 lowest fare, the two cheapest days and its calendar card, nothing written; and each refusal as
@@ -11,13 +13,14 @@ from __future__ import annotations
 
 from typing import Any
 
+from flight_voice.lean.find import RETURN_KEPT, RETURN_LISTED
 from flight_voice.lean.results import EACH_WAY, PER_PERSON
 
-from tests.flight_voice.lean.lean_support import BACK, OUT, LeanCall, ids
+from tests.flight_voice.lean.lean_support import BACK, OUT, LeanCall, chosen_trip, ids
 from tests.flight_voice.tools.tool_support import airline, card_passes, data, ids_pass
 
 
-def test_a_day_lists_each_way_as_plain_data_and_writes_the_trip() -> None:
+def test_a_day_lists_the_outbound_as_plain_data_and_writes_the_trip() -> None:
     call = LeanCall()
     found = call.find(destination="Jeddah", depart=OUT, return_date=BACK)
     answer = data(found)
@@ -31,12 +34,35 @@ def test_a_day_lists_each_way_as_plain_data_and_writes_the_trip() -> None:
     assert set(first) >= {"departs", "arrives", "duration", "fare", "seats_ok", "part_of_day"}
     cheapest = min((o for o in out["options"] if o["seats_ok"]), key=lambda o: o["fare"])
     assert out["cheapest_id"] == cheapest["id"]
-    assert back["day"]["date"] == BACK and ids(found, "return")[0] == "T2-102-2026-11-21"
+    # f-dev-lean-4: given both days' flights, the model listed both in one reply (34 of 38) and
+    # took one pick for both legs (f30, f09); the return's flights come with choose_flights.
+    assert back == {"day": {"date": BACK, "weekday": "Saturday"}, "note": RETURN_LISTED}
+    assert "T2-102" not in str(answer)
     assert found.card is not None and found.card.slot == "outbound" and card_passes(found)
     draft = call.draft
     assert (draft.destination, draft.one_way, str(draft.return_date)) == ("JED", False, BACK)
     assert [s.flight for s in draft.shown_outbound] == [101, 103, 105, 107]
     assert [s.flight for s in draft.shown_return] == [102, 104, 106, 108]
+
+
+def test_a_new_return_day_after_the_outbound_pick_keeps_it_and_lists_the_return() -> None:
+    # The caller picked the way out, then moved the way back a day: the pick is named as kept,
+    # and the new day's flights are given, so the way out is never asked again.
+    call = LeanCall()
+    out = ids(call.find(destination="Jeddah", depart=OUT, return_date=BACK))[0]
+    call.choose(outbound_id=out)
+    answer = data(call.find(destination="Jeddah", depart=OUT, return_date="2026-11-22"))
+    assert answer["chosen"] == {"outbound": out} and "note" not in answer["return"]
+    assert answer["return"]["day"]["date"] == "2026-11-22" and answer["return"]["count"] == 4
+    assert call.draft.chosen_outbound is not None and call.draft.chosen_return is None
+
+
+def test_a_new_outbound_day_after_both_picks_keeps_the_returns() -> None:
+    call = chosen_trip()  # out on T2 101, back on T2 102
+    answer = data(call.find(destination="Jeddah", depart="2026-11-20", return_date=BACK))
+    assert answer["chosen"] == {"return": "T2-102-2026-11-21"}
+    assert answer["return"] == {"day": {"date": BACK, "weekday": "Saturday"}, "note": RETURN_KEPT}
+    assert "chosen" not in data(LeanCall().find(destination="Jeddah", depart=OUT))
 
 
 def test_no_return_makes_the_trip_one_way_and_lists_the_outbound_alone() -> None:

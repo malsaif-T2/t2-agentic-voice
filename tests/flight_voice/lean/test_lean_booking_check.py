@@ -7,8 +7,9 @@ after the summary. A yes said over the closing question, which the library answe
 reply has ended (D-116), so its transcript came first, holds when what had played as its speech
 began (`UserTurnEnded.reply_played`) begins the reply and states the total; never when it began
 before the total, over another reply, or is the turn the reply answers. A total is read in
-digits (a thousands mark, Arabic-Indic digits) or in words in English, Saudi Arabic and MSA; a
-call held in text reads its events from the call itself, and an ended call's are dropped."""
+digits (a thousands mark, a space before three digits among them, Arabic-Indic digits) or in
+words in English, Saudi Arabic and MSA; a call held in text reads its events from the call
+itself, and an ended call's are dropped."""
 
 from __future__ import annotations
 
@@ -148,6 +149,12 @@ def test_a_total_is_read_in_digits_and_in_words() -> None:
         assert stated_at(f"The total is {words} riyals.", 4230) is not None, words
     assert stated_at("Total 14230 riyals.", 4230) is None
     assert stated_at("Total 42300 riyals.", 4230) is None
+    # f-dev-lean-4, f09: "total 3 080. Shall I book it?" never found, so the yes booked nothing;
+    # a space before three digits is a thousands mark, as the comma is, and only there.
+    for space in (" ", chr(0x00A0), chr(0x2009), chr(0x202F)):
+        assert stated_at(f"total 3{space}080. Shall I book it?", 3080) is not None, hex(ord(space))
+    assert stated_at("Total 13 080 riyals.", 3080) is None
+    assert stated_at("Total 3 0800 riyals.", 3080) is None
     at = stated_at("Total 880. Shall I book it now, or change something first?", 880)
     assert at is not None and 0 < at < 0.3
 
