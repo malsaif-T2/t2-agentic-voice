@@ -72,9 +72,15 @@ def test_a_city_of_several_airports_is_searched_together_and_an_airport_alone() 
 
 @pytest.mark.parametrize(
     ("said", "code"),
-    [("Bahrain", "BAH"), ("البحرين", "BAH"), ("Kuwait", "KWI"), ("الكويت", "KWI"),
-     ("Qatar", "DOH"), ("قطر", "DOH")],
-)  # fmt: skip
+    [
+        ("Bahrain", "BAH"),
+        ("البحرين", "BAH"),
+        ("Kuwait", "KWI"),
+        ("الكويت", "KWI"),
+        ("Qatar", "DOH"),
+        ("قطر", "DOH"),
+    ],
+)
 def test_the_country_words_give_their_main_airport(said: str, code: str) -> None:
     assert _found(said).code == code
 
