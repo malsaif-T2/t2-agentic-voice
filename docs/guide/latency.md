@@ -45,7 +45,9 @@ For a reply with no tool, in order:
 2. **The hold after "complete"**: `turns.complete_hold_ms` (600 ms), so a pause inside a request
    does not end it ([concepts.md](concepts.md), "The end of a turn"). On Ole5's recordings a
    turn then ended a median of 0.94 s after the caller's own end on the dev split (D-067).
-3. **The transcript**: the turn's audio, whole, in one Whisper request.
+3. **The transcript**: the turn's audio, whole, in one speech-to-text request (Scribe v3 by
+   default, Whisper as the fallback); with `stt.streaming`, the wait for the call's stream to
+   answer the turn's commit instead (below).
 4. **The first clause**: the chat model's request, to the end of its first clause.
 5. **The voice**: the first clause's text-to-speech request, to its first audio.
 
@@ -74,6 +76,32 @@ result, before step 5.
   `stt.live_language = "classified"` the turn's language is decided at the stop, so the
   classifier's verdict has Smart Turn's time less to come. It needs a hold
   (`turns.complete_hold_ms` above 0).
+- **The call heard over a stream** (`T2V_STT__STREAMING=true`, off by default; plan 010's
+  5.1). With ElevenLabs (`stt.provider = "elevenlabs"`) and `stt.live_language = "session"`,
+  the call opens one Scribe v3 Live session as it starts, in the call's language with its
+  vocabulary as keyterms (at most 50, each at most 20 characters), and sends it what a request
+  would hear: each turn's audio as it comes, from its pre-roll, and between turns as much
+  silence in place of the microphone's sound, so nothing the speech detector heard as no turn
+  (the agent's echo, a television) reaches a turn's words. Where a turn's request would go (at
+  the detector's stop with the early start from it, at the hold with the early start, at the
+  turn's end otherwise),
+  the stream is committed instead, and the turn's words come back when Scribe answers that
+  commit: on the golden set's dev split, streamed at real-time pace, 249.9 ms at the median and
+  301.6 ms at the 95th percentile from the commit, against 567.5 and 812.2 ms for the same audio
+  as a request (the probe of 2026-11-18, the recordings with speech), its word error rate 9.6%
+  against 13.7% in Arabic and 4.8% against 3.7% in English. A pause Smart Turn calls unfinished
+  keeps its commit's words for the turn's next commit, so the turn's words are still answered
+  once, whole. An overlap's parts still go as requests, and so does a turn that begins before
+  the stream has heard 2 s of the call. If the stream fails (its connection, an error from
+  ElevenLabs, or no answer within 1.5 s), the turn waiting goes as a request after all and the
+  rest of the call by request, logged once as `stt_stream_lost` with its kind and reason; the
+  stream's own lines are `stt_stream_opened` (its connect time) and `stt_stream_closed` (its
+  counts), never a word. Under the other language modes the call is heard by request, since a
+  stream's words are always in the language it opened in, with no probability to switch by;
+  the runtime's start says so (`streaming_off`). ElevenLabs bills every second of the stream:
+  about 5 to 7.5 times the audio a call sends by request, by the whole-call study of
+  2026-11-17, still about a cent a call. The call report's usage still counts each turn's audio
+  as a request's.
 - **The early start over a reply** (`T2V_SESSION__EARLY_OVER_REPLY=true`, off by default). A turn
   held while a reply to an earlier turn is still in progress (nothing of it playing as the turn
   began: a search, say) starts early too: its held words stop that reply first, as its answer

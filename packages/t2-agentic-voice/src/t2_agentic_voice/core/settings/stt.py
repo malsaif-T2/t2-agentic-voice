@@ -5,7 +5,8 @@ spoken-language classifier of `live_language = "classified"`, off by default, si
 no arm (D-086, as amended on 2026-11-12); and `live_language = "hinted"`, one request a turn
 whose answer's language and probability move the call (D-115), and `"single"`, one request a
 turn, naming none for a long turn, whose answer moves the call so (D-117), each off by default
-until run H's Scribe arms keep it (GP-18)."""
+until run H's Scribe arms keep it (GP-18); and `streaming`, a call heard over one stream of the
+provider's (plan 010's 5.1), off by default until a live check keeps it."""
 
 from __future__ import annotations
 
@@ -202,6 +203,20 @@ class SttSettings(Group):
             "Whether a transcript that is one of the captions Whisper invents for silence or "
             "noise counts as no words; on by the registered rule F (plan 005), which changes "
             "only on another registered measurement (GP-18)."
+        ),
+    )
+    streaming: bool = Field(
+        default=False,
+        description=(
+            "Whether a call hears the caller over one stream of the provider's for the whole "
+            "call (elevenlabs: Scribe v3 Live, plan 010's 5.1) rather than one request a turn: "
+            "each turn's audio goes as it comes, from its pre-roll, silence in place of the rest "
+            "of the call, and each turn's end commits it, its words back 249.9 ms later at the "
+            "median (the probe of 2026-11-18 on dev, against 567.5 ms for a request). Only under "
+            "live_language session, or a mode that runs as session, on a provider that streams; "
+            "an overlap's parts still go as requests, and a stream that "
+            "fails leaves the rest of the call to requests. The provider bills every second of "
+            "the stream, silence included. Off until a live check keeps it (GP-18)."
         ),
     )
     send_prompt: bool = Field(

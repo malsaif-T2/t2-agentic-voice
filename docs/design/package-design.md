@@ -701,7 +701,7 @@ Stability levels are defined in section 5.4. "Provisional" covers everything tha
 | Module | Contents | Stability |
 | --- | --- | --- |
 | `t2_agentic_voice` | `VoiceAgent`, `Language`, `Vocabulary`, `Phrases`, `SpeakingRules`, `Say`, `ReadBack`, `Claims`, `Spoken`, `Card`, `tool`, `action`, `Tool`, `Action`, `from_caller`, `CallContext`, `ActionContext`, `Caller`, `Consent`, `CallStart`, `CallOptions`, `Providers`, `VoiceSettings`, `VoiceRuntime`; errors (`T2VoiceError`, `ConfigurationError`, `ToolError`, `ActionRejected`, `ActionNotSent`, `ProviderError`, `JoinRejected`) | stable |
-| `t2_agentic_voice.ports` | `SpeechToText`, `ChatModel`, `TextToSpeech`, `IdentityVerifier`, `UsedTokens`, `Outbox`, `KnowledgeBase`; data types `AudioClip`, `AudioChunk`, `Transcript`, `ChatRequest`, `ChatEvent` (`TextDelta`, `ToolCallRequest`, `Usage`, `Done`), `DataFlow`, `Passage`, `OutboxEntry` | stable (`KnowledgeBase`, `Outbox`, `UsedTokens`: provisional) |
+| `t2_agentic_voice.ports` | `SpeechToText`, `ChatModel`, `TextToSpeech`, `IdentityVerifier`, `UsedTokens`, `Outbox`, `KnowledgeBase`, `StreamingSpeechToText` and its `TranscriptStream`; data types `AudioClip`, `AudioChunk`, `Transcript`, `ChatRequest`, `ChatEvent` (`TextDelta`, `ToolCallRequest`, `Usage`, `Done`), `DataFlow`, `Passage`, `OutboxEntry` | stable (`KnowledgeBase`, `Outbox`, `UsedTokens`, `StreamingSpeechToText`, `TranscriptStream`: provisional) |
 | `t2_agentic_voice.identity` | `SignedJoinTokens` (mint and verify), `DevIdentity`; later `Authenticate` | stable |
 | `t2_agentic_voice.groq` | `GroqSTT`, `GroqChat`, `GroqTTS` | stable |
 | `t2_agentic_voice.server` | `serve(factory)`, `combine_lifespans`; for an app's own demo page, `access_code_router` (`POST /token` for an access code, its `AccessCodeGuard` with tokens a day and wrong codes an hour, the caller built by the app's function, minting with a `TokenMinter`) and `page_headers` | stable |
@@ -871,6 +871,25 @@ class LanguageClassifier(Protocol):  # provisional (D-086)
 
 *Added by plan 007's Block H (D-086):* the spoken-language classifier port, which runs in the process and sends no audio anywhere, so it has no `DataFlow`. Its answer is parsed at the port: an answer that does not parse is a failure, as a `ProviderError` is. The `classifiers` facade gives Silero's (on onnxruntime) and ECAPA's (on torch, through the `ecapa` extra); any other is passed in code, `Providers.from_settings(settings).replace(classifier=...)`.
 
+```python
+class TranscriptStream(Protocol):  # provisional (plan 010's 5.1)
+    @property
+    def failure(self) -> ProviderError | None: ...  # None while it hears
+    def feed(self, pcm16: bytes) -> None: ...  # the call's next audio, in order; never blocks
+    def commit(self) -> int: ...  # ends the audio fed since the last commit: its number
+    async def committed(self, number: int) -> Transcript: ...  # that stretch's words
+    async def aclose(self) -> None: ...
+
+
+@runtime_checkable
+class StreamingSpeechToText(Protocol):  # provisional (plan 010's 5.1)
+    async def open_stream(
+        self, *, language: str | None, prompt: str | None, sample_rate: int
+    ) -> TranscriptStream: ...  # once the provider is ready to hear
+```
+
+*Added by plan 010's 5.1:* the streaming speech-to-text port, an optional one beside `SpeechToText`, which it leaves unchanged: a provider implements both, and its batch requests stay the fallback. One stream hears a whole call: the bridge opens it at the call's start in the call's language (again in another when the call moves), feeds it each turn's audio as it comes, from the turn's pre-roll, and silence of the same length in place of the rest, commits it at each turn's end where the batch port would get the turn's request, and reads that commit's words; a wait cancelled stops only that wait, so another may read the same answer. A failure fails every commit waiting and is the stream's `failure`; the bridge then hears the rest of the call by request. ElevenLabs' adapter implements it with Scribe v3 Live (`adapters/elevenlabs_live.py`), under `stt.streaming`, off by default. It carries no partial transcripts yet: they, and the overlap decisions they could feed, are the port's next step, as an addition.
+
 The Groq `DataFlow` values come from Groq's "Your Data" page (checked). That page does not say where requests are processed.
 
 *Built in M1 (plan 002), beyond this block:* `Transcript.no_speech_prob`, Whisper's own estimate that a clip holds no speech (the owner's ruling, D-021); and, proposed in D-021 for the owner to rule on, `AudioClip.seconds` and the input checks of `DataFlow`, `AudioClip` and `Transcript`.
@@ -878,7 +897,7 @@ The Groq `DataFlow` values come from Groq's "Your Data" page (checked). That pag
 **Rules for every port:**
 - **Cancellation.** The runtime cancels a provider call by cancelling its task. The Groq adapters' tests check that a call stops within 50 ms and leaks no tasks or connections. Contract suites for other authors come on request (section 3.1).
 - **Failures** are raised as `ProviderError(kind, retryable, retry_after_s)`.
-- **Streaming speech-to-text.** The name `StreamingSpeechToText` is reserved for an optional protocol with partial transcripts. It will be designed when a streaming provider exists. The voice session already takes "words heard so far" as events, so the interruption logic will not change shape.
+- **Streaming speech-to-text.** `StreamingSpeechToText` is the optional streaming protocol above (plan 010's 5.1), committed turn by turn. Partial transcripts are to be added to it, never changed in: the voice session already takes "words heard so far" as events, so the interruption logic will not change shape.
 - **Swapping a provider.** A setting (`stt.provider` and so on) picks among the built-in adapters. Any other adapter is an object passed in code. There is no registry and no discovery through entry points. Passing an object in code goes beyond GP-22's "by configuration", so it needs a decision entry (section 16.3).
 
 ```python

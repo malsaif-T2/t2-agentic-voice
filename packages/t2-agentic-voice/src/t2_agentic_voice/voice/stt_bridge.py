@@ -37,10 +37,12 @@ Every request is stt_requests.py's: each names the language `languages` gives it
 Whisper prompt (`call_prompts`), and under `detect` a turn's own and held ones also go naming
 none, given the turn's voiced speech (`voiced_s`). The bridge tells `languages` of each turn's
 audio, its hold (whatever `early` says), its overlap and its close, and never waits on it.
+With `streaming` (plan 010's 5.1) and no `detect` or classifier, a provider that streams hears
+the call over one stream (stt_stream.py), committed by a streamed turn's requests (stt_streamed).
 
 `drop` ends the call's side here (io.py's end): the held audio is dropped, never flushed, and
-every request in flight cancelled, a part's included, its `Transcribing` already handed, and
-every classification in flight. A muted service holds no audio (Pipecat's `STTMuteFrame`).
+every request in flight cancelled, a part's included, its `Transcribing` already handed, every
+classification in flight, and the stream. A muted service holds no audio (`STTMuteFrame`).
 """
 
 from __future__ import annotations
@@ -68,7 +70,8 @@ from t2_agentic_voice.voice.session.session_events import Transcribed, TurnClose
 from t2_agentic_voice.voice.session_bridge import EventStream
 from t2_agentic_voice.voice.stt_held import HeldRequests
 from t2_agentic_voice.voice.stt_language import TurnLanguages
-from t2_agentic_voice.voice.stt_requests import SttRequests, SwitchRule
+from t2_agentic_voice.voice.stt_requests import SwitchRule
+from t2_agentic_voice.voice.stt_streamed import call_requests
 from t2_agentic_voice.voice.stt_turn import HeldOverlap, HeldTurn
 from t2_agentic_voice.voice.turn_hold import HoldResumedFrame, TurnHeldFrame, TurnUnfinishedFrame
 
@@ -98,8 +101,8 @@ class TurnSTTBridge(STTService):
     detector's start delay; `early`, a turn's `held` request at its hold; `prompts`, the call's
     Whisper prompt of each language (`call_prompts`; none by default); `languages`, each turn's
     language (no classifier by default); `detect`, a long turn's second request or each
-    turn's answer read for a move; `at_stop`, the held request sent at the detector's stop
-    (the module's)."""
+    turn's answer read for a move; `at_stop`, the held request sent at the detector's stop;
+    `streaming`, the call heard over a stream where it can be (the module's)."""
 
     def __init__(
         self,
@@ -113,6 +116,7 @@ class TurnSTTBridge(STTService):
         languages: TurnLanguages | None = None,
         detect: SwitchRule | None = None,
         at_stop: bool = False,
+        streaming: bool = False,
     ) -> None:
         super().__init__(
             audio_passthrough=False,
@@ -131,7 +135,7 @@ class TurnSTTBridge(STTService):
         self._speech_from: int | None = None  # the byte held where the speech last began
         self._stopped_at: float | None = None
         self._languages = languages or TurnLanguages(clock=events.clock)
-        self._requests = SttRequests(
+        self.stream, self._requests = call_requests(  # the stream read by tests too
             self,
             stt=stt,
             events=events,
@@ -139,6 +143,8 @@ class TurnSTTBridge(STTService):
             prompts=prompts or {},
             languages=self._languages,
             detect=detect,
+            streaming=streaming,
+            preroll_s=self._preroll_s,
         )
         languages, trail_s = self._languages, TRAIL_S
         self._holds = HeldRequests(
@@ -156,6 +162,7 @@ class TurnSTTBridge(STTService):
         """Name `language` to the provider for every turn's request from now on (`ListenIn`),
         each sent with that language's prompt (the module's)."""
         self._languages.listen_in(language)
+        self.stream.listen_in(language)
 
     def hear_overlap(self, turn_id: int, window_ms: int) -> None:
         """The turn `turn_id` is an overlap (`HearOverlap`): send its parts, as the module's
@@ -167,6 +174,7 @@ class TurnSTTBridge(STTService):
             return
         if turn is not None and turn.turn_id == turn_id:
             self._languages.overlap(turn_id)
+            self.stream.overlap(turn_id)
             if turn.overlap is None:
                 overlap = turn.mark(self._bytes(OVERLAP_LEAD_S), self._bytes(window_ms / 1000))
                 if turn.cut_at is None:
@@ -180,8 +188,7 @@ class TurnSTTBridge(STTService):
             self._requests.send(turn_id, b"", "overlap")
 
     async def run_stt(self, audio: bytes) -> AsyncGenerator[Frame | None, None]:
-        """Nothing: the base calls this only from `process_audio_frame`, which the bridge
-        replaces, since a frame's audio is never a request of its own (a turn's is)."""
+        """Nothing: only the base's `process_audio_frame` calls it, which the bridge replaces."""
         yield None
 
     async def process_audio_frame(
@@ -192,6 +199,7 @@ class TurnSTTBridge(STTService):
             return
         self._held += len(frame.audio)
         turn = self._turn
+        self.stream.heard(frame.audio, in_turn=turn is not None)
         if turn is None:
             self._preroll.append(frame.audio)
             self._preroll_bytes += len(frame.audio)
@@ -211,6 +219,7 @@ class TurnSTTBridge(STTService):
         if direction != FrameDirection.DOWNSTREAM or self._dropped:
             return
         now, turn = self._events.clock.now(), self._turn
+        self.stream.saw(frame)
         if isinstance(frame, VADUserStartedSpeakingFrame):
             self._speech_at = now - frame.start_secs
             self._speech_from = self._held - self._bytes(frame.start_secs)
@@ -247,6 +256,7 @@ class TurnSTTBridge(STTService):
         self._turn = turn
         speech_at = now if self._speech_at is None else min(self._speech_at, now)
         self._events.hand(TurnOpened(turn_id=turn.turn_id, at=now, speech_at=speech_at))
+        self.stream.opened(turn.turn_id)
 
     def _close(self, turn: HeldTurn, now: float) -> None:
         self._turn = None
@@ -263,6 +273,7 @@ class TurnSTTBridge(STTService):
             voiced_s = None if turn.overlap is not None else turn.voiced_s(self.sample_rate)
             request = self._requests.send(turn.turn_id, audio, "turn", voiced_s=voiced_s)
         self._last = (turn.turn_id, request)
+        self.stream.closed(turn.turn_id)
 
     def _window_due(self, turn: HeldTurn) -> None:
         """The overlap's window, once the audio held covers it, while the speech goes on."""
@@ -281,5 +292,9 @@ class TurnSTTBridge(STTService):
         self._dropped = True
         self._turn = self._last = None
         self._preroll.clear()
-        await self._requests.drop()
+        await self._requests.drop()  # the call's stream closed with them
         await self._languages.drop()
+
+    async def cleanup(self) -> None:  # Pipecat's, the call's stream closed too
+        await super().cleanup()  # type: ignore[no-untyped-call]  # Pipecat 1.15.0's, unannotated
+        await self.stream.drop()
