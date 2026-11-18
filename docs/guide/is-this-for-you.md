@@ -74,6 +74,11 @@ belongs on storage that survives a restart.
   that can call that model, and each Orpheus model's terms accepted in Groq's console. Both
   Orpheus models are previews and take at most 200 characters a request, which the library
   keeps to.
+- **OpenAI for the talker, behind a setting** (D-112): `llm.provider = "openai"` sends the
+  talker's requests to OpenAI's own API (`gpt-6-luna`, `gpt-5.6-luna`, `gpt-5.4-mini` or
+  `gpt-6.1-terra`, at `reasoning_effort = "none"`), with `T2V_OPENAI__API_KEY`; the yes rule's
+  check and the uncertain overlap's request stay on Groq's gpt-oss-120b, so the Groq key is still
+  needed.
 - **The published limits are low.** Groq's rate-limits page, read on 2026-10-31 (the design's
   10.4), lists 10 requests a minute, 100 a day and 3.6K tokens a day for each Orpheus model, and
   20 requests a minute for each Whisper model. The echo sends one Whisper request a turn and up

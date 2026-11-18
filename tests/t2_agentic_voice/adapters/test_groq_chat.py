@@ -12,7 +12,7 @@ from typing import Any, get_args
 
 import httpx
 import pytest
-from t2_agentic_voice.core.settings.llm import REASONING_MODELS, LlmModel
+from t2_agentic_voice.core.settings.llm import PROVIDER_OF, REASONING_MODELS, LlmModel
 from t2_agentic_voice.domain.ports.chat_model import (
     ChatMessage,
     ChatRequest,
@@ -119,7 +119,9 @@ def test_reasoning_effort_goes_only_to_a_model_that_takes_it(model: str, sent: b
 
 def test_the_closed_list_names_the_gpt_oss_models_of_the_settings() -> None:
     models: tuple[str, ...] = get_args(LlmModel)
-    assert {name for name in models if name.startswith("openai/gpt-oss")} == REASONING_MODELS
+    groqs = {name for name in models if PROVIDER_OF[name] == "groq"}
+    gpt_oss = {name for name in groqs if name.startswith("openai/gpt-oss")}
+    assert gpt_oss == REASONING_MODELS & groqs
 
 
 def test_the_text_streams_piece_by_piece_and_never_the_reasoning() -> None:

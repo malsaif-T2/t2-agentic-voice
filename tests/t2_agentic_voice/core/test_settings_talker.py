@@ -74,9 +74,9 @@ def test_no_question_limit_is_set_in_code() -> None:
 @pytest.mark.parametrize(
     ("name", "value"),
     [
-        ("LLM__PROVIDER", "openai"),
+        ("LLM__PROVIDER", "azure"),
         ("LLM__MODEL", "gpt-4o"),
-        ("LLM__REASONING_EFFORT", "none"),
+        ("LLM__REASONING_EFFORT", "max"),
         ("LLM__MAX_OUTPUT_TOKENS", "0"),
         ("LLM__TIMEOUT_S", "-1"),
         ("LLM__VARY_FIRST_LINE", "maybe"),

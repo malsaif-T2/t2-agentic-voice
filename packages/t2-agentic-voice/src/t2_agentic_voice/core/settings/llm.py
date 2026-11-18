@@ -1,30 +1,66 @@
-"""The `llm` group: the talker's chat model (the design's 7.6; plan 006), on Groq, the only
-provider for now (D-004). Its defaults move only on a registered measurement (GP-18): run K
-moved `reasoning_effort` to medium (D-074)."""
+"""The `llm` group: the talker's chat model (the design's 7.6; plan 006), on Groq by default
+(D-004), or on OpenAI's own API behind `provider` (D-112). Its defaults move only on a
+registered measurement (GP-18): run K moved `reasoning_effort` to medium (D-074).
+
+A model is reached through one provider (`PROVIDER_OF`), and the settings refuse a model the
+chosen provider does not serve, and an effort its model does not take (`EFFORTS`), each with the
+setting to change, so a wrong pair fails as the settings load, never at a call's first request.
+"""
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Final, Literal
 
-from pydantic import Field
+from pydantic import Field, ValidationInfo, field_validator
 
 from t2_agentic_voice.core.settings.base import Group
 
-LlmProvider = Literal["groq"]
+LlmProvider = Literal["groq", "openai"]
 # Groq's production chat models, read on 2026-11-06 from its model list (plan 006's progress
-# log): the arms the plan's runs compare. A preview model may change or go without notice.
+# log): the arms the plan's runs compare. A preview model may change or go without notice. Then
+# OpenAI's on its own API, read on 2026-11-17 from its model list (D-112): the candidates
+# measured beside gpt-oss-120b.
 LlmModel = Literal[
     "openai/gpt-oss-120b",
     "openai/gpt-oss-20b",
     "llama-3.3-70b-versatile",
     "llama-3.1-8b-instant",
+    "gpt-6-luna",
+    "gpt-5.6-luna",
+    "gpt-5.4-mini",
+    "gpt-6.1-terra",
 ]
-# The models that take `reasoning_effort` (groq 1.7.0's reference for the field: "openai/gpt-oss-
-# 20b and openai/gpt-oss-120b support 'low', 'medium', or 'high'"); Groq refuses it for the
-# others the settings name, the Llama models, so they are sent none.
-REASONING_MODELS: frozenset[LlmModel] = frozenset({"openai/gpt-oss-120b", "openai/gpt-oss-20b"})
-# How hard a reasoning model thinks before it answers, as Groq's API names the levels.
-ReasoningEffort = Literal["low", "medium", "high"]
+# How hard a reasoning model thinks before it answers, as the providers' APIs name the levels:
+# Groq's gpt-oss take low to high; OpenAI's `none` is no reasoning at all.
+ReasoningEffort = Literal["none", "low", "medium", "high"]
+# Which provider serves each model the settings name.
+PROVIDER_OF: Final[dict[str, LlmProvider]] = {
+    "openai/gpt-oss-120b": "groq",
+    "openai/gpt-oss-20b": "groq",
+    "llama-3.3-70b-versatile": "groq",
+    "llama-3.1-8b-instant": "groq",
+    "gpt-6-luna": "openai",
+    "gpt-5.6-luna": "openai",
+    "gpt-5.4-mini": "openai",
+    "gpt-6.1-terra": "openai",
+}
+_GPT_OSS: Final[frozenset[ReasoningEffort]] = frozenset({"low", "medium", "high"})
+_NONE: Final[frozenset[ReasoningEffort]] = frozenset({"none"})
+# The efforts each reasoning model takes with the talker's tools: groq 1.7.0's reference for
+# gpt-oss ("support 'low', 'medium', or 'high'"); OpenAI's Chat Completions, probed 2026-11-17,
+# refuse function tools with any effort but `none` for gpt-5.4 and later ("To use function
+# tools, use /v1/responses or set reasoning_effort to 'none'"), so its models take `none` alone.
+EFFORTS: Final[dict[str, frozenset[ReasoningEffort]]] = {
+    "openai/gpt-oss-120b": _GPT_OSS,
+    "openai/gpt-oss-20b": _GPT_OSS,
+    "gpt-6-luna": _NONE,
+    "gpt-5.6-luna": _NONE,
+    "gpt-5.4-mini": _NONE,
+    "gpt-6.1-terra": _NONE,
+}
+# The models that take `reasoning_effort`; the others the settings name (the Llama models)
+# refuse the field, so they are sent none.
+REASONING_MODELS: Final[frozenset[str]] = frozenset(EFFORTS)
 
 
 class LlmSettings(Group):
@@ -34,23 +70,33 @@ class LlmSettings(Group):
 
     provider: LlmProvider = Field(
         default="groq",
-        description="Which adapter reaches the chat model; only Groq's exists for now (D-004).",
+        description=(
+            "Which adapter reaches the talker's chat model: groq (D-004), or openai, OpenAI's "
+            "own API with the openai group's key (D-112), off by default. Under openai the yes "
+            "rule's check and the uncertain overlap's request stay on Groq's gpt-oss-120b, "
+            "so the Groq key is needed too."
+        ),
     )
     model: LlmModel = Field(
         default="openai/gpt-oss-120b",
+        validate_default=True,
         description=(
-            "The chat model: openai/gpt-oss-120b, openai/gpt-oss-20b, llama-3.3-70b-versatile "
-            "or llama-3.1-8b-instant. The default changes only on a registered measurement "
-            "(GP-18)."
+            "The chat model: on groq openai/gpt-oss-120b, openai/gpt-oss-20b, "
+            "llama-3.3-70b-versatile or llama-3.1-8b-instant; on openai gpt-6-luna, "
+            "gpt-5.6-luna, gpt-5.4-mini or gpt-6.1-terra. The default changes only on a "
+            "registered measurement (GP-18)."
         ),
     )
     reasoning_effort: ReasoningEffort = Field(
         default="medium",
+        validate_default=True,
         description=(
-            "How much a reasoning model thinks before it answers: low, medium or high. Sent "
-            "only to a model that takes it (the gpt-oss models). Medium, as the owner ruled "
-            "on run K's dev pass (plan 006, Q26): gpt-oss-120b invented 6 answers of 136 "
-            "against 18 at low, for about 0.33 s more to the first clause."
+            "How much a reasoning model thinks before it answers: none, low, medium or high, "
+            "as its model takes them (the gpt-oss models low to high; OpenAI's only none, the "
+            "one its Chat Completions take with tools). Sent only to a model that takes it. "
+            "Medium, as the owner ruled on run K's dev pass (plan 006, Q26): gpt-oss-120b "
+            "invented 6 answers of 136 against 18 at low, for about 0.33 s more to the first "
+            "clause."
         ),
     )
     max_output_tokens: int = Field(
@@ -87,3 +133,34 @@ class LlmSettings(Group):
             "tools, the last none, so the turn ends in words."
         ),
     )
+
+    @staticmethod
+    def provider_of(model: str) -> LlmProvider:
+        """The provider that serves `model`, one the settings name; groq for any other."""
+        return PROVIDER_OF.get(model, "groq")
+
+    @field_validator("model")
+    @classmethod
+    def _served(cls, model: LlmModel, info: ValidationInfo) -> LlmModel:
+        """The model is the chosen provider's (the module's docstring)."""
+        provider = info.data.get("provider")
+        serves = PROVIDER_OF[model]
+        if provider is not None and serves != provider:
+            theirs = ", ".join(m for m, p in PROVIDER_OF.items() if p == provider)
+            raise ValueError(
+                f"{model} is served by {serves}, not {provider}. FIX: set llm.model to one of "
+                f"{provider}'s ({theirs}), or llm.provider to {serves}"
+            )
+        return model
+
+    @field_validator("reasoning_effort")
+    @classmethod
+    def _taken(cls, effort: ReasoningEffort, info: ValidationInfo) -> ReasoningEffort:
+        """The effort is one its model takes (the module's docstring)."""
+        takes = EFFORTS.get(info.data.get("model", ""))
+        if takes is not None and effort not in takes:
+            raise ValueError(
+                f"{info.data['model']} takes {', '.join(sorted(takes))}, not {effort}. FIX: "
+                "set llm.reasoning_effort to one of those"
+            )
+        return effort

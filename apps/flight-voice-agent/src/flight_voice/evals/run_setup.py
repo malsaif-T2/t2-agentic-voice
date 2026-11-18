@@ -27,7 +27,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Final
 
-from t2_agentic_voice import VoiceSettings, get_logger
+from t2_agentic_voice import LlmSettings, Providers, VoiceSettings, get_logger
 from t2_agentic_voice.evals import (
     Limits,
     Price,
@@ -35,6 +35,7 @@ from t2_agentic_voice.evals import (
     run_refused,
     uncertain_overlap_request,
 )
+from t2_agentic_voice.ports import ChatModel
 
 from flight_voice.evals.rules import problems
 from flight_voice.evals.scenarios import Scenario, ScenarioError, load, waiting
@@ -120,13 +121,25 @@ def checked_scenarios(folder: Path) -> tuple[Scenario, ...]:
     return found
 
 
+def chat(env_file: Path | None, model: str) -> ChatModel:
+    """The chat adapter for the talker's `model` (the library's `chat_model`: Groq's, or the
+    route to OpenAI's, D-112), its keys from the environment and `env_file` when given."""
+    keys = VoiceSettings.from_env(env_file=env_file, env="dev")
+    llm = keys.llm.model_copy(update={"provider": LlmSettings.provider_of(model)})
+    return Providers.chat_model(keys.model_copy(update={"llm": llm}))
+
+
 def call_settings(model: str, effort: str) -> VoiceSettings:
     """The call's settings: the library's defaults, the talker's model and effort the run's,
     and a call that ends `IDLE_S` after the caller's last turn."""
     return VoiceSettings.model_validate(
         {
             "env": "test",
-            "llm": {"model": model, "reasoning_effort": effort},
+            "llm": {
+                "provider": LlmSettings.provider_of(model),
+                "model": model,
+                "reasoning_effort": effort,
+            },
             "limits": {"idle_s": IDLE_S},
         }
     )

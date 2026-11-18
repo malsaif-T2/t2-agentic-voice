@@ -3944,6 +3944,42 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   said in exactly 2 replies, f-dev-5's f15 (five questions joined by dot runs) and the owner's
   turn 2. The tests in `tests/t2_agentic_voice/agent/test_plain_speech.py`.
 
+## D-112 · OpenAI's chat models for the talker, behind `llm.provider`; the library's own checks stay on Groq · 2026-11-17 · Proposed (the owner's list of 2026-11-17, item 3: "try OpenAI's GPT models"; off by default, GP-18)
+
+- **Context:** the talker runs on Groq's `openai/gpt-oss-120b` (D-004, D-074), which is fast but
+  follows instructions loosely and wrote nonsense twice in English in the owner's live test of
+  2026-11-17. The owner asked to try OpenAI's GPT models for the flight agent, and approved a
+  "lean Saad" whose model picks flights, reads dates and confirms in its own words, which makes
+  the model's quality matter more. OpenAI's Chat Completions take Groq's request shape, and the
+  `openai` key group existed (D-100). Probed on 2026-11-17 with the owner's key: every model from
+  gpt-5.4 on refuses function tools in Chat Completions with any `reasoning_effort` but `none`
+  ("To use function tools, use /v1/responses or set reasoning_effort to 'none'"); gpt-6-astra
+  refuses `none` outright.
+- **Decision:** `llm.provider` takes `openai` beside `groq` (the default). Under it the talker's
+  requests go to `OpenAIChat` (adapters/openai_chat.py: raw HTTPS through httpx, no SDK, Groq's
+  wire reused for the messages, the tools and the stream; `parallel_tool_calls` on, since the
+  talker runs each call at once and refuses a second action itself; usage asked for in the
+  stream), inside a `ChatRoute` (api/chat_route.py) that sends each request to the provider of
+  its model, so the yes rule's check (D-082) and the uncertain overlap's request (D-069) stay on
+  Groq's gpt-oss-120b, the model they were measured on. `llm.model` names four OpenAI models,
+  gpt-6-luna, gpt-5.6-luna, gpt-5.4-mini and gpt-6.1-terra, each served by `openai` and taking
+  `reasoning_effort = "none"` alone; the settings refuse a model its provider does not serve and
+  an effort its model does not take, under `T2V_LLM__MODEL` or `T2V_LLM__REASONING_EFFORT` with
+  the fix. Run F's `--model` takes them, its `--effort` takes `none`.
+- **Consequences:** a call under `openai` needs both keys, and the talker's requests (the system
+  prompt, the heard words, the tools' results) go to OpenAI as its `DataFlow` says (SECURITY.md's
+  row). Reasoning with tools on these models would need the Responses API, a second wire not
+  built. Nothing changes by default.
+- **Evidence:** the adapter's and the route's tests (`test_openai_chat.py`, `test_chat_route.py`).
+  The trial of 2026-11-17 (the owner's key; the lead's notes folder, `gpt_trial.md`): on the flight
+  agent's 28 dev first turns, a turn's first clause at p50 / p95 took 1.43 / 2.37 s on gpt-oss-120b
+  (Groq, medium), 1.76 / 2.08 s on gpt-5.4-mini, 1.85 / 2.59 s on gpt-6-luna (2.40 s at p95 with the
+  first line fixed, 86% of its input then cached), 1.90 / 2.62 s on gpt-5.6-luna and 3.00 / 3.86 s on
+  gpt-6.1-terra; every tool call of every model was valid. Run F's dev pass (three plays each):
+  gpt-oss-120b 19 of 28 (f-dev-6, 56 of 84 plays, $0.55), gpt-5.6-luna 21 (65 plays, $0.56),
+  gpt-6-luna 22 (65 plays, $0.29), gpt-5.4-mini 23 (67 plays, $2.09) in the run history; every
+  violation of every pass is a time with a leading zero read as an ID (f13, f18).
+
 ## D-113 · The lean flight agent beside the scripted one, its booking checked in the app's code · 2026-11-17 · Accepted (the owner's ruling of 2026-11-17, "Lean next to it"; the flight app's code and one setting, `FLIGHT_VOICE_AGENT`, scripted by default; for the mock airline alone)
 
 - **Context:** in the owner's live calls of 2026-11-17 the flight agent felt clunky because our
