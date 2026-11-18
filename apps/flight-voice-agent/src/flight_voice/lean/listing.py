@@ -20,6 +20,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Final
 
+from flight_voice.airline.airports import Register
 from flight_voice.flight_data.model import Offer
 from flight_voice.lean.results import AirlineCount
 from flight_voice.said import Tag, register, words
@@ -82,19 +83,25 @@ def listed(offers: Sequence[Offer], limit: int = MAX_LISTED) -> tuple[Offer, ...
 
 
 def by_airline(offers: Sequence[Offer], tag: Tag) -> tuple[AirlineCount, ...] | None:
-    """Each airline's flights and cheapest price over `offers` (a pool), in the order of their
-    first departure; None when fewer than two airlines fly them."""
+    """Each airline's summary over `offers` (a pool): its flights, first and last departures and
+    cheapest, in the order of their first departure; None when fewer than two airlines fly."""
     groups: dict[str, list[Offer]] = {}
     for offer in sorted(offers, key=_order):
         groups.setdefault(offer.carrier.code, []).append(offer)
     if len(groups) < 2:
         return None
     r = register(tag)
-    return tuple(
-        AirlineCount(
-            airline=held[0].carrier.name(r),
-            flights=len(held),
-            cheapest=min(o.price.amount for o in held),
-        )
-        for held in groups.values()
+    return tuple(_count(held, r) for held in groups.values())
+
+
+def _count(held: list[Offer], r: Register) -> AirlineCount:
+    """One airline's summary over its offers, in departure order (`by_airline`)."""
+    cheapest = min(held, key=lambda o: (o.price.amount, _order(o)))
+    return AirlineCount(
+        airline=held[0].carrier.name(r),
+        flights=len(held),
+        first_departs=held[0].departs.strftime("%H:%M"),
+        last_departs=held[-1].departs.strftime("%H:%M"),
+        cheapest=cheapest.price.amount,
+        cheapest_departs=cheapest.departs.strftime("%H:%M"),
     )

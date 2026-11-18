@@ -122,11 +122,16 @@ class LeanOption(_Data):
 
 
 class AirlineCount(_Data):
-    """An airline that flies the day: its flights and its cheapest price."""
+    """An airline that flies the day: its flights, its first and last departures, and its
+    cheapest price with that flight's departure, so a question about one airline is answered
+    right from it (a live call of 2026-11-18 answered flyadeal from the 2 of its 5 listed)."""
 
     airline: str
     flights: int
+    first_departs: str
+    last_departs: str
     cheapest: int
+    cheapest_departs: str
 
 
 class LegList(_Data):

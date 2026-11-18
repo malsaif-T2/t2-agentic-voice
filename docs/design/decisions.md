@@ -4388,3 +4388,31 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   too. Only https is taken, so a `javascript:` or `data:` address never reaches a page.
 - **Evidence:** tests/t2_agentic_voice/domain/test_card_links.py,
   tests/t2_agentic_voice/test_browser_card_links.py.
+
+## D-127 · The lean agent reads flights through a port; SerpApi's Google Flights is its real source, and on real data it books nothing but gives a link · 2026-11-18 · Accepted (the owner's goal of 2026-11-18 and their answers: "lets proceed with SerpApi", "Button on the card", every route, connections and airline; plan 011)
+
+- **Context:** the manager's goal: real flights, availability and prices of the Saudi airlines for
+  an internal agent that searches and informs, with a link in place of booking. No airline has a
+  public API, every GDS or NDC route needs a contract, Amadeus' self-service closed on 2026-07-17,
+  and Almosafer has no public API; SerpApi's Google Flights is self-serve and, in Phase 0 on
+  2026-11-18, gave Saudia, flynas, flyadeal and Riyadh Air (RX 401 Riyadh to London) with flight
+  numbers and SAR prices in 1.1 to 4.1 s a search.
+- **Decision:** the flight app's lean agent reads flights through `FlightData`
+  (flight_voice/flight_data/port.py), with three sources behind it (`FLIGHT_VOICE_FLIGHT_DATA`):
+  the mock airline (the default; the tests and run F, exact), SerpApi (`serpapi`) and a replay of
+  recorded SerpApi answers (`recorded`). Each leg is a one-way search, the way out and the way
+  back at once; a span is one fare-calendar search, day by day (at most 14 days) when the
+  calendar has no prices; a price is the provider's for the whole party, said "as of now"; an
+  offer's id is its flights and day (`SV1020-2026-11-19`); times are each airport's local time as
+  given, with no time zones (no tzdata offline). The trip keeps the offers the caller heard, so a
+  pick and a total never change behind the caller's back. A search may take 12 s (a cold first
+  search passed 8 s); a failure is said as one, never as no flights.
+- **On real data,** Saad is T2's flight assistant (the owner's "Saad, T2 flight assistant"),
+  `book_trip` is not registered and no booking may be claimed; `booking_link` puts on the trip
+  card a link per leg (D-126): a Google Flights search for that leg, filtered to its airline, as
+  Google reads it in a browser (checked 2026-11-18: "for 2 adults" is read; a flight number, a
+  cabin, two airlines in one filter and an Arabic page with the English text are not), and Saad
+  says which flight to pick there.
+- **Consequences:** the scripted agent stays on the mock airline. A SerpApi search is a scrape of
+  Google (Google's suit against SerpApi was dismissed twice in 2026, with leave to refile); the
+  port lets a contracted provider replace it. The free tier gives 250 searches a month.

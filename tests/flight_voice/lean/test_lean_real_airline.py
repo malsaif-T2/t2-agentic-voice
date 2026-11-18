@@ -47,6 +47,10 @@ def test_a_listing_that_leaves_flights_out_says_another_search_gives_an_airlines
     assert MORE_REAL in answer["note"]
     counted = {a["airline"]: a["flights"] for a in day["airlines"]}
     assert counted == {"Saudia": 11, "flyadeal": 6, "flynas": 5}
+    # Each airline's own times, so one airline's question is answered right from the summary.
+    adeal = next(a for a in day["airlines"] if a["airline"] == "flyadeal")
+    assert (adeal["first_departs"], adeal["last_departs"]) == ("05:20", "18:45")
+    assert (adeal["cheapest"], adeal["cheapest_departs"]) == (499, "16:25")
     listed = [o for o in day["options"] if o["airline"] == "flyadeal"]
     assert len(listed) < counted["flyadeal"]  # the listing alone would miss some
     narrowed = data(call.find(destination="Jeddah", depart=DAY, airline="flyadeal"))
