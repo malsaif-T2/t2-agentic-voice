@@ -6,7 +6,9 @@ does not book (the trip's summary ends with the airline's own site).
 Each block is a `string.Template`, filled with the persona's names as the file is: `intro` (the
 first line), `listing` (added to the line on how a leg's day is said), `span`, `booking` (the
 section on the trip once complete), `too_far` (a day past the last, in the date line) and
-`beyond` (what the line cannot do).
+`beyond` (what the line cannot do); in the Saudi file, `ask_saudi` and `ask_msa`, the closing
+question among the register's examples: the mock's offers to book, the real network's to look at
+another day, since it books nothing.
 """
 
 from __future__ import annotations
@@ -92,6 +94,8 @@ _MOCK: Final[dict[Tag, dict[str, str]]] = {
             "changes to a past booking: say in one sentence that you cannot do it on this "
             "line."
         ),
+        "ask_saudi": "«تبيني أحجزها؟»",
+        "ask_msa": "«هل أحجزها لك؟»",
     },
 }
 _INTRO_EN: Final = (
@@ -149,6 +153,8 @@ _REAL: Final[dict[Tag, dict[str, str]]] = {
         "span": _SPAN,
         "booking": _BOOKING.format(ar=" («حجزت», «تم الحجز»)"),
         "beyond": _BEYOND,
+        "ask_saudi": "«تبي أشوف لك يوم ثاني؟»",
+        "ask_msa": "«هل أبحث لك عن يوم آخر؟»",
     },
 }
 _TOO_FAR: Final[dict[Network, str]] = {
