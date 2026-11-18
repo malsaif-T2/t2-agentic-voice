@@ -3,14 +3,19 @@ matches what was said"), and what each call keeps for it.
 
 `book_trip` books the trip chosen so far only when all of these hold (`confirmed`):
 - the trip is complete (the tool checks it: every leg chosen, seats for the travelers);
-- since the trip was last completed or changed, a reply of the agent states the trip's total;
-- that reply played at least up to the total: where the total ends in its text, over the text's
-  length, is at most the reply's `played_fraction`;
+- since the trip was last completed or changed, a reply of the agent ended;
 - the caller spoke after that reply: a turn heard after it ended; or, for a reply cut short, a
   turn later than the one it answered, heard before it ended (`cut_by`); or a turn later than
-  the one it answered, heard before it ended, whose speech began once the part of the reply
-  that states the total had played (`heard_over`: what of the reply had played then, the
-  event's `reply_played`, begins the reply's text and states the total). A turn that cuts a
+  the one it answered, heard before it ended, whose speech began once some of the reply had
+  played (`spoke_over`: what of the reply had played then, the event's `reply_played`, is not
+  empty and begins the reply's text).
+
+The reply need not state the total: the owner's ruling of 2026-11-18, loosening D-113 ("the
+confirmation can be done before the agent saying the total, I have it on screen"); the review
+card shows it, and the caller has heard the fares. What stays is that the caller spoke after the
+trip as it is now was set, so a yes said to a trip before a change never books the changed trip
+(the owner's call of 2026-11-18: a yes to 09:30, then 18:15 chosen and booked in the same reply,
+refused). A turn that cuts a
   reply can end before the reply's end is told: its transcript comes first, then the overlap's
   verdict stops the reply, so its `UserTurnEnded` comes before the reply's `AgentSpeechEnded`;
   so does a yes said over the closing question, which the library answers only once the reply
@@ -164,21 +169,21 @@ def cut_by(said: Said, before: Sequence[Seen]) -> bool:
     return any(isinstance(e, Heard) and e.turn is not None and e.turn > answered for e in before)
 
 
-def heard_over(said: Said, before: Sequence[Seen], total: int) -> bool:
+def spoke_over(said: Said, before: Sequence[Seen]) -> bool:
     """Whether a turn of the caller's later than the one `said` answered, heard among `before`
-    (the events seen before `said` ended), began once the part of `said` that states `total`
-    had played: what had played then (`Heard.played`) begins its text and states the total (the
-    module's docstring)."""
+    (the events seen before `said` ended), began once some of `said` had played: what had played
+    then (`Heard.played`) is not empty and begins its text (the module's docstring)."""
     if said.turn is None:
         return False
     answered = said.turn
-    for each in before:
-        if not isinstance(each, Heard) or each.turn is None or each.turn <= answered:
-            continue
-        played = each.played
-        if played and said.text.startswith(played) and stated_at(played, total) is not None:
-            return True
-    return False
+    return any(
+        isinstance(each, Heard)
+        and each.turn is not None
+        and each.turn > answered
+        and bool(each.played)
+        and said.text.startswith(each.played or "")
+        for each in before
+    )
 
 
 class BookingCheck:
@@ -230,8 +235,10 @@ class BookingCheck:
             held.trip, held.since = key, len(self._events(call_id))
 
     def confirmed(self, call_id: str, draft: TripDraft, total: int) -> bool:
-        """Whether a reply since `draft` was marked states `total`, played up to it, and the
-        caller spoke after it (the module's docstring); a trip not marked as it is never is."""
+        """Whether a reply of the agent's ended since `draft` was marked and the caller spoke
+        after it (the module's docstring); `total` need no longer be said in the reply (the
+        owner's ruling of 2026-11-18). A trip not marked as it is never is."""
+        del total
         held = self._call(call_id)
         if _key(draft) != held.trip:
             self.mark(call_id, draft)
@@ -240,8 +247,7 @@ class BookingCheck:
         for n, each in enumerate(seen):
             if not isinstance(each, Said):
                 continue
-            at = stated_at(each.text, total)
-            if at is not None and at <= each.played:
-                after = any(isinstance(later, Heard) for later in seen[n + 1 :])
-                return after or cut_by(each, seen[:n]) or heard_over(each, seen[:n], total)
+            after = any(isinstance(later, Heard) for later in seen[n + 1 :])
+            if after or cut_by(each, seen[:n]) or spoke_over(each, seen[:n]):
+                return True
         return False

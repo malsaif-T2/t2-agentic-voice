@@ -1,12 +1,12 @@
 """The lean agent's booking check (flight_voice/lean/booking_check.py), fed the call's events as
-the runtime's observers would: it holds once a reply since the trip was completed states its
-total, played up to it, and the caller spoke after it (a later turn that cut the reply past its
-total counting though its transcript came before the reply's end); and it refuses with no total
-said, the total cut off before it played, no caller turn after the reply, and the trip changed
-after the summary. A yes said over the closing question, which the library answers only once the
-reply has ended (D-116), so its transcript came first, holds when what had played as its speech
-began (`UserTurnEnded.reply_played`) begins the reply and states the total; never when it began
-before the total, over another reply, or is the turn the reply answers. A total is read in
+the runtime's observers would: it holds once a reply ended since the trip was completed and the
+caller spoke after it, its total said or not (the owner's ruling of 2026-11-18; a later turn that
+cut the reply counting though its transcript came before the reply's end); and it refuses with no
+caller turn after the reply, and the trip changed after the reply. A yes said over the closing
+question, which the library answers only once the reply has ended (D-116), so its transcript came
+first, holds when what had played as its speech began (`UserTurnEnded.reply_played`) begins the
+reply; never when nothing had played, over another reply, or is the turn the reply answers. A
+total is read in
 digits (a thousands mark, a space before three digits among them, Arabic-Indic digits) or in
 words in English, Saudi Arabic and MSA; a call held in text reads its events from the call
 itself, and an ended call's are dropped."""
@@ -39,20 +39,19 @@ def test_the_check_holds_once_the_total_played_and_the_caller_spoke() -> None:
     assert _holds(call)
 
 
-def test_no_total_said_is_refused() -> None:
+def test_a_yes_books_with_no_total_said() -> None:
+    # The owner, 2026-11-18: "the confirmation can be done before the agent saying the total".
     call = chosen_trip()
     call.said("Riyadh to Jeddah and back, economy, one traveler. Shall I book it?")
-    call.heard("yes")
     assert not _holds(call)
+    call.heard("yes")
+    assert _holds(call)
 
 
-def test_a_total_cut_off_before_it_played_is_refused() -> None:
+def test_a_yes_after_a_reply_cut_before_its_total_books() -> None:
     call = chosen_trip()
     call.said(_summary(call), played=0.5)
     call.heard("yes")
-    assert not _holds(call)
-    call.said(_summary(call) + " Shall I book it?", played=0.9)  # said again, heard past it
-    call.heard("yes please")
     assert _holds(call)
 
 
@@ -73,9 +72,9 @@ def test_a_turn_before_the_reply_ended_counts_only_once_its_total_played() -> No
     assert not _holds(whole)
     early = chosen_trip()
     early.heard("the first ones")
-    early.heard("wait, wait")  # turn 2 cut the summary before its total played
+    early.heard("yes")  # turn 2 cut the summary before its total played: it holds now
     early.said(_summary(early) + " Shall I book it?", played=0.3, turn=1)
-    assert not _holds(early)
+    assert _holds(early)
     same = chosen_trip()
     same.heard("the first ones")  # turn 1 itself, heard before the cut reply that answers it
     same.said(_summary(same) + " Shall I book it?", played=0.93, turn=1)
@@ -92,12 +91,16 @@ def test_a_yes_over_the_closing_question_holds_once_the_total_had_played() -> No
 
 
 def test_a_yes_over_the_reply_before_its_total_played_is_refused() -> None:
-    for case in ("before the total", "nothing played", "another reply", "silent"):
+    early = chosen_trip()
+    early.heard("the first ones")
+    early.heard("yes", played="Riyadh to Jeddah and back.")  # before the total: it holds now
+    early.said(f"Riyadh to Jeddah and back. {_summary(early)} Shall I book it?", turn=1)
+    assert _holds(early)
+    for case in ("nothing played", "another reply", "silent"):
         call = chosen_trip()
         call.heard("the first ones")
         opening = "Riyadh to Jeddah and back."
         played = {
-            "before the total": opening,
             "nothing played": "",
             "another reply": f"Said before: {call.total()} riyals.",
             "silent": None,

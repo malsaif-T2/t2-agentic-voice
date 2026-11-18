@@ -3976,6 +3976,14 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Evidence:** the owner's live calls of 2026-11-17 and their five diagnoses (confirmation,
   picks, cards, ranges and listing, nonsense); the tests in `tests/flight_voice/lean/`,
   `tests/flight_voice/test_server_lean.py` and `tests/flight_voice/evals/test_run_lean.py`.
+- *Amended 2026-11-18, the owner's ruling:* "lets lossen it a bit, the confirmation can be done
+  before the agent saying the total, I have it on screen and also it probably said it with 'and
+  the cheapest is 840 riyal' or something". The booking check no longer needs a reply that states
+  the trip's total and played past it: a reply of the agent's ended since the trip was last
+  completed or changed, and a caller turn after it, are enough. A yes said before a change still
+  never books the changed trip (the owner's call that morning: a yes to the 09:30 summary, then
+  18:15 chosen and booked in the same reply, refused). The owner also ruled that saying the
+  reference unasked is fine ("it is not a hard requirement"), so `book_trip` gives it again.
 
 ## D-114 · ElevenLabs v4 Turbo is the default text-to-speech, in the owner's voice; Groq's Orpheus the fallback; Telnyx beside them · 2026-11-17 · Accepted (the owner's pick by ear and their ruling of 2026-11-17, "Make elelevnlabs as the default and groq as the fallback")
 

@@ -80,11 +80,22 @@ def test_an_arabic_booking_card_says_booked_in_arabic() -> None:
 
 def test_a_trip_not_confirmed_books_nothing() -> None:
     call = chosen_trip()
-    assert data(call.book()) == NOT_CONFIRMED
+    assert data(call.book()) == NOT_CONFIRMED  # nothing said or heard since the trip was set
+    # The owner's call of 2026-11-18: a yes to the trip before it changed never books the
+    # changed one, total said or not.
     call.said("Shall I book the trip for you?")
     call.heard("yes")
+    call.choose(travelers=2)
     assert data(call.book()) == NOT_CONFIRMED
     assert call.airline.bookings.writes == []
+
+
+def test_a_yes_books_with_no_total_said() -> None:
+    # The owner, 2026-11-18: "the confirmation can be done before the agent saying the total".
+    call = chosen_trip()
+    call.said("Shall I book the trip for you?")
+    call.heard("yes")
+    assert data(call.book())["status"] == "booked"
 
 
 def test_a_trip_not_complete_books_nothing() -> None:

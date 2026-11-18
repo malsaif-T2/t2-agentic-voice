@@ -1459,6 +1459,14 @@ Block 0.
   2026-11-18 on the reference ("saying the reference unasked is fine, it is not a hard
   requirement"): the booking gives it again, and run F's lean `reference` fails only a turn that
   asks for it and is not answered with it, an amendment registered before any result of it.
+- 2026-11-18: the owner's test call on the second build (05:57) and their rulings. Najdi: the
+  call was MSA throughout, because the library reads a caller as MSA unless a dialect word is on
+  its list («ودي», «الجاي», «طويل العمر» are not), so Najdi by default for the flight agent and a
+  guard against a false "booked" claim are being built (the model said «تم حجز رحلتك» after a
+  refused book_trip). The booking check loosened by the owner ("the confirmation can be done
+  before the agent saying the total, I have it on screen"): a caller turn after a reply since the
+  trip was set is enough (D-113's amendment). Live, that call's mean time to first audio was
+  2.54 s (8 turns; the earlier calls' 2.93 s), its search turn 2.9 s (earlier about 4.4 s).
 - 2026-11-17: the text-to-speech candidates for the owner's pick by ear (D-114, branch
   `plan-010-tts`): `tts.provider` takes `elevenlabs`, `groq` and `telnyx`, each speaking the
   provider's default voices with `tts.languages` unset. The owner picked ElevenLabs v4 Turbo in

@@ -1643,15 +1643,15 @@ own.
 2. *One booking check, in the app's code* (`lean/booking_check.py`; the owner: "code only checks
    that the booking matches what was said"). `book_trip` books the trip chosen so far only when
    the trip is complete (every leg chosen, seats for the travelers in the cabin); since the trip
-   was last completed or changed, a reply of the agent states its total (the number, in digits
-   or in words, normalized as the guard normalizes, through the `languages` facade, a space
-   before three digits a thousands mark as the comma is: "3 080", f-dev-lean-4's f09); that reply
-   played at least up to the total (where the total ends, over the text's length, is at most its
-   `played_fraction`); and the caller spoke after that reply (a turn heard after it ended, or,
-   for a reply cut short, a later turn heard before it ended: a turn that cuts a reply can end
-   before the reply's end is told; or a later turn heard before it ended whose speech began once
-   the part that states the total had played, as `UserTurnEnded.reply_played` says: a yes over
-   the closing question, answered once the reply ends, D-116). The check reads the call's events,
+   was last completed or changed, a reply of the agent ended; and the caller spoke after that
+   reply (a turn heard after it ended, or, for a reply cut short, a later turn heard before it
+   ended: a turn that cuts a reply can end before the reply's end is told; or a later turn heard
+   before it ended whose speech began once some of the reply had played, as
+   `UserTurnEnded.reply_played` says: a yes over the closing question, answered once the reply
+   ends, D-116). Until 2026-11-18 the reply also had to state the trip's total and play past it;
+   the owner loosened that ("the confirmation can be done before the agent saying the total, I
+   have it on screen"): the review card shows the total and the caller has heard the fares. What
+   stays is a caller turn after the trip as it is now was set. The check reads the call's events,
    kept per call and dropped at `CallEnded` as the trip book drops a trip (a call held in text
    reads them from `TextCall.emitted`); the tools mark the trip each time they write it, so a
    total said before a change never books the changed trip. When the check fails, `book_trip`
