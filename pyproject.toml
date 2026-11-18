@@ -180,6 +180,10 @@ cmd = "python -m ole5_voice.evals.action_run"
 help = "Run F: the flight agent's scripted calls over one split, each three times, on the mock airline, checked in code (spends: model, effort and cap on its command line; --out under the main checkout's var/runs)"
 cmd = "python -m flight_voice.evals.run"
 
+[tool.poe.tasks.smoke-flights]
+help = "The opt-in live smoke run of the flight agent's SerpApi source: one RUH-JED day and a span of three days, counts and wall times only (spends; needs FLIGHT_VOICE_SERPAPI_KEY, `--env-file .env`)"
+cmd = "python -m flight_voice.flight_data.smoke"
+
 [tool.poe.tasks.record]
 help = "Record and review the golden set's new takes in Chrome, on a page served on 127.0.0.1"
 cmd = "python -m ole5_voice.evals.recorder"

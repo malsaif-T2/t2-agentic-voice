@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import pytest
 from flight_voice.flight_data.cache import CachedFlightData
@@ -24,7 +24,7 @@ from t2_agentic_voice.languages import whisper_prompt
 from tests.flight_voice.flight_data.serpapi_support import FIXTURES, query
 
 
-def _fields(**values: object) -> FlightDataFields:
+def _fields(**values: Any) -> FlightDataFields:
     """The settings given, the others their defaults, with nothing read from the shell (the
     mixin has no prefix of its own)."""
     return FlightDataFields.model_construct(**values)
