@@ -1,0 +1,1054 @@
+{
+ "params": {
+  "engine": "google_flights",
+  "type": "2",
+  "departure_id": "JED",
+  "arrival_id": "DXB",
+  "outbound_date": "2026-11-26",
+  "travel_class": "1",
+  "adults": "1",
+  "currency": "SAR",
+  "gl": "sa",
+  "hl": "en",
+  "stops": "2"
+ },
+ "status": 200,
+ "body": {
+  "search_metadata": {
+   "id": "6afdb5414f19eea1e65008d8",
+   "status": "Success",
+   "json_endpoint": "https://serpapi.com/searches/VEivWCoI4dB1hCiCPBupTZi8LECjhBWPlPVaUysT6Sg/6afdb5414f19eea1e65008d8.json",
+   "markdown_endpoint": "https://serpapi.com/searches/VEivWCoI4dB1hCiCPBupTZi8LECjhBWPlPVaUysT6Sg/6afdb5414f19eea1e65008d8.md",
+   "created_at": "2026-11-18 14:25:05 UTC",
+   "processed_at": "2026-11-18 14:25:05 UTC",
+   "google_flights_url": "https://www.google.com/travel/flights?hl=en&gl=sa&curr=SAR&tfs=CBwQAhoeEgoyMDI2LTExLTI2agcIARIDSkVEcgcIARIDRFhCQAFIAXABmAEC&tfu=EgIIAQ",
+   "raw_html_file": "https://serpapi.com/searches/VEivWCoI4dB1hCiCPBupTZi8LECjhBWPlPVaUysT6Sg/6afdb5414f19eea1e65008d8.html",
+   "prettify_html_file": "https://serpapi.com/searches/VEivWCoI4dB1hCiCPBupTZi8LECjhBWPlPVaUysT6Sg/6afdb5414f19eea1e65008d8.prettify",
+   "total_time_taken": 1.66
+  },
+  "search_parameters": {
+   "engine": "google_flights",
+   "hl": "en",
+   "gl": "sa",
+   "type": "2",
+   "departure_id": "JED",
+   "arrival_id": "DXB",
+   "outbound_date": "2026-11-26",
+   "adults": 1,
+   "currency": "SAR"
+  },
+  "best_flights": [
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-26 12:30"
+      },
+      "arrival_airport": {
+       "name": "Prince Mohammad Bin Abdulaziz International Airport",
+       "id": "MED",
+       "time": "2026-11-26 13:30"
+      },
+      "duration": 60,
+      "airplane": "Airbus A320",
+      "airline": "Saudia",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+      "travel_class": "Economy",
+      "flight_number": "SV 8004",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "Free Wi-Fi",
+       "In-seat power & USB outlets",
+       "Stream media to your device",
+       "Carbon emissions estimate: 60 kg"
+      ]
+     },
+     {
+      "departure_airport": {
+       "name": "Prince Mohammad Bin Abdulaziz International Airport",
+       "id": "MED",
+       "time": "2026-11-26 15:55"
+      },
+      "arrival_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-26 19:30"
+      },
+      "duration": 155,
+      "airplane": "Airbus A321",
+      "airline": "Saudia",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+      "travel_class": "Economy",
+      "flight_number": "SV 550",
+      "legroom": "31 in",
+      "extensions": [
+       "Average legroom (31 in)",
+       "Free Wi-Fi",
+       "In-seat USB outlet",
+       "On-demand video",
+       "Carbon emissions estimate: 165 kg"
+      ]
+     }
+    ],
+    "layovers": [
+     {
+      "duration": 145,
+      "name": "Prince Mohammad Bin Abdulaziz International Airport",
+      "id": "MED"
+     }
+    ],
+    "total_duration": 360,
+    "carbon_emissions": {
+     "this_flight": 226000,
+     "typical_for_this_route": 156000,
+     "difference_percent": 45
+    },
+    "price": 565,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+    "booking_token": "WyJDalJJVlcxU2JYUkhjRUpuYUUxQlIwRjNlVkZDUnkwdExTMHRMUzB0TFMxdmEyVm5PVUZCUVVGQlIzSTVkRlZKUmxCdmVHbEJFZ3hUVmpnd01EUjhVMVkxTlRBYUN3aXB1UU1RQWhvRFUwRlNPQnh3ejNVPSIsW1siSkVEIiwiMjAyNi0xMS0yNiIsIk1FRCIsbnVsbCwiU1YiLCI4MDA0Il0sWyJNRUQiLCIyMDI2LTExLTI2IiwiRFhCIixudWxsLCJTViIsIjU1MCJdXV0="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-26 14:30"
+      },
+      "arrival_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-26 18:30"
+      },
+      "duration": 180,
+      "airplane": "Airbus A320neo",
+      "airline": "Flynas",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+      "travel_class": "Economy",
+      "flight_number": "XY 509",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "In-seat USB outlet",
+       "Carbon emissions estimate: 139 kg"
+      ]
+     }
+    ],
+    "total_duration": 180,
+    "carbon_emissions": {
+     "this_flight": 140000,
+     "typical_for_this_route": 156000,
+     "difference_percent": -10
+    },
+    "price": 630,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+    "booking_token": "WyJDalJJVlcxU2JYUkhjRUpuYUUxQlIwRjNlVkZDUnkwdExTMHRMUzB0TFMxdmEyVm5PVUZCUVVGQlIzSTVkRlZKUmxCdmVHbEJFZ1ZZV1RVd09Sb0xDSmZzQXhBQ0dnTlRRVkk0SEhDV2d3RT0iLFtbIkpFRCIsIjIwMjYtMTEtMjYiLCJEWEIiLG51bGwsIlhZIiwiNTA5Il1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-26 12:15"
+      },
+      "arrival_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-26 16:00"
+      },
+      "duration": 165,
+      "airplane": "Airbus A330",
+      "airline": "Saudia",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+      "travel_class": "Economy",
+      "flight_number": "SV 588",
+      "legroom": "32 in",
+      "extensions": [
+       "Above average legroom (32 in)",
+       "Wi-Fi for a fee",
+       "In-seat power & USB outlets",
+       "On-demand video",
+       "Carbon emissions estimate: 130 kg"
+      ]
+     }
+    ],
+    "total_duration": 165,
+    "carbon_emissions": {
+     "this_flight": 131000,
+     "typical_for_this_route": 156000,
+     "difference_percent": -16
+    },
+    "price": 653,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+    "booking_token": "WyJDalJJVlcxU2JYUkhjRUpuYUUxQlIwRjNlVkZDUnkwdExTMHRMUzB0TFMxdmEyVm5PVUZCUVVGQlIzSTVkRlZKUmxCdmVHbEJFZ1ZUVmpVNE9Cb0xDSlQrQXhBQ0dnTlRRVkk0SEhEN2h3RT0iLFtbIkpFRCIsIjIwMjYtMTEtMjYiLCJEWEIiLG51bGwsIlNWIiwiNTg4Il1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-26 12:45"
+      },
+      "arrival_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-26 16:35"
+      },
+      "duration": 170,
+      "airplane": "Boeing 737MAX 8 Passenger",
+      "airline": "flydubai",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/FZ.png",
+      "travel_class": "Economy",
+      "flight_number": "FZ 910",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "In-seat USB outlet",
+       "On-demand video",
+       "Carbon emissions estimate: 145 kg"
+      ]
+     }
+    ],
+    "total_duration": 170,
+    "carbon_emissions": {
+     "this_flight": 146000,
+     "typical_for_this_route": 156000,
+     "difference_percent": -6
+    },
+    "price": 946,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/FZ.png",
+    "booking_token": "WyJDalJJVlcxU2JYUkhjRUpuYUUxQlIwRjNlVkZDUnkwdExTMHRMUzB0TFMxdmEyVm5PVUZCUVVGQlIzSTVkRlZKUmxCdmVHbEJFZ1ZHV2preE1Cb0xDSWpqQlJBQ0dnTlRRVkk0SEhEOHhBRT0iLFtbIkpFRCIsIjIwMjYtMTEtMjYiLCJEWEIiLG51bGwsIkZaIiwiOTEwIl1dXQ=="
+   }
+  ],
+  "other_flights": [
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-26 12:00"
+      },
+      "arrival_airport": {
+       "name": "Prince Naif Bin Abdulaziz International Airport",
+       "id": "ELQ",
+       "time": "2026-11-26 13:20"
+      },
+      "duration": 80,
+      "airplane": "Airbus A320",
+      "airline": "Saudia",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+      "travel_class": "Economy",
+      "flight_number": "SV 8610",
+      "legroom": "31 in",
+      "extensions": [
+       "Average legroom (31 in)",
+       "Free Wi-Fi",
+       "In-seat power & USB outlets",
+       "On-demand video",
+       "Carbon emissions estimate: 110 kg"
+      ]
+     },
+     {
+      "departure_airport": {
+       "name": "Prince Naif Bin Abdulaziz International Airport",
+       "id": "ELQ",
+       "time": "2026-11-26 23:05"
+      },
+      "arrival_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-27 02:25"
+      },
+      "duration": 140,
+      "airplane": "Airbus A320",
+      "airline": "Saudia",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+      "travel_class": "Economy",
+      "flight_number": "SV 592",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "Free Wi-Fi",
+       "In-seat power & USB outlets",
+       "Stream media to your device",
+       "Carbon emissions estimate: 133 kg"
+      ],
+      "overnight": true
+     }
+    ],
+    "layovers": [
+     {
+      "duration": 585,
+      "name": "Prince Naif Bin Abdulaziz International Airport",
+      "id": "ELQ"
+     }
+    ],
+    "total_duration": 805,
+    "carbon_emissions": {
+     "this_flight": 244000,
+     "typical_for_this_route": 156000,
+     "difference_percent": 56
+    },
+    "price": 550,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+    "booking_token": "WyJDalJJVlcxU2JYUkhjRUpuYUUxQlIwRjNlVkZDUnkwdExTMHRMUzB0TFMxdmEyVm5PVUZCUVVGQlIzSTVkRlZKUmxCdmVHbEJFZ3hUVmpnMk1UQjhVMVkxT1RJYUN3allyUU1RQWhvRFUwRlNPQnh3d25JPSIsW1siSkVEIiwiMjAyNi0xMS0yNiIsIkVMUSIsbnVsbCwiU1YiLCI4NjEwIl0sWyJFTFEiLCIyMDI2LTExLTI2IiwiRFhCIixudWxsLCJTViIsIjU5MiJdXV0="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-26 07:15"
+      },
+      "arrival_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-26 11:15"
+      },
+      "duration": 180,
+      "airplane": "Airbus A320neo",
+      "airline": "Flynas",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+      "travel_class": "Economy",
+      "flight_number": "XY 501",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "In-seat USB outlet",
+       "Carbon emissions estimate: 139 kg"
+      ]
+     }
+    ],
+    "total_duration": 180,
+    "carbon_emissions": {
+     "this_flight": 140000,
+     "typical_for_this_route": 156000,
+     "difference_percent": -10
+    },
+    "price": 580,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/XY.png",
+    "booking_token": "WyJDalJJVlcxU2JYUkhjRUpuYUUxQlIwRjNlVkZDUnkwdExTMHRMUzB0TFMxdmEyVm5PVUZCUVVGQlIzSTVkRlZKUmxCdmVHbEJFZ1ZZV1RVd01Sb0xDSS9GQXhBQ0dnTlRRVkk0SEhEaGVBPT0iLFtbIkpFRCIsIjIwMjYtMTEtMjYiLCJEWEIiLG51bGwsIlhZIiwiNTAxIl1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-26 06:00"
+      },
+      "arrival_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-26 09:45"
+      },
+      "duration": 165,
+      "airplane": "Airbus A321",
+      "airline": "Saudia",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+      "travel_class": "Economy",
+      "flight_number": "SV 566",
+      "legroom": "31 in",
+      "extensions": [
+       "Average legroom (31 in)",
+       "Free Wi-Fi",
+       "In-seat USB outlet",
+       "On-demand video",
+       "Carbon emissions estimate: 179 kg"
+      ]
+     }
+    ],
+    "total_duration": 165,
+    "carbon_emissions": {
+     "this_flight": 179000,
+     "typical_for_this_route": 156000,
+     "difference_percent": 15
+    },
+    "price": 603,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+    "booking_token": "WyJDalJJVlcxU2JYUkhjRUpuYUUxQlIwRjNlVkZDUnkwdExTMHRMUzB0TFMxdmEyVm5PVUZCUVVGQlIzSTVkRlZKUmxCdmVHbEJFZ1ZUVmpVMk5ob0xDSXpYQXhBQ0dnTlRRVkk0SEhER2ZRPT0iLFtbIkpFRCIsIjIwMjYtMTEtMjYiLCJEWEIiLG51bGwsIlNWIiwiNTY2Il1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-26 01:10"
+      },
+      "arrival_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-26 04:55"
+      },
+      "duration": 165,
+      "airplane": "Airbus A321",
+      "airline": "Saudia",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+      "travel_class": "Economy",
+      "flight_number": "SV 590",
+      "legroom": "31 in",
+      "extensions": [
+       "Average legroom (31 in)",
+       "Free Wi-Fi",
+       "In-seat USB outlet",
+       "On-demand video",
+       "Carbon emissions estimate: 179 kg"
+      ],
+      "overnight": true,
+      "often_delayed_by_over_30_min": true
+     }
+    ],
+    "total_duration": 165,
+    "carbon_emissions": {
+     "this_flight": 179000,
+     "typical_for_this_route": 156000,
+     "difference_percent": 15
+    },
+    "price": 653,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+    "booking_token": "WyJDalJJVlcxU2JYUkhjRUpuYUUxQlIwRjNlVkZDUnkwdExTMHRMUzB0TFMxdmEyVm5PVUZCUVVGQlIzSTVkRlZKUmxCdmVHbEJFZ1ZUVmpVNU1Cb0xDSlQrQXhBQ0dnTlRRVkk0SEhEN2h3RT0iLFtbIkpFRCIsIjIwMjYtMTEtMjYiLCJEWEIiLG51bGwsIlNWIiwiNTkwIl1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-26 09:15"
+      },
+      "arrival_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-26 13:00"
+      },
+      "duration": 165,
+      "airplane": "Airbus A321",
+      "airline": "Saudia",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+      "travel_class": "Economy",
+      "flight_number": "SV 568",
+      "legroom": "31 in",
+      "extensions": [
+       "Average legroom (31 in)",
+       "Free Wi-Fi",
+       "In-seat USB outlet",
+       "On-demand video",
+       "Carbon emissions estimate: 179 kg"
+      ]
+     }
+    ],
+    "total_duration": 165,
+    "carbon_emissions": {
+     "this_flight": 179000,
+     "typical_for_this_route": 156000,
+     "difference_percent": 15
+    },
+    "price": 653,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+    "booking_token": "WyJDalJJVlcxU2JYUkhjRUpuYUUxQlIwRjNlVkZDUnkwdExTMHRMUzB0TFMxdmEyVm5PVUZCUVVGQlIzSTVkRlZKUmxCdmVHbEJFZ1ZUVmpVMk9Cb0xDSlQrQXhBQ0dnTlRRVkk0SEhEN2h3RT0iLFtbIkpFRCIsIjIwMjYtMTEtMjYiLCJEWEIiLG51bGwsIlNWIiwiNTY4Il1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-26 22:40"
+      },
+      "arrival_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-27 02:25"
+      },
+      "duration": 165,
+      "airplane": "Airbus A321",
+      "airline": "Saudia",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+      "travel_class": "Economy",
+      "flight_number": "SV 598",
+      "legroom": "32 in",
+      "extensions": [
+       "Above average legroom (32 in)",
+       "Free Wi-Fi",
+       "Carbon emissions estimate: 202 kg"
+      ],
+      "overnight": true
+     }
+    ],
+    "total_duration": 165,
+    "carbon_emissions": {
+     "this_flight": 203000,
+     "typical_for_this_route": 156000,
+     "difference_percent": 30
+    },
+    "price": 653,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+    "booking_token": "WyJDalJJVlcxU2JYUkhjRUpuYUUxQlIwRjNlVkZDUnkwdExTMHRMUzB0TFMxdmEyVm5PVUZCUVVGQlIzSTVkRlZKUmxCdmVHbEJFZ1ZUVmpVNU9Cb0xDSlQrQXhBQ0dnTlRRVkk0SEhEN2h3RT0iLFtbIkpFRCIsIjIwMjYtMTEtMjYiLCJEWEIiLG51bGwsIlNWIiwiNTk4Il1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-26 06:05"
+      },
+      "arrival_airport": {
+       "name": "Ankara Esenboga Airport",
+       "id": "ESB",
+       "time": "2026-11-26 09:35"
+      },
+      "duration": 210,
+      "airplane": "Boeing 737MAX 8 Passenger",
+      "airline": "AJet",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/VF.png",
+      "travel_class": "Economy",
+      "flight_number": "VF 568",
+      "legroom": "29 in",
+      "extensions": [
+       "Below average legroom (29 in)",
+       "In-seat USB outlet",
+       "Carbon emissions estimate: 159 kg"
+      ],
+      "often_delayed_by_over_30_min": true,
+      "plane_and_crew_by": "Turkish Airlines"
+     },
+     {
+      "departure_airport": {
+       "name": "Ankara Esenboga Airport",
+       "id": "ESB",
+       "time": "2026-11-26 22:20"
+      },
+      "arrival_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-27 04:25"
+      },
+      "duration": 305,
+      "airplane": "Boeing 737MAX 8 Passenger",
+      "airline": "AJet",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/VF.png",
+      "travel_class": "Economy",
+      "flight_number": "VF 549",
+      "legroom": "29 in",
+      "extensions": [
+       "Below average legroom (29 in)",
+       "In-seat USB outlet",
+       "Carbon emissions estimate: 181 kg"
+      ],
+      "overnight": true,
+      "plane_and_crew_by": "Turkish Airlines"
+     }
+    ],
+    "layovers": [
+     {
+      "duration": 765,
+      "name": "Ankara Esenboga Airport",
+      "id": "ESB"
+     }
+    ],
+    "total_duration": 1280,
+    "carbon_emissions": {
+     "this_flight": 340000,
+     "typical_for_this_route": 156000,
+     "difference_percent": 118
+    },
+    "price": 848,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/VF.png",
+    "booking_token": "WyJDalJJVlcxU2JYUkhjRUpuYUUxQlIwRjNlVkZDUnkwdExTMHRMUzB0TFMxdmEyVm5PVUZCUVVGQlIzSTVkRlZKUmxCdmVHbEJFZ3RXUmpVMk9IeFdSalUwT1JvTENNQ1dCUkFDR2dOVFFWSTRISERJc0FFPSIsW1siSkVEIiwiMjAyNi0xMS0yNiIsIkVTQiIsbnVsbCwiVkYiLCI1NjgiXSxbIkVTQiIsIjIwMjYtMTEtMjYiLCJEWEIiLG51bGwsIlZGIiwiNTQ5Il1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-26 18:10"
+      },
+      "arrival_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-26 21:55"
+      },
+      "duration": 165,
+      "airplane": "Boeing 737",
+      "airline": "flydubai",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/FZ.png",
+      "travel_class": "Economy",
+      "flight_number": "FZ 830",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "In-seat USB outlet",
+       "On-demand video",
+       "Carbon emissions estimate: 165 kg"
+      ],
+      "often_delayed_by_over_30_min": true
+     }
+    ],
+    "total_duration": 165,
+    "carbon_emissions": {
+     "this_flight": 166000,
+     "typical_for_this_route": 156000,
+     "difference_percent": 6
+    },
+    "price": 946,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/FZ.png",
+    "booking_token": "WyJDalJJVlcxU2JYUkhjRUpuYUUxQlIwRjNlVkZDUnkwdExTMHRMUzB0TFMxdmEyVm5PVUZCUVVGQlIzSTVkRlZKUmxCdmVHbEJFZ1ZHV2pnek1Cb0xDSWpqQlJBQ0dnTlRRVkk0SEhEOHhBRT0iLFtbIkpFRCIsIjIwMjYtMTEtMjYiLCJEWEIiLG51bGwsIkZaIiwiODMwIl1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-26 17:45"
+      },
+      "arrival_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-26 21:30"
+      },
+      "duration": 165,
+      "airplane": "Airbus A320",
+      "airline": "Saudia",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+      "travel_class": "Economy",
+      "flight_number": "SV 594",
+      "legroom": "30 in",
+      "extensions": [
+       "Average legroom (30 in)",
+       "Free Wi-Fi",
+       "In-seat power & USB outlets",
+       "Stream media to your device",
+       "Carbon emissions estimate: 189 kg"
+      ]
+     }
+    ],
+    "total_duration": 165,
+    "carbon_emissions": {
+     "this_flight": 189000,
+     "typical_for_this_route": 156000,
+     "difference_percent": 21
+    },
+    "price": 1117,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/SV.png",
+    "booking_token": "WyJDalJJVlcxU2JYUkhjRUpuYUUxQlIwRjNlVkZDUnkwdExTMHRMUzB0TFMxdmEyVm5PVUZCUVVGQlIzSTVkRlZKUmxCdmVHbEJFZ1ZUVmpVNU5Cb0xDTlRvQmhBQ0dnTlRRVkk0SEhESjZBRT0iLFtbIkpFRCIsIjIwMjYtMTEtMjYiLCJEWEIiLG51bGwsIlNWIiwiNTk0Il1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-26 11:15"
+      },
+      "arrival_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-26 15:00"
+      },
+      "duration": 165,
+      "airplane": "Boeing 777",
+      "airline": "Emirates",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/EK.png",
+      "travel_class": "Economy",
+      "flight_number": "EK 806",
+      "legroom": "32 in",
+      "extensions": [
+       "Above average legroom (32 in)",
+       "Wi-Fi for a fee",
+       "In-seat power & USB outlets",
+       "On-demand video",
+       "Carbon emissions estimate: 151 kg"
+      ]
+     }
+    ],
+    "total_duration": 165,
+    "carbon_emissions": {
+     "this_flight": 152000,
+     "typical_for_this_route": 156000,
+     "difference_percent": -3
+    },
+    "price": 1526,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/EK.png",
+    "booking_token": "WyJDalJJVlcxU2JYUkhjRUpuYUUxQlIwRjNlVkZDUnkwdExTMHRMUzB0TFMxdmEyVm5PVUZCUVVGQlIzSTVkRlZKUmxCdmVHbEJFZ1ZGU3pnd05ob0xDSmlvQ1JBQ0dnTlRRVkk0SEhEZHZRST0iLFtbIkpFRCIsIjIwMjYtMTEtMjYiLCJEWEIiLG51bGwsIkVLIiwiODA2Il1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-26 07:30"
+      },
+      "arrival_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-26 11:20"
+      },
+      "duration": 170,
+      "airline": "flydubai",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/FZ.png",
+      "travel_class": "Economy",
+      "flight_number": "FZ 832"
+     }
+    ],
+    "total_duration": 170,
+    "carbon_emissions": {
+     "typical_for_this_route": 156000
+    },
+    "price": 1624,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/FZ.png",
+    "booking_token": "WyJDalJJVlcxU2JYUkhjRUpuYUUxQlIwRjNlVkZDUnkwdExTMHRMUzB0TFMxdmEyVm5PVUZCUVVGQlIzSTVkRlZKUmxCdmVHbEJFZ1ZHV2pnek1ob0xDT0QwQ1JBQ0dnTlRRVkk0SEhDUjBnST0iLFtbIkpFRCIsIjIwMjYtMTEtMjYiLCJEWEIiLG51bGwsIkZaIiwiODMyIl1dXQ=="
+   },
+   {
+    "flights": [
+     {
+      "departure_airport": {
+       "name": "King Abdulaziz International Airport",
+       "id": "JED",
+       "time": "2026-11-26 17:30"
+      },
+      "arrival_airport": {
+       "name": "Dubai International Airport",
+       "id": "DXB",
+       "time": "2026-11-26 21:15"
+      },
+      "duration": 165,
+      "airplane": "Boeing 777",
+      "airline": "Emirates",
+      "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/EK.png",
+      "travel_class": "Economy",
+      "flight_number": "EK 804",
+      "legroom": "32 in",
+      "extensions": [
+       "Above average legroom (32 in)",
+       "Wi-Fi for a fee",
+       "In-seat power & USB outlets",
+       "On-demand video",
+       "Carbon emissions estimate: 151 kg"
+      ]
+     }
+    ],
+    "total_duration": 165,
+    "carbon_emissions": {
+     "this_flight": 152000,
+     "typical_for_this_route": 156000,
+     "difference_percent": -3
+    },
+    "price": 1847,
+    "type": "One way",
+    "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/EK.png",
+    "booking_token": "WyJDalJJVlcxU2JYUkhjRUpuYUUxQlIwRjNlVkZDUnkwdExTMHRMUzB0TFMxdmEyVm5PVUZCUVVGQlIzSTVkRlZKUmxCdmVHbEJFZ1ZGU3pnd05Cb0xDUHlpQ3hBQ0dnTlRRVkk0SEhESWdBTT0iLFtbIkpFRCIsIjIwMjYtMTEtMjYiLCJEWEIiLG51bGwsIkVLIiwiODA0Il1dXQ=="
+   }
+  ],
+  "price_insights": {
+   "lowest_price": 550,
+   "price_level": "typical",
+   "typical_price_range": [
+    390,
+    570
+   ],
+   "price_history": [
+    [
+     1789765200,
+     530
+    ],
+    [
+     1789851600,
+     530
+    ],
+    [
+     1789938000,
+     530
+    ],
+    [
+     1790024400,
+     494
+    ],
+    [
+     1790110800,
+     494
+    ],
+    [
+     1790197200,
+     494
+    ],
+    [
+     1790283600,
+     494
+    ],
+    [
+     1790370000,
+     494
+    ],
+    [
+     1790456400,
+     494
+    ],
+    [
+     1790542800,
+     494
+    ],
+    [
+     1790629200,
+     325
+    ],
+    [
+     1790715600,
+     325
+    ],
+    [
+     1790802000,
+     530
+    ],
+    [
+     1790888400,
+     530
+    ],
+    [
+     1790974800,
+     530
+    ],
+    [
+     1791061200,
+     530
+    ],
+    [
+     1791147600,
+     495
+    ],
+    [
+     1791234000,
+     495
+    ],
+    [
+     1791320400,
+     530
+    ],
+    [
+     1791406800,
+     300
+    ],
+    [
+     1791493200,
+     300
+    ],
+    [
+     1791579600,
+     300
+    ],
+    [
+     1791666000,
+     300
+    ],
+    [
+     1791752400,
+     300
+    ],
+    [
+     1791838800,
+     300
+    ],
+    [
+     1791925200,
+     306
+    ],
+    [
+     1792011600,
+     530
+    ],
+    [
+     1792098000,
+     530
+    ],
+    [
+     1792184400,
+     530
+    ],
+    [
+     1792270800,
+     530
+    ],
+    [
+     1792357200,
+     530
+    ],
+    [
+     1792443600,
+     530
+    ],
+    [
+     1792530000,
+     530
+    ],
+    [
+     1792616400,
+     495
+    ],
+    [
+     1792702800,
+     495
+    ],
+    [
+     1792789200,
+     540
+    ],
+    [
+     1792875600,
+     540
+    ],
+    [
+     1792962000,
+     471
+    ],
+    [
+     1793048400,
+     471
+    ],
+    [
+     1793134800,
+     550
+    ],
+    [
+     1793221200,
+     550
+    ],
+    [
+     1793307600,
+     550
+    ],
+    [
+     1793394000,
+     550
+    ],
+    [
+     1793480400,
+     550
+    ],
+    [
+     1793566800,
+     550
+    ],
+    [
+     1793653200,
+     495
+    ],
+    [
+     1793739600,
+     495
+    ],
+    [
+     1793826000,
+     495
+    ],
+    [
+     1793912400,
+     550
+    ],
+    [
+     1793998800,
+     550
+    ],
+    [
+     1794085200,
+     550
+    ],
+    [
+     1794171600,
+     550
+    ],
+    [
+     1794258000,
+     495
+    ],
+    [
+     1794344400,
+     495
+    ],
+    [
+     1794430800,
+     495
+    ],
+    [
+     1794517200,
+     495
+    ],
+    [
+     1794603600,
+     495
+    ],
+    [
+     1794690000,
+     495
+    ],
+    [
+     1794776400,
+     495
+    ],
+    [
+     1794862800,
+     495
+    ],
+    [
+     1794949200,
+     550
+    ]
+   ]
+  },
+  "airports": [
+   {
+    "departure": [
+     {
+      "airport": {
+       "id": "JED",
+       "name": "King Abdulaziz International Airport"
+      },
+      "city": "Jeddah",
+      "country": "Saudi Arabia",
+      "country_code": "SA",
+      "image": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcT-Nu9bjeeaG71vYFrB2h0dwFSgZuS0J5c4I1v3H4N008uOr_N6V8ggLvH9mAg9pnPPgK4z1bU8ah1tMg",
+      "thumbnail": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcRYQEsUVZdpac1DqSzwcMx3FVG0C_k9OuuuVLwbOHuffeYt7fTf7DeMOtBMWiNeNkCJV4a4E49DmIzMMMk_Fa07FrE6lAOmrxcvDNhgoaQ"
+     }
+    ],
+    "arrival": [
+     {
+      "airport": {
+       "id": "DXB",
+       "name": "Dubai International Airport"
+      },
+      "city": "Dubai",
+      "country": "United Arab Emirates",
+      "country_code": "AE",
+      "image": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcRegWMQBRhDOeg2gvll8nGXsG1-OPqD2V0EvCN1Ni2Poe9hGY8CBps9mRaAyrAz8Jvsvl292aI62fq43A",
+      "thumbnail": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcQDaD8FERvoI4iorjkWbED9zAq7S3m9hD1t5vGNU5Jznr1Kl1em9SIs9c9VkujJF5_EDvC5mKyqcQ9B8PApW9tiwfzhK_pC2qvRBND2Plo"
+     }
+    ]
+   }
+  ]
+ }
+}
