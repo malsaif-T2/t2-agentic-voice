@@ -70,16 +70,12 @@ def calendar_watch(
 
 def lean_tools(deps: LeanDeps) -> tuple[Tool, ...]:
     """The tools over `deps`: `book_trip` only where the line books, `booking_link` only on the
-    real network."""
+    real network, `traveler_profile` only on the mock."""
     booking = (book_trip(deps),) if deps.bookable else ()
     linking = (booking_link(deps),) if deps.network == "real" else ()
-    return (
-        find_flights(deps),
-        choose_flights(deps),
-        *booking,
-        *linking,
-        traveler_profile(deps.airline),
-    )
+    # The real network has no profile: anyone at the company calls (the owner, 2026-11-18).
+    profile = (traveler_profile(deps.airline),) if deps.network == "mock" else ()
+    return (find_flights(deps), choose_flights(deps), *booking, *linking, *profile)
 
 
 def declare(deps: LeanDeps, names: Names | None = None) -> VoiceAgent:

@@ -23,6 +23,17 @@ from flight_voice.persona import Tag
 
 __all__ = ["BLOCKS", "blocks"]
 
+# The caller's profile: the mock's demo traveler, or none on the real network, where anyone at
+# the company calls (the owner, 2026-11-18: "anyone can use it without a profile").
+_PROFILE_MOCK: Final = (
+    "- For past trips, the same trip as last time, or the reference of an earlier booking, call "
+    "traveler_profile; the booking just made gives its own reference."
+)
+_PROFILE_REAL: Final = (
+    "- You know nothing of the caller beyond this call: no name and no past trips; never ask who "
+    "they are."
+)
+
 _MOCK: Final[dict[Tag, dict[str, str]]] = {
     "en": {
         "intro": (
@@ -53,6 +64,7 @@ _MOCK: Final[dict[Tag, dict[str, str]]] = {
             "say you cannot tell whether it went through, and never book again in this call. "
             "This line takes no payment."
         ),
+        "profile": _PROFILE_MOCK,
         "beyond": (
             "- Other airlines, hotels, cars, visas, seats on the plane, meals, baggage or "
             "changes to a past booking: say in one sentence that you cannot do it on this "
@@ -91,6 +103,7 @@ _MOCK: Final[dict[Tag, dict[str, str]]] = {
             "cannot tell whether it went through, and never book again in this call. This "
             "line takes no payment."
         ),
+        "profile": _PROFILE_MOCK,
         "beyond": (
             "- Other airlines, hotels, cars, visas, seats on the plane, meals, baggage or "
             "changes to a past booking: say in one sentence that you cannot do it on this "
@@ -103,16 +116,18 @@ _MOCK: Final[dict[Tag, dict[str, str]]] = {
 }
 _INTRO_EN: Final = (
     "You are $persona, the flight assistant of $company, the company, who finds flights of every "
-    "airline. You are on a call with $traveler, a $tier member, who wants to find a flight: on "
-    "routes within, to and from Saudi Arabia you find Saudia, flynas, flyadeal, Riyadh Air and "
-    "others, nonstop or with one stop."
+    "airline for anyone at $company who calls: you know no one's name and need none. On routes "
+    "within, to and from Saudi Arabia you find Saudia, flynas, flyadeal, Riyadh Air and others, "
+    "nonstop or with one stop. The flights are the airlines', not yours: \"there are 18 "
+    'flights", never "we have".'
 )
 _INTRO_AR: Final = (
     "You are $persona ($persona_ar), the flight assistant of $company («$company_ar»), the "
-    "company, who finds flights of every airline. You are on a call with $traveler "
-    "($traveler_ar), a $tier member, who wants to find a flight: on routes within, to and from "
-    "Saudi Arabia you find Saudia («السعودية»), flynas («طيران ناس»), flyadeal («طيران أديل»), "
-    "Riyadh Air («طيران الرياض») and others, nonstop or with one stop."
+    "company, who finds flights of every airline for anyone at $company who calls: you know no "
+    "one's name and need none. On routes within, to and from Saudi Arabia you find Saudia "
+    "(«السعودية»), flynas («طيران ناس»), flyadeal («طيران أديل»), "
+    "Riyadh Air («طيران الرياض») and others, nonstop or with one stop. The flights are the "
+    "airlines', not yours: «فيه 18 رحلة»، «طيران ناس عندها 6»، never «عندنا»."
 )
 _LISTING: Final = (
     " Name the airline of every flight you say. When several airlines fly the day, name them in "
@@ -152,6 +167,7 @@ _REAL: Final[dict[Tag, dict[str, str]]] = {
         "listing": _LISTING.format(ar="", ar_flight=""),
         "span": _SPAN,
         "booking": _BOOKING.format(ar_ask="", ar=""),
+        "profile": _PROFILE_REAL,
         "beyond": _BEYOND,
     },
     "ar-SA": {
@@ -164,6 +180,7 @@ _REAL: Final[dict[Tag, dict[str, str]]] = {
             ar_ask=", «تبي رابط الحجز؟», to an MSA caller «هل تريد رابط الحجز؟»",
             ar=" («حجزت», «تم الحجز»)",
         ),
+        "profile": _PROFILE_REAL,
         "beyond": _BEYOND,
         "ask_saudi": "«تبي رابط الحجز؟»",
         "ask_msa": "«هل تريد رابط الحجز؟»",

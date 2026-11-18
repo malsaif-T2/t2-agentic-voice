@@ -258,8 +258,7 @@ def test_the_real_line_does_not_book() -> None:
         "find_flights",
         "choose_flights",
         "booking_link",  # the link to book it on the airline's site, in place of book_trip
-        "traveler_profile",
-    ]
+    ]  # and no traveler_profile: anyone at the company calls, with no profile (2026-11-18)
     assert data(run(book_trip(call.deps), "en")) == NOT_BOOKABLE
     (choose,) = (t for t in lean_tools(call.deps) if t.name == "choose_flights")
     assert "book_trip" not in choose.description

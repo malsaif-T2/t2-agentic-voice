@@ -96,6 +96,7 @@ FILES: Final = {
     "/app.css": ("app.css", "text/css; charset=utf-8"),
     "/app.js": ("app.js", _JS),
     "/cards.js": ("cards.js", _JS),
+    "/orb.js": ("orb.js", _JS),
     "/bookings.js": ("bookings.js", _JS),
     "/texts.js": ("texts.js", _JS),
     "/mark.svg": ("mark.svg", "image/svg+xml"),
@@ -153,7 +154,8 @@ def build_app(
     app.include_router(
         access_code_router(settings.app.access_code, minter, caller=demo_caller, guard=guard)
     )
-    app.include_router(api_router(airline, settings.app.names()))
+    real = settings.app.agent == "lean" and settings.app.flight_data != "mock"
+    app.include_router(api_router(airline, settings.app.names(), "real" if real else "mock"))
     app.include_router(router, prefix=VOICE_PREFIX)
     if closing:  # the router's lifespan, merged into the app's as included, runs inside
         app.router.lifespan_context = _around(app.router.lifespan_context, closing)

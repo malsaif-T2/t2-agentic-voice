@@ -179,10 +179,11 @@ apps/flight-voice-agent/
                                  smoke, plays, resume                                    <=300
   web/
     index.html                   the page's markup, no inline script or style            <=150
-    app.css                      the page's look, light and dark, right to left          <=300
+    app.css                      the page's look: dark, glass, right to left             <=300
     app.js                       the call: VoiceClient, state, captions, orb             <=300
-    cards.js                     the three segments the cards fill, as text, and links  <=220
-    bookings.js                  "Your trips": fetch, list, reference filter             <=200
+    cards.js                     the three segments the cards fill, as text, and links  <=240
+    orb.js                       the orb's live level from the voices, decorative       <=200
+    bookings.js                  "Your trips", start over, the review's status (mock)    <=260
     texts.js                     every fixed text of the page, Arabic and English        <=200
     mark.svg                     our own airline mark (simple, ours)
   evals/
@@ -1126,7 +1127,7 @@ conversation", "Explore flights", "Select flight", "Flexible dates", and the dem
 
 | Route | What | Guard |
 | --- | --- | --- |
-| `GET /`, `/app.js`, `/cards.js`, `/bookings.js`, `/texts.js`, `/app.css`, `/mark.svg` | the page's files | L1's page headers: CSP `default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors <website or 'none'>`, nosniff, no referrer, microphone for this origin |
+| `GET /`, `/app.js`, `/cards.js`, `/orb.js`, `/bookings.js`, `/texts.js`, `/app.css`, `/mark.svg` | the page's files | L1's page headers: CSP `default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors <website or 'none'>`, nosniff, no referrer, microphone for this origin |
 | `POST /token` | a join token for the access code (L1's route), the caller the demo traveler | L1's guard (constant-time compare, slow-down, close after 20 wrong an hour, `FLIGHT_VOICE_TOKENS_PER_DAY` a day, 50 by default) |
 | `GET /api/profile` | first name, tier, chips in both languages | same origin; no secret; fictional data |
 | `GET /api/bookings` | the traveler's bookings | loopback clients only (404 else), as Ole5's `/tickets` |

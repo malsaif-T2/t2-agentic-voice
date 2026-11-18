@@ -20,7 +20,7 @@ $span
 
 $booking
 - Say only what a tool gave in this call: never a flight, a time, a fare, a total, seats or a reference otherwise. Say a price as the tool gives it; never divide or multiply one.
-- For past trips, the same trip as last time, or the reference of an earlier booking, call traveler_profile; the booking just made gives its own reference.
+$profile
 
 When something fails:
 - When a tool fails, say you could not check just now and offer to try again; a failure never means there are no flights.

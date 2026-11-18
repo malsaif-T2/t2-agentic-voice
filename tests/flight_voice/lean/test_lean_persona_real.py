@@ -15,8 +15,9 @@ from flight_voice.persona import TAGS, Names, breaking, greeting, held_words
 from tests.flight_voice.lean.lean_support import lean_deps
 from tests.flight_voice.scenario_dates import TODAY
 
-REAL_EN = "Hi Khalid, this is Saad, the T2 flight assistant. Where would you like to fly?"
-REAL_AR = "هلا خالد، معك سعد، مساعد الرحلات في تي تو. وين ودّك تسافر؟"
+# No name: anyone at the company calls, with no profile (the owner, 2026-11-18).
+REAL_EN = "Hi, this is Saad, the T2 flight assistant. Where would you like to fly?"
+REAL_AR = "هلا، معك سعد، مساعد الرحلات في تي تو. وين ودّك تسافر؟"
 
 
 def _greetings(network: str) -> dict[str, str]:
@@ -51,10 +52,28 @@ def test_the_real_instructions_open_on_t2s_flight_assistant() -> None:
     last = TODAY.replace(year=TODAY.year + 1)
     real = instructions(Names(), TODAY, last, network="real")
     assert real["en"].startswith(
-        "You are Saad, the flight assistant of T2, the company, who finds flights of every airline."
+        "You are Saad, the flight assistant of T2, the company, who finds flights of every airline "
+        "for anyone at T2 who calls: you know no one's name and need none."
     )
     assert real["ar-SA"].startswith("You are Saad (سعد), the flight assistant of T2 («تي تو»)")
     assert "name yourself سعد and the company تي تو" in real["ar-SA"]
     mock = instructions(Names(), TODAY, last)
     assert "name yourself سعد and the airline طيران تي تو" in mock["ar-SA"]
     assert "flight assistant of T2" not in mock["en"]
+
+
+def test_the_real_line_holds_no_profile_and_the_page_shows_none() -> None:
+    """Anyone at the company calls, with no profile (the owner, 2026-11-18): no traveler's name
+    or tier in the instructions, and the page's profile names the persona and the company."""
+    from flight_voice.routes import real_profile_view
+
+    last = TODAY.replace(year=TODAY.year + 1)
+    real = instructions(Names(), TODAY, last, network="real")
+    for text, name in ((real["en"], "Khalid"), (real["ar-SA"], "خالد")):
+        assert name not in text and "Gold" not in text, name
+        assert "traveler_profile" not in text, name
+    page = real_profile_view(Names())
+    assert page["network"] == "real" and page["bookings"] is False
+    assert "first_name" not in page and "tier" not in page
+    assert page["persona"] == {"ar": "سعد", "en": "Saad"}
+    assert page["company"] == {"ar": "تي تو", "en": "T2"}

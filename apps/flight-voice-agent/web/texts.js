@@ -1,10 +1,12 @@
 // Every fixed text of the flight agent's page (index.html, app.js, cards.js, bookings.js), in
 // Arabic and English: our own words, the Arabic written fresh. A text that holds a name or a
-// number takes it through `fill` ("{name}"), never as markup: each is set with textContent.
+// number takes it through `fill` ("{name}"), never as markup: each is set with textContent. The
+// `free` texts are the line that books nothing (the profile's `bookings` false): no traveler, the
+// heading a question to anyone, the brand the assistant and its company.
 
 export const TEXT = {
   ar: {
-    title: "حجز الرحلات بالصوت",
+    title: "مساعد الرحلات الصوتي",
     trips: "رحلاتك",
     startOver: "ابدأ من جديد",
     askReset: "نمسح الرحلات المحجوزة في هذه التجربة؟",
@@ -12,6 +14,8 @@ export const TEXT = {
     resetNo: "خلّها",
     heading: "وين ناوي تسافر يا {name}؟",
     headingNoName: "وين ناوي تسافر؟",
+    headingFree: "وين ودك تسافر؟",
+    brandFree: "{persona} · {role} في {company}",
     assistant: "{persona} · المساعد الصوتي لـ{airline}",
     traveler: "{name} · {tier}",
     start: "ابدأ مكالمة",
@@ -22,8 +26,9 @@ export const TEXT = {
       speaking: "يتكلم",
       confirming: "ينتظر موافقتك",
     },
-    starting: "جارٍ الاتصال",
-    youCouldSay: "تقدر تقول مثلاً:",
+    starting: "جارٍ الاتصال…",
+    ready: "اضغط وابدأ الكلام",
+    youCouldSay: "تقدر تقول مثلاً",
     cardsTitle: "رحلتك خطوة بخطوة",
     waiting: "ننتظر موافقتك",
     bookedRef: "تم الحجز · رقم الحجز {ref}",
@@ -65,7 +70,7 @@ export const TEXT = {
     failed: "تعذّر بدء المكالمة. حاول مرة أخرى.",
   },
   en: {
-    title: "Flight booking by voice",
+    title: "Voice flight assistant",
     trips: "Your trips",
     startOver: "Start over",
     askReset: "Clear the trips booked in this demo?",
@@ -73,6 +78,8 @@ export const TEXT = {
     resetNo: "Keep them",
     heading: "Where are you flying, {name}?",
     headingNoName: "Where are you flying?",
+    headingFree: "Where would you like to fly?",
+    brandFree: "{persona} · {company} {role}",
     assistant: "{persona} · {airline} voice assistant",
     traveler: "{name} · {tier}",
     start: "Start a call",
@@ -83,8 +90,9 @@ export const TEXT = {
       speaking: "Speaking",
       confirming: "Waiting for your yes",
     },
-    starting: "Connecting",
-    youCouldSay: "You could say:",
+    starting: "Connecting…",
+    ready: "Tap to start talking",
+    youCouldSay: "You could say",
     cardsTitle: "Your trip, step by step",
     waiting: "Waiting for your yes",
     bookedRef: "Booked · Reference {ref}",

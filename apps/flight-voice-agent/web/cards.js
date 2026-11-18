@@ -18,7 +18,8 @@
 // A card is data, never instructions: its title and its texts are set with textContent, each in
 // the direction of its own first strong character (dir="auto"). A row's mark is one of `MARKS`
 // or none: set as the row's `data-mark`, which the page's style maps to a look, and shown as a
-// word of the page's own (`texts.js`), never as markup; any other is dropped.
+// word of the page's own (`texts.js`), never as markup; any other is dropped. A flight row's title,
+// "<airline> · <departs> to <arrives>", is shown as the airline's label and the times (`titled`).
 //
 // A card's links (D-126: the trip's booking links, one a leg) are shown below its rows, each a
 // link styled as a button, its label as text, opening its url in a new tab with no opener. A
@@ -28,6 +29,8 @@
 export const SLOTS = ["outbound", "return", "review"];
 export const MARKS = ["best", "chosen", "unavailable"];
 const PARTS = ["title", "detail", "value"];
+// What parts a flight row's title: its airline before it, its times after (offer_cards.py).
+const SEPARATOR = " · ";
 const SHOWN = [...SLOTS, "extra"];
 
 function text(value) {
@@ -67,6 +70,24 @@ function part(tag, className, said) {
   node.dir = "auto";
   node.textContent = said;
   return node;
+}
+
+// A row's title: a flight's ("<airline> · <times>", the times starting with a digit, Western or
+// Arabic-Indic) as the airline's label and its times, the separator kept as text for a reader so
+// the title's whole text is unchanged; any other ("Booked · Reference 262307") as it is.
+function titled(said) {
+  const at = said.indexOf(SEPARATOR);
+  const times = at > 0 ? said.slice(at + SEPARATOR.length) : "";
+  if (!/^[0-9٠-٩]/.test(times)) return part("span", "row-title", said);
+  const title = document.createElement("span");
+  title.className = "row-title row-flight";
+  title.dir = "auto";
+  title.append(
+    part("span", "row-airline", said.slice(0, at)),
+    part("span", "row-sep", SEPARATOR),
+    part("span", "row-times", times),
+  );
+  return title;
 }
 
 const picked = (rows) => rows.filter((row) => row.mark === "chosen");
@@ -151,7 +172,9 @@ export class Cards {
     const mark = pick ? "chosen" : row.mark;
     if (mark) line.dataset.mark = mark;
     line.append(
-      ...PARTS.filter((name) => row[name]).map((name) => part("span", `row-${name}`, row[name])),
+      ...PARTS.filter((name) => row[name]).map((name) =>
+        name === "title" ? titled(row.title) : part("span", `row-${name}`, row[name]),
+      ),
     );
     const word = mark ? text(this.marks()?.[mark]) : "";
     if (word) line.append(part("span", "row-mark", word));

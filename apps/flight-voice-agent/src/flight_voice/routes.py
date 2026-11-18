@@ -1,9 +1,12 @@
 """The page's own routes, beside the token route and the library's router (server.py):
 
-- `GET /api/profile`: what the page shows of the demo traveler and the persona, in both
-  languages: the traveler's first name and tier, the persona's and the airline's names, and three
-  lines the caller could say (the most visited city, a cheapest-days ask, a business ask), shown
-  as text. Fictional data and no secret, for any client.
+- `GET /api/profile`: what the page shows, in both languages, with the line's `network` and
+  whether it books (`bookings`). On the mock: the demo traveler's first name and tier, the
+  persona's and the airline's names, and three lines the caller could say (the most visited
+  city, a cheapest-days ask, a business ask). On real flights (plan 011) no traveler at all,
+  since anyone at the company calls with no profile (the owner, 2026-11-18): the persona, the
+  company, the assistant's role and three lines to say. Shown as text; no secret, for any
+  client.
 - `GET /api/bookings`: the traveler's bookings, newest first, for the page's "Your trips": each
   one's reference, route, dates, travelers, cabin and total. **On this machine only**: it shows
   the bookings calls made, so a client that is not a loopback address gets 404, as Ole5's ticket
@@ -30,7 +33,7 @@ from flight_voice.airline.airports import airport
 from flight_voice.airline.bookings import Booking
 from flight_voice.airline.profile import TRAVELER, insights
 from flight_voice.airline.system import Airline
-from flight_voice.persona import Names
+from flight_voice.persona import Names, Network
 
 MAX_RESET_BYTES: Final = 64
 NO_STORE: Final = {"Cache-Control": "no-store"}
@@ -41,13 +44,15 @@ BUSINESS_CITY: Final = "CDG"
 FIRST_CITY: Final = "DXB"
 
 
-def api_router(airline: Airline, names: Names) -> APIRouter:
-    """The page's routes over `airline`, the persona named by `names` (the module's
-    docstring)."""
+def api_router(airline: Airline, names: Names, network: Network = "mock") -> APIRouter:
+    """The page's routes over `airline`, the persona named by `names`, on `network` (the
+    module's docstring)."""
     router = APIRouter()
 
     @router.get("/api/profile")
     async def profile() -> JSONResponse:
+        if network == "real":
+            return JSONResponse(real_profile_view(names), headers=NO_STORE)
         return JSONResponse(profile_view(airline, names), headers=NO_STORE)
 
     @router.get("/api/bookings")
@@ -79,12 +84,39 @@ def api_router(airline: Airline, names: Names) -> APIRouter:
     return router
 
 
+def real_profile_view(names: Names) -> dict[str, object]:
+    """What `GET /api/profile` answers on real flights: no traveler (the module's docstring)."""
+    return {
+        "network": "real",
+        "bookings": False,
+        "persona": {"ar": names.persona_name_ar, "en": names.persona_name_en},
+        "company": {"ar": names.airline_code_said_ar, "en": names.airline_code},
+        "role": {"ar": "مساعد الرحلات", "en": "flight assistant"},
+        "lines": {
+            # min ar-riyaadh l-jidda ...: Riyadh to Jeddah next Thursday; arkhaS yoom ...: the
+            # cheapest day to Dubai this month; weesh 'ind ...: what does flynas have to Dammam?
+            "ar": [
+                "من الرياض لجدة الخميس الجاي",
+                "أرخص يوم لدبي هالشهر",
+                "وش عند طيران ناس للدمام؟",
+            ],
+            "en": [
+                "Riyadh to Jeddah next Thursday",
+                "Cheapest day to Dubai this month",
+                "What does flynas have to Dammam?",
+            ],
+        },
+    }
+
+
 def profile_view(airline: Airline, names: Names) -> dict[str, object]:
-    """What `GET /api/profile` answers."""
+    """What `GET /api/profile` answers on the mock."""
     flown = [b for b in airline.bookings.listed(TRAVELER.id) if b.flown]
     most = insights(flown).most_visited or FIRST_CITY
     back, cheap, business = airport(most), airport(CHEAPEST_CITY), airport(BUSINESS_CITY)
     return {
+        "network": "mock",
+        "bookings": True,
         "first_name": {"ar": TRAVELER.first_ar, "en": TRAVELER.first_en},
         "tier": {"ar": TRAVELER.tier_ar, "en": TRAVELER.tier},
         "persona": {"ar": names.persona_name_ar, "en": names.persona_name_en},

@@ -130,7 +130,7 @@ def test_a_round_trip_gets_a_link_per_leg_in_the_callers_language() -> None:
 
 def test_booking_link_is_the_real_networks_in_place_of_book_trip() -> None:
     real = [t.name for t in lean_tools(real_call().deps)]
-    assert real == ["find_flights", "choose_flights", BOOKING_LINK, "traveler_profile"]
+    assert real == ["find_flights", "choose_flights", BOOKING_LINK]  # no profile (2026-11-18)
     mock = [t.name for t in lean_tools(LeanCall().deps)]
     assert mock == ["find_flights", "choose_flights", "book_trip", "traveler_profile"]
     assert booking_link(real_call().deps).claims is LEAN_CLAIMS  # no booking claim is backed

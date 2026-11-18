@@ -1,9 +1,10 @@
 """The lean tools' cards, drawn from the offers the call was given, as the scripted cards are
-(tools/cards.py, whose helpers these reuse): a row per offer, its times as its title (the
-flight beside them when two rows share their times), its length, stops, airline and flights as
-its detail, its price as its value, and its mark (`unavailable` when it is known to lack seats,
-`chosen` when picked, `best` on the cheapest). Each card names its segment of the page: a leg's
-listing its leg's, the trip its review.
+(tools/cards.py, whose helpers these reuse): a row per offer, its airline and times as its title
+("flyadeal · 08:15 to 10:10", the flight beside them when two rows share them; the page shows the
+part before the dot as the airline), its flights, length, stops and aircraft as its detail ("F3 111
+· 1 h 55 min · nonstop · A320neo"), its price as its value, and its mark (`unavailable` when it is
+known to lack seats, `chosen` when picked, `best` on the cheapest). Each card names its segment of
+the page: a leg's listing its leg's, the trip its review.
 
 Every number a card shows is in its result's data (the output guard's ID rule), and a word sits
 between two numbers. Arabic cards write times, lengths and prices in Arabic-Indic digits; a
@@ -25,6 +26,7 @@ from flight_voice.tools import cards
 
 # A card holds at most this many rows (the library's `MAX_ROWS`).
 MAX_ROWS: Final = 8
+MAX_DETAIL: Final = 120  # the library's `CardRow.detail`
 _DOT: Final = " · "
 
 
@@ -69,18 +71,21 @@ def _stops(option: LeanOption, tag: Tag) -> str:
     return made + (", partly by bus" if option.bus else "")
 
 
-def flown(option: LeanOption, tag: Tag) -> str:
-    """An offer's length, stops, airline, flights and aircraft: "1 h 55 min, nonstop, flyadeal
-    flight F3 111", "7 h 5 min, nonstop, T2 Air flight T2 401 on a 787-9"."""
-    length = cards.length(option.duration, tag)
-    if arabic(tag):
-        made = f"{length}، {_stops(option, tag)}، {option.airline} رحلة {option.flight}"
-        return made + (f" على {option.aircraft}" if option.aircraft else "")
-    made = f"{length}, {_stops(option, tag)}, {option.airline} flight {option.flight}"
-    if not option.aircraft:
-        return made
-    article = "an" if option.aircraft[:1].upper() in "AEIOU" else "a"
-    return f"{made} on {article} {option.aircraft}"
+def flown(option: LeanOption, tag: Tag, room: int = MAX_DETAIL) -> str:
+    """An offer's length, stops, flights and aircraft, as a row's detail: "1 h 55 min · nonstop ·
+    flight F3 111 · A320neo", a word between any two numbers (the guard's ID rule); the aircraft
+    left out when the detail would pass `room` characters (a row's detail holds 120), and the
+    rest cut to it."""
+    flight = f"رحلة {option.flight}" if arabic(tag) else f"flight {option.flight}"
+    parts = [cards.length(option.duration, tag), _stops(option, tag), flight]
+    made = _DOT.join(parts)
+    with_aircraft = f"{made}{_DOT}{option.aircraft}" if option.aircraft else made
+    return with_aircraft if len(with_aircraft) <= room else made[:room].rstrip(" ·،,")
+
+
+def headline(option: LeanOption, tag: Tag) -> str:
+    """A row's title: the offer's airline, then its times ("flyadeal · 08:15 to 10:10")."""
+    return f"{option.airline}{_DOT}{times(option, tag)}"
 
 
 def offer_row(
@@ -99,7 +104,7 @@ def offer_row(
         else ("chosen" if chosen else ("best" if best else None))
     )
     return CardRow(
-        title=times(option, tag) if title is None else title,
+        title=headline(option, tag) if title is None else title,
         detail=flown(option, tag) if detail is None else detail,
         value=cards.money(option.price, tag),
         mark=mark,
@@ -107,8 +112,9 @@ def offer_row(
 
 
 def _titles(options: tuple[LeanOption, ...], tag: Tag) -> list[str]:
-    """Each option's title: its times, with its flight beside them when another shares them."""
-    plain = [times(o, tag) for o in options]
+    """Each option's title: its airline and times, with its flight beside them when another
+    shares them."""
+    plain = [headline(o, tag) for o in options]
     return [
         f"{t}{_DOT}{o.flight}" if plain.count(t) > 1 else t
         for t, o in zip(plain, options, strict=True)
@@ -152,7 +158,8 @@ def trip_card(draft: LeanDraft, chosen: dict[LegKind, LeanOption], tag: Tag) -> 
         offer, option = draft.chosen(leg), chosen.get(leg)
         if offer is None or option is None or (leg == "return" and draft.one_way):
             continue
-        detail = f"{named[leg]}: {cards.day_title(offer.day, tag)}{sep}{flown(option, tag)}"
+        head = f"{named[leg]}: {cards.day_title(offer.day, tag)}{sep}"
+        detail = head + flown(option, tag, MAX_DETAIL - len(head))
         rows.append(offer_row(option, tag, chosen=True, detail=detail))
     rows.append(CardRow(title=cards.party(draft.travelers, draft.cabin, tag)))
     total = draft.total()

@@ -4,8 +4,11 @@
 // reference runs on the page, with no request. The list loads when the panel opens, again
 // every `EVERY_MS` while it is open, when a call starts and ends, and after a read-back while
 // the booking it may have made is not found (`Made`); "Start over" asks first, then
-// `POST api/demo/reset` puts the bookings back to the seed.
+// `POST api/demo/reset` puts the bookings back to the seed. All of it is the page's only on a
+// line that books (the profile's `bookings`, `Booking.shown`): on one that books nothing none of
+// it is shown, and no route of it is ever asked.
 
+import { linksOf, waitsForYes } from "./cards.js";
 import { fill } from "./texts.js";
 
 export const EVERY_MS = 10_000;
@@ -148,6 +151,85 @@ export class Made {
       this.reference = [...referencesOf(this.trips)].find((ref) => !this.known.has(ref)) ?? "";
     }
     return this.reference;
+  }
+}
+
+// The page's part of the bookings (app.js): "Your trips" and its panel, "Start over" and its
+// question, the traveler's line, and the review's status, waiting for the yes, then booked with
+// its reference once found (`Made`). Each does nothing while the line books nothing (`shown`).
+export class Booking {
+  // The page's element by id `$`, its `cards`, its words and language now (`words()`,
+  // `language()`).
+  constructor($, cards, words, language) {
+    Object.assign(this, { $, cards, words, language, on: false });
+    this.trips = new Trips($("trips-list"), $("trips-filter"), $("trips-note"));
+    this.made = new Made(this.trips);
+    $("trips-toggle").addEventListener("click", () => this.open(this.on && $("trips").hidden));
+    for (const name of ["input", "change"]) $("trips-filter").addEventListener(name, () => this.show());
+    $("start-over").addEventListener("click", () => {
+      $("reset-ask").hidden = !this.on;
+    });
+    $("reset-no").addEventListener("click", () => {
+      $("reset-ask").hidden = true;
+    });
+    $("reset-yes").addEventListener("click", async () => {
+      $("reset-ask").hidden = true;
+      if (this.on && (await startOver())) {
+        cards.clear();
+        await this.trips.load();
+        this.show();
+      }
+    });
+  }
+
+  // Whether the line books: what belongs to a traveler shown, or hidden and the panel closed.
+  set shown(on) {
+    this.on = on;
+    for (const id of ["trips-toggle", "start-over", "traveler"]) this.$(id).hidden = !on;
+    if (!on && !this.$("trips").hidden) this.open(false);
+    if (!on) this.$("reset-ask").hidden = true;
+    this.show();
+  }
+
+  show() {
+    if (this.on) this.trips.render(this.language(), this.words());
+  }
+
+  open(open) {
+    this.$("trips").hidden = !open;
+    this.$("trips-toggle").setAttribute("aria-expanded", String(open));
+    return this.trips.watch(open && this.on, () => this.show());
+  }
+
+  // A call starts: the bookings it may make are looked for from those listed now.
+  async started() {
+    if (this.on) await this.made.start();
+  }
+
+  // The review's status at the call's state `now` ("" once ended).
+  async reviewed(now) {
+    if (!this.on) return;
+    const ref = await this.made.seen(now);
+    const waiting = this.made.asked && now ? this.words().waiting : "";
+    this.cards.setStatus(ref ? fill(this.words().bookedRef, { ref }) : waiting);
+  }
+
+  // A card shown (cards.js): a new leg forgets the last booking; the trip's review waits for the
+  // yes, unless it carries booking links (D-126): those are booked on the airline's site.
+  carded(card) {
+    if (!this.on) return;
+    if (card?.slot === "outbound" || card?.slot === "return" || linksOf(card).length) {
+      this.made.forget();
+    }
+    if (waitsForYes(card) && !this.made.reference) {
+      this.made.ask();
+      this.cards.setStatus(this.words().waiting);
+    }
+  }
+
+  // The call has ended: the list loaded again, and the booking it made shown.
+  ended() {
+    if (this.on) this.trips.load().then(() => this.reviewed("")).then(() => this.show());
   }
 }
 

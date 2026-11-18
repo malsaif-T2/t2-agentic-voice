@@ -5,17 +5,22 @@
 // The caller picks the page's language, which is also the call's starting language (Arabic
 // first; mid-call the caller switches by voice), types the owner's access code once under
 // Options (kept in this page's memory alone, never in storage), may tick the box to keep the
-// call's audio (off by default; no consent screen, D-076) and starts the call. The orb and the
-// state line follow the call's `state` (listening, thinking, speaking, waiting for a yes); the
-// cards mirror what the agent said, each in its segment of the trip, outbound, return and
-// review (cards.js), the review's status line waiting for the yes, then booked; the captions sit
-// in "Show conversation"; "Your trips" lists the bookings (bookings.js). The lines the caller could say
-// are text, never buttons: the client has no typed text into a call. Every text, the captions,
-// cards and notices included, is set with textContent.
+// call's audio (off by default; no consent screen, D-076) and starts the call with the one round
+// button, which then ends it. The orb and the state line follow the call's `state` (listening,
+// thinking, speaking, waiting for a yes), the orb also its sound (orb.js, decoration alone); the
+// cards mirror what the agent said, each in its segment of the trip, outbound, return and review
+// (cards.js); the captions sit in "Show conversation". The profile (`GET api/profile`) says
+// whether the line books (`bookings`): only then are the traveler's name and tier, "Your trips"
+// (bookings.js) and "Start over" shown, the review's status line waiting for the yes, then
+// booked; on a line that books nothing (real flights: anyone calls, with no profile) the heading
+// asks anyone where to fly, the brand is the assistant and its company, and no booking route is
+// ever asked. The lines the caller could say are text, never buttons: the client has no typed
+// text into a call. Every text, the captions, cards and notices included, is set with textContent.
 
 import { VoiceClient } from "./voice/client/1/t2v-client.js";
-import { Cards, linksOf, waitsForYes } from "./cards.js";
-import { Made, Trips, startOver } from "./bookings.js";
+import { Cards } from "./cards.js";
+import { Booking } from "./bookings.js";
+import { Orb } from "./orb.js";
 import { fill, wordsOf } from "./texts.js";
 
 // The version the join token carries: the server's privacy.consent_version, as Ole5's widget
@@ -23,12 +28,12 @@ import { fill, wordsOf } from "./texts.js";
 export const CONSENT_VERSION = "m2-owner-test-1";
 
 const $ = (id) => document.getElementById(id);
-const page = { language: "ar-SA", call: null, code: "", profile: {}, captions: new Map() };
+const page = { language: "ar-SA", call: null, code: "", profile: {}, captions: new Map(), said: "ready" };
 const english = () => page.language === "en";
 const words = () => wordsOf(page.language);
 const cards = new Cards($("cards"), $("cards-section"), () => words().marks);
-const trips = new Trips($("trips-list"), $("trips-filter"), $("trips-note"));
-const made = new Made(trips);
+const booking = new Booking($, cards, words, () => page.language);
+const orb = new Orb($("orb"));
 
 class TokenError extends Error {
   constructor(code, retryAfter = null) {
@@ -45,6 +50,12 @@ function named(key) {
   return typeof said === "string" ? said : "";
 }
 
+// The brand on a line that books nothing: the assistant and its company, or its name alone.
+function brand() {
+  const [persona, company, role] = ["persona", "company", "role"].map(named);
+  return persona && company && role ? fill(words().brandFree, { persona, company, role }) : persona;
+}
+
 function render() {
   document.documentElement.lang = english() ? "en" : "ar";
   document.documentElement.dir = english() ? "ltr" : "rtl";
@@ -54,10 +65,13 @@ function render() {
   for (const button of document.querySelectorAll("button.language")) {
     button.setAttribute("aria-pressed", String(button.dataset.language === page.language));
   }
-  const name = named("first_name");
-  $("heading").textContent = name ? fill(words().heading, { name }) : words().headingNoName;
-  $("airline").textContent = named("airline");
-  $("assistant").textContent = named("persona")
+  // Only a profile that says the line books (the mock's) shows a traveler.
+  const books = page.profile?.bookings === true;
+  const name = books ? named("first_name") : "";
+  const asked = name ? fill(words().heading, { name }) : words().headingNoName;
+  $("heading").textContent = books ? asked : words().headingFree;
+  $("brand").textContent = books ? named("airline") : brand();
+  $("assistant").textContent = books && named("persona")
     ? fill(words().assistant, { persona: named("persona"), airline: named("airline") })
     : "";
   $("traveler").textContent = name ? fill(words().traveler, { name, tier: named("tier") }) : "";
@@ -66,11 +80,12 @@ function render() {
     ...(Array.isArray(lines) ? lines : []).filter((l) => typeof l === "string").map((said) => {
       const line = document.createElement("li");
       line.dir = "auto";
-      line.textContent = `“${said}”`;
+      line.textContent = english() ? `“${said}”` : `«${said}»`;
       return line;
     }),
   );
-  trips.render(page.language, words());
+  $("state").textContent = saying(page.said);
+  booking.shown = books;
   cards.render();
 }
 
@@ -85,9 +100,13 @@ async function profile() {
   render();
 }
 
+// The one round button: start while no call runs, end while one does.
 function running(on) {
-  $("start").disabled = on;
-  $("end").disabled = !on;
+  for (const [id, shown] of [["start", !on], ["end", on]]) {
+    $(id).disabled = !shown;
+    $(id).hidden = !shown;
+  }
+  $(on ? "end" : "start").focus?.();
   $("code").disabled = on;
   $("record").disabled = on;
   for (const button of document.querySelectorAll("button.language")) button.disabled = on;
@@ -100,6 +119,7 @@ function talkable() {
 
 function talk(held) {
   $("talk").setAttribute("aria-pressed", String(held));
+  orb.hush = $("push-to-talk").checked && !held;
   page.call?.talk(held);
 }
 
@@ -110,30 +130,18 @@ function space(event) {
   else if (!event.repeat) talk(true);
 }
 
-// The state line and the orb: the agent's state, none once the call is over.
-function state(text, now = "") {
-  $("state").textContent = text;
+// The text of `key` among the page's words ("states.listening" names a nested one).
+function saying(key) {
+  const said = key.split(".").reduce((at, part) => at?.[part], words());
+  return typeof said === "string" ? said : "";
+}
+
+// The state line (its text by `key`) and the orb: the agent's state `now`, none once over.
+function state(key, now = "") {
+  page.said = key;
+  $("state").textContent = saying(key);
   $("state").dataset.state = now;
-  $("orb").dataset.state = now;
-}
-
-// The review's status: waiting for the yes from the whole trip's review card while the call goes
-// on, then booked with its reference once found (bookings.js's `Made`); `now` is "" once ended.
-async function reviewed(now) {
-  const ref = await made.seen(now);
-  const waiting = made.asked && now ? words().waiting : "";
-  cards.setStatus(ref ? fill(words().bookedRef, { ref }) : waiting);
-}
-
-// A card, in its segment (cards.js): a new leg forgets the last booking; the trip's review waits
-// for the yes, unless it carries booking links (D-126): those are booked on the airline's site.
-function carded(card) {
-  cards.add(card);
-  if (card?.slot === "outbound" || card?.slot === "return" || linksOf(card).length) made.forget();
-  if (waitsForYes(card) && !made.reference) {
-    made.ask();
-    cards.setStatus(words().waiting);
-  }
+  orb.state = now;
 }
 
 function message(text) {
@@ -195,17 +203,14 @@ function caption(c) {
   shown.parts[index].classList.toggle("cut", c.cut === true);
 }
 
-async function showTrips() {
-  trips.render(page.language, words());
-}
-
 function ended(e) {
   page.call = null;
+  orb.end();
   talk(false);
   running(false);
-  state(words().ended);
+  state("ended");
   if (e.reason === "transport") message(words().lost);
-  trips.load().then(() => reviewed("")).then(showTrips);
+  booking.ended();
 }
 
 async function start() {
@@ -216,44 +221,46 @@ async function start() {
     message(words().needCode);
     return;
   }
+  const audio = new Audio(); // made in the click, before any await: the page may play it
+  orb.begin(audio);
   message("");
   page.captions.clear();
   $("captions").replaceChildren();
   cards.clear();
   running(true);
-  state(words().starting);
-  await made.start();
+  state("starting", "connecting");
+  await booking.started();
   try {
     const call = await VoiceClient.start({
       base: "voice",
       language: page.language,
       getToken: token,
+      audio,
       pushToTalk: $("push-to-talk").checked,
       on: {
         state: (s) => {
-          state(words().states[s.state] ?? "", s.state);
-          reviewed(s.state);
+          state(`states.${s.state}`, s.state);
+          booking.reviewed(s.state);
         },
         caption,
-        card: carded,
+        card: (card) => {
+          cards.add(card);
+          booking.carded(card);
+        },
         notice: (n) => message(n.text),
         ended,
       },
     });
     call.pushToTalk = $("push-to-talk").checked;
     page.call = call.closed ? null : call;
+    if (page.call) orb.listen();
     talkable();
   } catch (error) {
+    orb.end();
     running(false);
-    state("");
+    state("ready");
     message(messageFor(error));
   }
-}
-
-function openTrips(open) {
-  $("trips").hidden = !open;
-  $("trips-toggle").setAttribute("aria-expanded", String(open));
-  return trips.watch(open, showTrips);
 }
 
 for (const button of document.querySelectorAll("button.language")) {
@@ -262,22 +269,6 @@ for (const button of document.querySelectorAll("button.language")) {
     render();
   });
 }
-$("trips-toggle").addEventListener("click", () => openTrips($("trips").hidden));
-for (const name of ["input", "change"]) $("trips-filter").addEventListener(name, showTrips);
-$("start-over").addEventListener("click", () => {
-  $("reset-ask").hidden = false;
-});
-$("reset-no").addEventListener("click", () => {
-  $("reset-ask").hidden = true;
-});
-$("reset-yes").addEventListener("click", async () => {
-  $("reset-ask").hidden = true;
-  if (await startOver()) {
-    cards.clear();
-    await trips.load();
-    await showTrips();
-  }
-});
 $("start").addEventListener("click", start);
 $("end").addEventListener("click", () => page.call?.hangup());
 $("push-to-talk").addEventListener("change", () => {

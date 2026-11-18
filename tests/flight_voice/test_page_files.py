@@ -1,7 +1,9 @@
 """The flight agent's page files as text (apps/flight-voice-agent/web/): no inline script or
 style and nothing loaded from another origin, so the page headers' policy holds; the look
-mirrored for Arabic by logical properties alone, never a physical side; a phone's width with a
-16px gutter and long text wrapped; every file served, and each at or under 300 lines."""
+mirrored for Arabic by logical properties alone, never a physical side, and no script setting a
+style but a custom property (the orb's level); a phone's width with a 16px gutter and long text
+wrapped, dark only, and still for a caller who asks for less motion; every file served, and each
+at or under 300 lines."""
 
 from __future__ import annotations
 
@@ -27,9 +29,9 @@ def test_the_look_uses_no_physical_side() -> None:
     assert re.findall(r"\b(left|right)\b", rules) == []
     markup = re.sub(r"<!--.*?-->", "", PAGE, flags=re.DOTALL)
     assert re.findall(r"\b(left|right)\b", markup) == []
-    for name in ("app.js", "cards.js", "bookings.js"):
-        code = (WEB / name).read_text(encoding="utf-8")
-        assert re.findall(r"\.style\.|[\"'](?:left|right)[\"']", code) == [], name
+    styled = r"\.style\.(?!setProperty\(\"--)|[\"'](?:left|right)[\"']"
+    for path in WEB.glob("*.js"):
+        assert re.findall(styled, path.read_text(encoding="utf-8")) == [], path.name
     assert "inline-start" in rules and "inline-end" in rules
 
 
@@ -39,7 +41,8 @@ def test_the_page_fits_a_phone() -> None:
     assert "overflow-wrap: anywhere;" in STYLE
     assert "@media (max-width: 480px)" in STYLE
     assert 'name="viewport" content="width=device-width, initial-scale=1"' in PAGE
-    assert "@media (prefers-color-scheme: dark)" in STYLE
+    assert "color-scheme: dark;" in STYLE and "prefers-color-scheme" not in STYLE
+    assert '<meta name="color-scheme" content="dark">' in PAGE
     assert "@media (prefers-reduced-motion: reduce)" in STYLE
 
 

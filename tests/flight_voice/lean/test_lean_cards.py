@@ -39,22 +39,24 @@ def test_a_row_says_the_stops_the_wait_and_a_road_leg() -> None:
     options = tuple(option_of(o, "en", 1, PLACES.get) for o in (fast, road))
     card = options_card("outbound", options, (RIYADH, JEDDAH), OUT, "economy", "en")
     first, second = card.rows
-    assert first.detail == "1 h 55 min, nonstop, flyadeal flight F3 111"
+    # The airline leads the title; a word sits between any two numbers (the guard's ID rule).
+    assert first.title == "flyadeal · 08:15 to 10:10"
+    assert first.detail == "1 h 55 min · nonstop · flight F3 111"
     assert second.detail == (
-        "3 h 40 min, 1 stop in Al-Ula, 1 h, partly by bus, Saudia flight SV 3079, SV 8607"
+        "3 h 40 min · 1 stop in Al-Ula, 1 h, partly by bus · flight SV 3079, SV 8607"
     )
     assert first.mark == "best" and first.value == "899 SAR"
     arabic = tuple(option_of(o, "ar-SA", 1, PLACES.get) for o in (fast, road))
     rows = options_card("outbound", arabic, (RIYADH, JEDDAH), OUT, "economy", "ar-SA").rows
     assert rows[0].detail is not None and "مباشرة" in rows[0].detail
     assert rows[1].detail is not None and "توقف واحد في العلا" in rows[1].detail
-    assert rows[1].value == "١٬١٤٢ ريال" and rows[0].title.startswith("٠٨:١٥")
+    assert rows[1].value == "١٬١٤٢ ريال" and rows[0].title.startswith("طيران أديل · ٠٨:١٥")
 
 
 def test_rows_sharing_their_times_are_told_apart_and_a_card_holds_at_most_eight() -> None:
     same = [
         nonstop(c, n, ("RUH", "JED"), AT, 115, 800 + i)
-        for i, (c, n) in enumerate([(SAUDIA, "1020"), (FLYADEAL, "111")] * 5)
+        for i, (c, n) in enumerate([(SAUDIA, "1020"), (SAUDIA, "1022")] * 5)
     ]
     held = {o.id: o for o in same}  # five of each id, kept once
     options = tuple(option_of(o, "en", 1, PLACES.get) for o in held.values())

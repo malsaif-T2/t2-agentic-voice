@@ -1,7 +1,8 @@
 """What the flight page's tests share (test_page.py, test_page_segments.py): the page's own
 files and the library's client served where the server serves them, run in the fake browser
-(tests/browser.py) on the page's markup with the profile's and the bookings' answers; a call
-started with a made-up access code; a snapshot of an element by its id, or of the page."""
+(tests/browser.py) on the page's markup with the profile's and the bookings' answers (the mock's
+profile, which books; `REAL`, the real flights' one, which books nothing and names no traveler);
+a call started with a made-up access code; a snapshot of an element by its id, or of the page."""
 
 from __future__ import annotations
 
@@ -18,11 +19,21 @@ CLIENT = (
 ) / "t2v-client.js"
 SCRIPT = "<script>alert(1)</script>"
 PROFILE = {
+    "network": "mock",
+    "bookings": True,
     "first_name": {"ar": "خالد", "en": SCRIPT},
     "tier": {"ar": "ذهبي", "en": "Gold"},
     "persona": {"ar": "سعد", "en": "Saad"},
     "airline": {"ar": "طيران تي تو", "en": "T2 Air"},
     "lines": {"ar": ["ودي أرجع لدبي"], "en": ["Back to Dubai", "<b>Business</b> to Paris"]},
+}
+REAL = {
+    "network": "real",
+    "bookings": False,
+    "persona": {"ar": "سعد", "en": "Saad"},
+    "company": {"ar": "تي تو", "en": "T2"},
+    "role": {"ar": "مساعد الرحلات", "en": "flight assistant"},
+    "lines": {"ar": ["من الرياض لجدة الخميس الجاي"], "en": ["Riyadh to Jeddah next Thursday"]},
 }
 TRIP = {
     "from": {"ar": "الرياض", "en": "Riyadh"},
@@ -54,7 +65,7 @@ ENGLISH = {"do": "click", "query": ["button.language", 1]}
 
 
 def page(folder: Path, steps: list[Step], answers: dict[str, Any] | None = None) -> Shown:
-    names = ("app.js", "cards.js", "bookings.js", "texts.js")
+    names = ("app.js", "cards.js", "bookings.js", "orb.js", "texts.js")
     files = {name: WEB / name for name in names}
     files[f"{VOICE_PREFIX[1:]}/client/1/t2v-client.js"] = CLIENT
     return browse(
