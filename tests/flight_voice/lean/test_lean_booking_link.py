@@ -120,7 +120,7 @@ def test_a_round_trip_gets_a_link_per_leg_in_the_callers_language() -> None:
     )
     assert "q=Flights%20to%20London%20from%20RUH%20on%202026-12-03" in out_link.url
     assert "q=Flights%20to%20RUH%20from%20London%20on%202026-12-10" in back_link.url
-    assert out_link.url.endswith("&hl=ar&curr=SAR&gl=sa")
+    assert out_link.url.endswith("&hl=en&curr=SAR&gl=sa")  # an Arabic page is not understood
     # A trip made one way after: one link, of the outbound alone, with the bare label.
     call.find(destination="London", depart=OUT.isoformat())
     call.choose(outbound_id=ids(listed)[0])

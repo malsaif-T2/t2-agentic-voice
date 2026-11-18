@@ -12,15 +12,16 @@ SerpApi gave. So:
   is its IATA code when it has one airport, else its city's English name ("London", searched
   over its airports as SerpApi was); with no route given, the offer's own airports.
 - The carrier is the leg's marketing carrier's English name. A connection of two marketing
-  carriers (Qatar Airways then British Airways) names both, "on Qatar Airways and British
-  Airways": the first alone may filter out the very itinerary the caller picked. (Only the
-  one-carrier form was checked in a browser; the two-carrier form is the lead's to check.)
-- `hl` is the reply's language (`ar` for either Arabic, `en`), `curr=SAR` and `gl=sa`, as the
-  searches are made. The `q` text stays English, the form checked.
-- The party and the cabin are left out of `q`: a flight number in `q` was not understood, and
-  nothing documents "for 2 adults" or "in business" there (an open issue for the lead), so the
-  page opens for one adult in economy, and its price for a party or a cabin may differ from
-  the one said. The agent says the price is confirmed on the airline's site.
+  carriers (Qatar Airways then British Airways) gets no airline: "on Qatar Airways and British
+  Airways" is not understood (Google's home page opens), and the first alone may filter out
+  the very itinerary the caller picked.
+- A party of two or more adds "for N adults", which Google reads (the page priced flynas for
+  two at 858, twice 429); the cabin is left out, since neither "in business" nor "Business
+  class flights" is understood, so the page opens in economy and the caller picks the cabin
+  there. A flight number is not understood either. The agent says the price is confirmed on
+  the airline's site.
+- `hl=en`, `curr=SAR` and `gl=sa`. The `q` text is English, and `hl=ar` with it is not
+  understood (checked 2026-11-18), so an Arabic call's link opens the English page too.
 
 The label says where the link goes: "Book on flynas", «احجز على طيران ناس», or for a round trip's
 leg "Book the way out on Saudia", «احجز الذهاب على السعودية». A label holds no digit and at most
@@ -72,9 +73,11 @@ def _place(place: Place | None, airport: str) -> str:
 def search_text(offer: Offer, route: tuple[Place, Place] | None = None) -> str:
     """The leg's search as `q` says it (the module's docstring)."""
     start, end = route if route is not None else (None, None)
-    names = " and ".join(c.name_en for c in offer.carriers)
     to, origin = _place(end, offer.destination), _place(start, offer.origin)
-    return f"Flights to {to} from {origin} on {offer.day.isoformat()} one way on {names}"
+    text = f"Flights to {to} from {origin} on {offer.day.isoformat()} one way"
+    if len(offer.carriers) == 1:
+        text += f" on {offer.carrier.name_en}"
+    return text + (f" for {offer.adults} adults" if offer.adults > 1 else "")
 
 
 def link_label(offer: Offer, tag: Tag, leg: LinkLeg | None = None) -> str:
@@ -92,6 +95,5 @@ def leg_link(
 ) -> CardLink:
     """The booking link of `offer`'s leg, from `route`'s start to its end when given (the
     module's docstring), labelled for `leg` of a round trip when given."""
-    hl = "ar" if arabic(tag) else "en"
-    url = f"{GOOGLE_FLIGHTS}?q={quote(search_text(offer, route), safe='')}&hl={hl}&curr=SAR&gl=sa"
+    url = f"{GOOGLE_FLIGHTS}?q={quote(search_text(offer, route), safe='')}&hl=en&curr=SAR&gl=sa"
     return CardLink(label=link_label(offer, tag, leg), url=url)
