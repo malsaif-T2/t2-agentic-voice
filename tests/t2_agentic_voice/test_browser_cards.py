@@ -110,8 +110,9 @@ def test_the_client_drops_a_card_or_a_state_that_is_not_one(tmp_path: Path) -> N
     ]
     kept = [card | {"steps": [], "source": "a.pdf"}, {"v": 1, "type": "state", "state": "thinking"}]
     shown = _client(tmp_path, [receive(message) for message in [*broken, *kept]])
-    # A card from a session that sends no rows has none, and no slot (test_browser_card_rows.py).
-    expected = kept[0] | {"rows": [], "slot": None}
+    # A card from a session that sends no rows has none, no slot (test_browser_card_rows.py) and
+    # no links (test_browser_card_links.py).
+    expected = kept[0] | {"rows": [], "slot": None, "links": []}
     assert shown["events"] == [["card", expected], ["state", kept[1]]]
 
 

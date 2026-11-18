@@ -75,7 +75,7 @@ from t2_agentic_voice.core.settings.turns import TurnSettings
 from t2_agentic_voice.core.settings.warmup import WarmupSettings
 from t2_agentic_voice.core.settings.words import WordSettings
 from t2_agentic_voice.domain.action_declaration import Claims, ReadBack, Say, Spoken
-from t2_agentic_voice.domain.cards import Card, CardRow
+from t2_agentic_voice.domain.cards import Card, CardLink, CardRow
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.domain.talker_declaration import DeclaredTool, Vocabulary
 from t2_agentic_voice.domain.words import Phrases, Words
@@ -98,6 +98,7 @@ __all__ = [
     "CallContext",
     "Caller",
     "Card",
+    "CardLink",
     "CardRow",
     "Claims",
     "CohereSettings",

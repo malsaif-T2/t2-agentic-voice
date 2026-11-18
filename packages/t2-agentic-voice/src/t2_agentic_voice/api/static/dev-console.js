@@ -649,6 +649,15 @@ function row(r) {
   return el("li", { dir: "auto", text, "data-mark": r.mark ?? undefined });
 }
 
+// A card's link (D-126): its label, opening its url in a new tab; never built from text.
+function link(l) {
+  const node = el("a", { dir: "auto", text: l.label });
+  node.setAttribute("href", l.url);
+  node.setAttribute("target", "_blank");
+  node.setAttribute("rel", "noopener noreferrer");
+  return el("p", {}, node);
+}
+
 function card(c) {
   if (!c) {
     $("card").hidden = true;
@@ -660,6 +669,7 @@ function card(c) {
     el("ol", {}, c.steps.map((step) => el("li", { dir: "auto", text: step }))),
     c.rows.length ? el("ul", { class: "rows" }, c.rows.map(row)) : null,
     c.source ? el("p", { class: "muted small", text: `Source: ${c.source}` }) : null,
+    ...c.links.map(link),
   ];
   $("card").replaceChildren(...parts.filter(Boolean));
   $("card").hidden = false;
