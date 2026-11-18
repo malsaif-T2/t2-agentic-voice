@@ -11,7 +11,9 @@ could not be checked (`unknown_days`), and, when the source cut the span to its 
 the last day it checked (`checked_last`) with a note. Then, by the span's length:
 
 - **Up to `DAILY_DAYS` days:** each day that has a flight with its weekday, its flight count in
-  the cabin and its lowest price (`days`), and the days with no flight.
+  the cabin (left out when the source counted none: SerpApi's fare calendar prices each day but
+  never says 0 for a count it does not know) and its lowest price (`days`), and the days with
+  no flight.
 - **Longer:** week by week (`weeks`, the Saudi week Sunday to Saturday, cut to the span): each
   week's first and last days, how many of its days have a flight, and its cheapest day with its
   price; no list of single days, so the result stays short however long the span.
@@ -72,11 +74,12 @@ class DaySpan(_Data):
 
 
 class SpanDay(_Data):
-    """A day of a span that has a flight: its weekday, its flights and its lowest price."""
+    """A day of a span that has a flight: its weekday, its flights (left out when the source
+    did not count them, as a fare calendar does not) and its lowest price."""
 
     date: str
     weekday: str
-    flights: int
+    flights: int | None = None
     lowest_price: int
 
 

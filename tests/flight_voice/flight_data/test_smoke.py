@@ -89,8 +89,14 @@ def test_a_day_and_a_span_are_searched_and_only_counts_logged(
         )
         == code
     )
-    days = {r.url.params["outbound_date"] for r in network.requests}
-    assert len(days) == 3  # the day, and the span of three from it
+    engines = [r.url.params["engine"] for r in network.requests]
+    assert "google_flights_calendar" in engines  # the span asks the calendar first
+    days = {
+        r.url.params["outbound_date"] for r in network.requests if "outbound_date" in r.url.params
+    }
+    # the day, and the span of three from it day by day (the calendar priced none), or the day
+    # alone when the calendar failed
+    assert len(days) == (3 if status == 200 else 1)
     assert holding(KEY, shown(caplog=caplog, capsys=capsys)) == []
     if status == 200:
         messages = [r.getMessage() for r in caplog.records]

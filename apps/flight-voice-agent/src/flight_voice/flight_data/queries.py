@@ -6,7 +6,8 @@ An answer's `status` says what the source found: `ok` (offers, in departure orde
 `no_flights` (it answered and has none that day), `not_served` or `cabin_not_sold` (the mock
 alone, with what it serves or sells). A source that could not answer raises
 `FlightDataUnavailableError` (port.py) instead, so a failure is never read as no flights. In a
-span, a day that could not be checked is `known=False`.
+span, a day that could not be checked is `known=False`, and a day whose flights were not counted
+(a fare calendar prices each day but counts none) has `flights` None.
 """
 
 from __future__ import annotations
@@ -80,6 +81,20 @@ class SpanQuery(_Frozen):
             adults=self.adults,
         )
 
+    def key(self) -> str:
+        """The span as one string, for a cache and the logs:
+        "RUH-JED-2026-11-19..2027-01-15-economy-1"."""
+        days = f"{self.first.isoformat()}..{self.last.isoformat()}"
+        return "-".join(
+            (
+                _place_key(self.origin),
+                _place_key(self.destination),
+                days,
+                self.cabin,
+                str(self.adults),
+            )
+        )
+
     def dates(self) -> tuple[date, ...]:
         """Every day of the span, in order."""
         count = (self.last - self.first).days + 1
@@ -114,11 +129,12 @@ class DayOffers(_Frozen):
 
 class DayFare(_Frozen):
     """One day of a span: its lowest price and how many flights it has, or `known=False` when
-    that day could not be checked. `lowest` is None on a day with no flights."""
+    that day could not be checked. `lowest` is None on a day with no flights; `flights` is None
+    when the source did not count them (a fare calendar)."""
 
     day: date
     lowest: Money | None = None
-    flights: int = Field(default=0, ge=0)
+    flights: int | None = Field(default=0, ge=0)
     known: bool = True
 
 

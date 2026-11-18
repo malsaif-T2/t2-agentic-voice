@@ -263,7 +263,9 @@ def test_a_span_is_cut_to_span_days_and_the_rest_left_to_the_tools() -> None:
     assert fares.query == q
     assert fares.checked_last == DAY + timedelta(2)
     assert [d.lowest.amount for d in fares.days if d.lowest] == [899, 899, 899]
-    assert sorted(r.url.params["outbound_date"] for r in wire.requests) == [
+    calendar, *days = wire.requests  # the day's body holds no calendar prices: day by day
+    assert calendar.url.params["engine"] == "google_flights_calendar"
+    assert sorted(r.url.params["outbound_date"] for r in days) == [
         "2026-11-19",
         "2026-11-20",
         "2026-11-21",

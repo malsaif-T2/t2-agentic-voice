@@ -1,0 +1,322 @@
+{
+ "params": {
+  "engine": "google_flights_calendar",
+  "type": "2",
+  "departure_id": "RUH",
+  "arrival_id": "JED",
+  "date_range_start": "2026-11-19",
+  "date_range_end": "2027-01-15",
+  "travel_class": "1",
+  "adults": "1",
+  "currency": "SAR",
+  "gl": "sa",
+  "hl": "en"
+ },
+ "status": 200,
+ "body": {
+  "search_metadata": {
+   "id": "6afdb54e758ad4cada9364ee",
+   "status": "Success",
+   "json_endpoint": "https://serpapi.com/searches/37BnaY8G1Jgf_mDV2JyR8JwzyaRTND21n-czNR5AkJs/6afdb54e758ad4cada9364ee.json",
+   "markdown_endpoint": "https://serpapi.com/searches/37BnaY8G1Jgf_mDV2JyR8JwzyaRTND21n-czNR5AkJs/6afdb54e758ad4cada9364ee.md",
+   "created_at": "2026-11-18 14:25:18 UTC",
+   "processed_at": "2026-11-18 14:25:18 UTC",
+   "google_flights_calendar_url": "https://www.google.com/travel/flights?tfs=CBwQARoSagcIARIDUlVIcgcIARIDSkVEQAFIAXABggELCP___________wGYAQI&tfu=KgIIAw&hl=en&gl=sa&curr=SAR",
+   "raw_html_file": "https://serpapi.com/searches/37BnaY8G1Jgf_mDV2JyR8JwzyaRTND21n-czNR5AkJs/6afdb54e758ad4cada9364ee.html",
+   "prettify_html_file": "https://serpapi.com/searches/37BnaY8G1Jgf_mDV2JyR8JwzyaRTND21n-czNR5AkJs/6afdb54e758ad4cada9364ee.prettify",
+   "total_time_taken": 2.13
+  },
+  "search_parameters": {
+   "engine": "google_flights_calendar",
+   "hl": "en",
+   "gl": "sa",
+   "type": "2",
+   "departure_id": "RUH",
+   "arrival_id": "JED",
+   "date_range_start": "2026-11-19",
+   "date_range_end": "2027-01-15",
+   "currency": "SAR"
+  },
+  "prices": [
+   {
+    "outbound_date": "2026-11-19",
+    "price": 979
+   },
+   {
+    "outbound_date": "2026-11-20",
+    "price": 654
+   },
+   {
+    "outbound_date": "2026-11-21",
+    "price": 589
+   },
+   {
+    "outbound_date": "2026-11-22",
+    "price": 369
+   },
+   {
+    "outbound_date": "2026-11-23",
+    "price": 369
+   },
+   {
+    "outbound_date": "2026-11-24",
+    "price": 399
+   },
+   {
+    "outbound_date": "2026-11-25",
+    "price": 369
+   },
+   {
+    "outbound_date": "2026-11-26",
+    "price": 429
+   },
+   {
+    "outbound_date": "2026-11-27",
+    "price": 339
+   },
+   {
+    "outbound_date": "2026-11-28",
+    "price": 429
+   },
+   {
+    "outbound_date": "2026-11-29",
+    "price": 259,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-11-30",
+    "price": 259,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-01",
+    "price": 259,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-02",
+    "price": 259,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-03",
+    "price": 299
+   },
+   {
+    "outbound_date": "2026-12-04",
+    "price": 259,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-05",
+    "price": 259,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-06",
+    "price": 259,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-07",
+    "price": 259,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-08",
+    "price": 259,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-09",
+    "price": 259,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-10",
+    "price": 259,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-11",
+    "price": 259,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-12",
+    "price": 259,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-13",
+    "price": 259,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-14",
+    "price": 259,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-15",
+    "price": 259,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-16",
+    "price": 259,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-17",
+    "price": 259,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-18",
+    "price": 259,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-19",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-20",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-21",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-22",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-23",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-24",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-25",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-26",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-27",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-28",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-29",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-30",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2026-12-31",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2027-01-01",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2027-01-02",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2027-01-03",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2027-01-04",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2027-01-05",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2027-01-06",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2027-01-07",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2027-01-08",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2027-01-09",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2027-01-10",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2027-01-11",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2027-01-12",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2027-01-13",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2027-01-14",
+    "price": 249,
+    "low_price": true
+   },
+   {
+    "outbound_date": "2027-01-15",
+    "price": 249,
+    "low_price": true
+   }
+  ]
+ }
+}

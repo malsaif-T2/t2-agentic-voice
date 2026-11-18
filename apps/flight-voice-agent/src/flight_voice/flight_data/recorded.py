@@ -4,7 +4,8 @@ adapter and its parser: tests and the app's recorded mode answer offline.
 A fixture is one answer in an envelope, `{"params": {...}, "status": 200, "body": {...}}`, its
 params the request's as the adapter sends them, the key left out. `fixture_name(params)` names
 it by the airports (commas made "+"), the day, the class and the travelers
-(`RUH_JED_2026-11-19_c1_a1.json`).
+(`RUH_JED_2026-11-19_c1_a1.json`); a fare calendar by its range in place of the day
+(`RUH_JED_calendar_2026-11-19_2027-01-15_c1_a1.json`).
 
 - `ReplayTransport(folder)` answers a request from the fixture whose params equal the
   request's, the key aside; every `*.json` of the folder is read once, at the start. A request
@@ -30,6 +31,7 @@ from pydantic import SecretStr
 from t2_agentic_voice import get_logger
 
 from flight_voice.flight_data.serpapi import NOT_RECORDED_HEADER, SerpApiFlightData
+from flight_voice.flight_data.serpapi_params import CALENDAR_ENGINE
 
 __all__ = [
     "APP_FIXTURES",
@@ -52,9 +54,12 @@ def _params(request: httpx.Request) -> dict[str, str]:
 
 
 def fixture_name(params: dict[str, str]) -> str:
-    """The fixture's file name for these params."""
+    """The fixture's file name for these params; a fare calendar's names its range."""
     route = "_".join(params.get(k, "").replace(",", "+") for k in ("departure_id", "arrival_id"))
     day = params.get("outbound_date", "")
+    if params.get("engine") == CALENDAR_ENGINE:
+        first, last = params.get("date_range_start", ""), params.get("date_range_end", "")
+        day = f"calendar_{first}_{last}"
     return f"{route}_{day}_c{params.get('travel_class', '')}_a{params.get('adults', '')}.json"
 
 

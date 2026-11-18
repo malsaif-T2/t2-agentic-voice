@@ -1,4 +1,4 @@
-"""A span of days read one day at a time, for a source with no calendar of its own (SerpApi):
+"""A span of days read one day at a time, for a source whose calendar answered none (SerpApi):
 `fan_out` and `span_of`, which cuts the span to the source's `span_days` first.
 
 One task a day, at most `concurrency` at once, all under one `deadline_s`; a day still running
@@ -27,9 +27,12 @@ type DayFn = Callable[[OfferQuery], Awaitable[DayOffers]]
 
 
 class Spanning(FlightData, Protocol):
-    """A source that fans a span out, as a cache over it needs: `span(day_fn, q)` reads the
-    span through `day_fn` (the cache's `day`) with the source's own cut, concurrency and
-    deadline."""
+    """A source that fans a span out, as a cache over it needs: `calendar(q)` is its one
+    search for a whole span (None when it has none or it priced no day), and `span(day_fn, q)`
+    reads the span through `day_fn` (the cache's `day`) with the source's own cut,
+    concurrency and deadline."""
+
+    async def calendar(self, q: SpanQuery) -> DayFares | None: ...
 
     async def span(self, day_fn: DayFn, q: SpanQuery) -> DayFares: ...
 
