@@ -124,9 +124,21 @@ the flight number to pick; an airline's own prefilled search replaces it where P
   schedule data) done and checked; the seam mapped; this proposal written; approved the same day
   with the owner's answers. Next: Phase 1 (offline, no key needed) on its own branch from
   plan-010-integration; Phase 0 once the SerpApi key is in `.env`.
+- 2026-11-18, block C1 (after Phase 0): a span is one SerpApi fare-calendar search (a price a
+  day, no flight count, so the count is left out; day by day only when the calendar prices
+  none, as RUH-LHR's and RUH-DXB's did); deadlines 8 s from Phase 0's 1.1-4.1 s (one recording
+  search took 6.8 s and two timed out on a cold start, then answered from SerpApi's cache);
+  Phase 0's answers as parser fixtures; the app's recorded set (13 answers, 15 searches) in
+  `apps/flight-voice-agent/evals/flight_data/`; the real network's persona, Saad, the T2 flight
+  assistant (the owner's); an airline the caller names after a listing that left flights out
+  comes from find_flights with airline.
 
 ## Decision log
 
+- 2026-11-18 (C1): a day the fare calendar does not price is no flight inside the run of days
+  it priced and unknown outside it, never no flights; a calendar that failed is said as failed,
+  not read day by day (that would double the wait). The calendar's price for a party is taken
+  as the party's, as a day's is (not checked live).
 - 2026-11-18: SerpApi's Google Flights API first, SearchApi.io the spare, behind one port; the
   alternatives (Duffel, Amadeus, Sabre, Travelport, Kiwi, Skyscanner, Travelpayouts, Wego, schedule
   APIs) are closed to us, miss carriers, or give no prices (the research report); Almosafer has no

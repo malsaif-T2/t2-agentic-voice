@@ -56,7 +56,8 @@ GREETINGS: Final[dict[Tag, Template]] = {
 REAL_GREETINGS: Final[dict[Tag, Template]] = {
     "ar-SA": Template("هلا $traveler، معك $persona، مساعد الرحلات في $company. وين ودّك تسافر؟"),
     "en": Template(
-        "Hi $traveler, this is $persona, the $company flight assistant. Where would you like to fly?"
+        "Hi $traveler, this is $persona, the $company flight assistant. "
+        "Where would you like to fly?"
     ),
 }
 # Which network a call is on: the mock airline's, or the real airlines' (lean/results.py's).
