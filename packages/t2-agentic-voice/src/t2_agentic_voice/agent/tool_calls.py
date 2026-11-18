@@ -12,7 +12,8 @@ replies (`Memory`).
   guard's evidence for the rest of the call, and its card shown once the guard passed its text.
   A result that succeeded, of a tool whose `reports_on` names actions, is kept as the evidence
   of claims about those actions too (rule A, which takes it only when it holds an ID-shaped
-  token: agent/speech_guard.py), and no other tool's result is.
+  token: agent/speech_guard.py), and no other tool's result is; one marked `done`, of a tool
+  that declares `claims`, is kept as the evidence of that tool's claims (`Memory.done`).
 - **Actions** (the design's 6.4). A call of one of the agent's actions goes to the action
   runner's `propose`, in the reply's scope, and writes nothing: its read-back (`plan`, one a
   reply, its lines read in the caller's register: agent/language.py's `wording`, MSA for an
@@ -66,12 +67,15 @@ class Memory:
     """What one call's talker keeps between its replies, which the heard history does not
     hold: the tool calls and results of its last `KEPT_TURNS` turns, its developer notes, the
     evidence its tools gave, the evidence of claims each action's `reports_on` tools gave
-    (`reports`, by the action's name), and the tools left to finish after their reply."""
+    (`reports`, by the action's name), the results of each tool that declares claims which did
+    what they say (`done`, by the tool's name), and the tools left to finish after their
+    reply."""
 
     exchanges: dict[TurnId, list[ChatMessage]] = field(default_factory=dict)
     notes: dict[TurnId, str] = field(default_factory=dict)
     evidence: list[str] = field(default_factory=list)
     reports: dict[str, list[str]] = field(default_factory=dict)
+    done: dict[str, list[str]] = field(default_factory=dict)
     finishing: set[asyncio.Future[ToolResult]] = field(default_factory=set)
 
     def keep(self, turn_id: TurnId, messages: Sequence[ChatMessage]) -> None:
@@ -80,14 +84,19 @@ class Memory:
         while len(self.exchanges) > KEPT_TURNS:
             del self.exchanges[min(self.exchanges)]
 
-    def took(self, result: ToolResult, *, reports_on: Sequence[str] = ()) -> None:
+    def took(
+        self, result: ToolResult, *, reports_on: Sequence[str] = (), claimed: str | None = None
+    ) -> None:
         """Keep `result`'s data and evidence as the guard's evidence, and, when it succeeded,
-        as the evidence of claims about each action its tool `reports_on`."""
+        as the evidence of claims about each action its tool `reports_on`, and of the claims of
+        its tool, `claimed` (one that declares them), when it is `done`."""
         texts = result.texts()
         self.evidence += texts
         if result.ok:
             for action in reports_on:
                 self.reports.setdefault(action, []).extend(texts)
+            if claimed is not None and result.done:
+                self.done.setdefault(claimed, []).extend(texts)
 
 
 def framed(tool: str, result: ToolResult) -> str:
@@ -172,7 +181,7 @@ class ToolCalls:
                     finished.add(task)
                     call = tasks[task]
                     result = results[call.id] = task.result()
-                    self.memory.took(result, reports_on=self._reports_on(call.name))
+                    self._took(call.name, result)
                     ms = max(0.0, self.clock.now() - began) * 1000
                     yield ToolEnded(
                         call_id=call.id,
@@ -213,10 +222,15 @@ class ToolCalls:
         self.plan = made
         return ToolResult(data={"status": READ_BACK})
 
-    def _reports_on(self, name: str) -> tuple[str, ...]:
-        """The actions the results of the tool `name` report on; none for any other call."""
+    def _took(self, name: str, result: ToolResult) -> None:
+        """`result` of the tool `name` kept (`Memory.took`), with the actions it reports on and
+        its own claims; none for any other call."""
         tool = self.runner.tool(name)
-        return () if tool is None else tool.reports_on
+        if tool is None:
+            self.memory.took(result)
+            return
+        claimed = None if tool.claims is None else name
+        self.memory.took(result, reports_on=tool.reports_on, claimed=claimed)
 
     def _line(self, calls: Iterable[ToolCallRequest]) -> ProgressDue | None:
         """The reply's progress line, the soonest of `calls`' tools': None once given, or when
@@ -239,7 +253,7 @@ class ToolCalls:
         def kept(ended: asyncio.Future[ToolResult]) -> None:
             if ended.cancelled() or ended.exception() is not None:
                 return
-            self.memory.took(ended.result(), reports_on=self._reports_on(call.name))
+            self._took(call.name, ended.result())
             self.memory.keep(self.turn_id, exchange([call], {call.id: ended.result()}))
 
         if task.done():

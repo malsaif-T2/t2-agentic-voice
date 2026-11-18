@@ -1,10 +1,10 @@
 """The flight agent's settings (flight_voice/settings.py): its own under `FLIGHT_VOICE_` and the
 library's under `T2V_`, a `.env` read only when given; each refusal naming the setting, never
 its value; the runtime's folder always nested under the library's; 50 bookings a caller a day,
-the guard's two rules of run F's round 2 and its plain speech (D-111) on, four model requests a
-turn, and a yes over the read-back held (D-108), each unless set; the demo traveler the
-console's dev caller under `env` dev alone; and a persona's name that would break the lines'
-rule refused, naming its setting."""
+the guard's two rules of run F's round 2, its plain speech (D-111) and a claim sent again on,
+four model requests a turn, and a yes over the read-back held (D-108), each unless set; the
+demo traveler the console's dev caller under `env` dev alone; and a persona's name that would
+break the lines' rule refused, naming its setting."""
 
 from __future__ import annotations
 
@@ -129,9 +129,14 @@ def test_the_guards_rules_and_four_requests_a_turn_hold_unless_set(
     environment: pytest.MonkeyPatch,
 ) -> None:
     voice = load().voice
-    assert GUARD_ON == ("question_stop_drops_calls", "drop_stage_notes", "plain_speech")
+    assert GUARD_ON == (
+        "question_stop_drops_calls",
+        "drop_stage_notes",
+        "plain_speech",
+        "retry_claims",
+    )
     assert (voice.guard.question_stop_drops_calls, voice.guard.drop_stage_notes) == (True, True)
-    assert voice.guard.plain_speech
+    assert voice.guard.plain_speech and voice.guard.retry_claims
     assert voice.llm.max_requests_per_turn == REQUESTS_PER_TURN == 4
     environment.setenv("T2V_GUARD__QUESTION_STOP_DROPS_CALLS", "false")
     environment.setenv("T2V_GUARD__QUESTIONS_PER_REPLY", "2")

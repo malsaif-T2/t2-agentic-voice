@@ -1632,9 +1632,10 @@ agent's does, and not the yes held over a read-back, which it has none of: it tu
 said over its closing question ("Shall I book it?", «أحجزها لك؟») is answered once the reply
 ends, unless the caller said other words after it, and adds the booking's send words
 (`booking/lines.py`'s `SEND_WORDS`: «احجزها», «احجز», "book it", "confirm" and the like) to
-`words.send`, so «إي احجزها» and «نعم، احجزها» there are that yes too; each unless the
-environment sets it. Its name is `flight-lean`, so its traces and its runtime's folder are its
-own.
+`words.send`, so «إي احجزها» and «نعم، احجزها» there are that yes too; and, as for the scripted
+agent, `guard.retry_claims` and the caller read as Saudi first (below, "The owner's call of
+2026-11-18"); each unless the environment sets it. Its name is `flight-lean`, so its traces and
+its runtime's folder are its own.
 
 **What stays in code, and nothing more.**
 
@@ -1822,3 +1823,42 @@ deterministic or robotic"; run F measures Saad, never punishes a natural agent.
    written), where an Arabic one keeps its digits. The cap stays the one the scenario sets (45
    unless it sets another). A lean play's record keeps each turn's reply as written
    (`written`).
+
+**The owner's call of 2026-11-18 (05:57)**, the lean agent's first live test by the owner: "is
+there a switch for Najdi call? it is only standard Arabic", and "it confirmed the reservation
+before actually reserving it". Two changes, each behind a library setting the app turns on:
+
+1. **Saudi first.** The caller greeted «السلام عليكم. كيف الحال؟» and went on «شوف يا طويل العمر،
+   ودي أروح من الرياض إلى القاهرة», «امم، شوف لي الأسبوع الجاي», «إي نعم»: no turn held a form of
+   the library's dialect list, so the library read every one as MSA, and Saad answered in MSA
+   throughout («إلى أين تودّ السفر؟», «هل تريد حجزها؟»). The app now turns on `words.saudi_first`
+   (an `ar-SA` call is Saudi unless the caller's turn plainly speaks MSA, by a short list of
+   forms only MSA says, «أريد»، «أودّ»، «هل»، «ماذا»، «الآن»، «سوف»، «أرغب»، «غدًا»، «القادم»،
+   «لدي» and the like, never a Najdi caller's «أبي»، «بكرة»، «الجاي»، «عندي»; a turn with
+   neither keeps the call's register; once MSA, the call stays MSA until a Saudi form is heard)
+   and adds its own forms as `words.dialect` (`caller_register.py`: «ودي»، «الجاي»، «بكرة»،
+   «نبي»، «تبغى»، «حقت»، «خلها»، «طويل العمر»، «شوف»), for either agent. Every turn of that call now
+   reads Saudi; run F's four MSA scenarios still read MSA at every turn, and three Saudi ones
+   whose first turn read MSA (f08, f27, f30) read Saudi from it. Ole5 sets neither, so its
+   reading is as it was (GP-18; `tests/ole5_voice/test_caller_register.py`).
+2. **No booking claimed before `book_trip` booked.** At the caller's yes the model called
+   `find_flights`, `choose_flights` (picking 18:15, though its summary had said 09:30) and
+   `book_trip`, which answered `not_confirmed` (the total of the trip as changed had not been
+   said), then said «تم حجز رحلتك … الساعة 18:15»; the booking check held, and the trip was
+   booked only after the read-back of the next turn. The lean agent declares no action, so the
+   library's claim rule (rule A) was off. `book_trip` now declares `LEAN_CLAIMS` as its
+   `claims`: the booking's claim phrases (`booking/lines.py`'s `CLAIMS`) and the rewordings
+   of them a model writes that they miss (`REWORDED`: «حجزتها», «تم حجزها», «تم حجزه»,
+   «حجزت رحلتك», «تم تأكيد حجزك», "you're all booked", "I've got you booked", "your
+   flight's booked" and the like; none sits in a negative but after ma, which the guard
+   reads, and never «محجوزة» alone, since «الرحلة محجوزة بالكامل» says a flight is sold out).
+   Its `booked` and `already_booked` results are `done` (`ToolResult.done`), so rule A holds
+   those phrases to them as an action's are held to its record: «تم حجز رحلتك» is said only
+   once this call's booking was made. The library's default phrases are not read for an
+   agent that declares no action, so an honest "nothing has been booked yet" is said. A claim it holds back is not answered with the error
+   notice: under `guard.retry_claims` the request is sent once more, one past the turn's four,
+   with what it said before the claim and a note that the claim was held back, so the model
+   says what `book_trip`'s `say` asked (`tests/flight_voice/lean/test_lean_claims.py`). The
+   booking check is unchanged. Run F's `notice` check still counts the blocked clause of such a
+   turn, a defect of the model's, and its `violations` a claim the guard lets pass ("is all
+   set", which the outcome check reads wider than the guard).

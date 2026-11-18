@@ -22,6 +22,17 @@ owner ruled on 2026-11-18 that saying the reference unasked is fine ("it is not 
 requirement"), after a pointer in its place left f20's caller told there was none
 (f-dev-lean-4). A booking already made is told whole, its trip and reference as it was booked.
 
+**No claim before the booking** (the owner's call of 2026-11-18: at the caller's yes the model
+called `book_trip`, which answered `not_confirmed`, then said «تم حجز رحلتك …»): the tool
+declares `LEAN_CLAIMS` as its `claims`, the booking's claim phrases (booking/lines.py's `CLAIMS`,
+«تم حجز», «تم الحجز», "I've booked" and the like) and the rewordings a model writes that they
+miss («حجزتها», «تم حجزها», «حجزت رحلتك», "your flight's booked"), and its `booked` and
+`already_booked` results are `done`, so the library's output guard (rule A) says a clause
+holding one only once this call's booking was made, and sends the model's request once more
+when it held one back (`guard.retry_claims`, settings.py). The agent declares no action, so
+the library's default phrases are not read (its "has been booked" sits in an honest "nothing
+has been booked yet").
+
 The tool finishes when a barge-in comes (`on_interrupt="finish"`), so a write is never cut in
 half; a write begun is counted before it is sent, so a call cut off mid-write is `unknown`.
 """
@@ -32,7 +43,16 @@ import asyncio
 from typing import Final
 
 from pydantic import JsonValue
-from t2_agentic_voice import CallContext, Card, CardRow, Tool, ToolError, ToolResult, tool
+from t2_agentic_voice import (
+    CallContext,
+    Card,
+    CardRow,
+    Claims,
+    Tool,
+    ToolError,
+    ToolResult,
+    tool,
+)
 
 from flight_voice.airline.bookings import (
     AirlineError,
@@ -44,6 +64,7 @@ from flight_voice.airline.bookings import (
 )
 from flight_voice.airline.system import Airline
 from flight_voice.booking.action import NO_TRAVELER, traveler_of
+from flight_voice.booking.lines import CLAIMS
 from flight_voice.lean.booking_check import BookingCheck, Ledger
 from flight_voice.lean.choose import chosen_legs
 from flight_voice.lean.results import lean_result, route_said, trip_said
@@ -66,6 +87,29 @@ NOT_CONFIRMED: Final[dict[str, JsonValue]] = {
 WRITE_S: Final = 15.0
 TOOL_S: Final = 20.0
 BOOKED: Final = {"en": "Booked · Reference {ref}", "ar": "تم الحجز · رقم الحجز {ref}"}
+# The rewordings of a booking's claim that `CLAIMS` misses, as booking/lines.py's rule asks: none
+# sits in a negative but after ma («ما حجزتها»), which the guard reads. «محجوزة» alone is no
+# claim: «الرحلة محجوزة بالكامل» says the flight is sold out.
+REWORDED: Final[dict[str, tuple[str, ...]]] = {
+    "ar-SA": (
+        "حجزتها",  # Hajaztha: I booked it
+        "تم حجزها",  # tamm Hajzha: it was booked
+        "تم حجزه",  # tamm Hajzah: the same, of a masculine word
+        "حجزت رحلتك",  # Hajazt riHlatak: I booked your trip
+    ),
+    "ar": ("تم تأكيد حجزك",),  # tamma ta'keedu Hajzik: your booking was confirmed
+    "en": (
+        "you're all booked",
+        "you are all booked",
+        "I've got you booked",
+        "your flight's booked",
+        "your trip's booked",
+        "your flight has been booked",
+    ),
+}
+LEAN_CLAIMS: Final = Claims(
+    {tag: (*phrases, *REWORDED.get(tag, ())) for tag, phrases in CLAIMS.phrases.items()}
+)
 
 
 def booked_card(draft: TripDraft, airline: Airline, reference: str, tag: Tag) -> Card | None:
@@ -84,7 +128,7 @@ def _booked(booking: Booking, draft: TripDraft, airline: Airline, tag: Tag) -> T
         "total": booking.total_sar,
         "reference": booking.reference,
     }
-    return lean_result(answer, booked_card(draft, airline, booking.reference, tag))
+    return lean_result(answer, booked_card(draft, airline, booking.reference, tag), done=True)
 
 
 def _already(booking: Booking, draft: TripDraft, airline: Airline, tag: Tag) -> ToolResult:
@@ -103,7 +147,7 @@ def _already(booking: Booking, draft: TripDraft, airline: Airline, tag: Tag) -> 
         "cabin": booking.cabin,
     }
     answer |= chosen_legs(airline, draft, tag) | {"reference": booking.reference}
-    return lean_result(answer, booked_card(draft, airline, booking.reference, tag))
+    return lean_result(answer, booked_card(draft, airline, booking.reference, tag), done=True)
 
 
 async def _write(airline: Airline, new: NewBooking, ledger: Ledger) -> Booking | None:
@@ -128,7 +172,13 @@ def book_trip(airline: Airline, trips: TripBook, check: BookingCheck) -> Tool:
     """The booking of each call's trip in `trips`, once `check` holds (the module's
     docstring)."""
 
-    @tool(name=BOOK_TRIP, description=DESCRIPTION, timeout_s=TOOL_S, on_interrupt="finish")
+    @tool(
+        name=BOOK_TRIP,
+        description=DESCRIPTION,
+        timeout_s=TOOL_S,
+        on_interrupt="finish",
+        claims=LEAN_CLAIMS,
+    )
     async def book(ctx: CallContext) -> ToolResult:
         tag: Tag = ctx.language
         traveler = traveler_of(ctx.caller)

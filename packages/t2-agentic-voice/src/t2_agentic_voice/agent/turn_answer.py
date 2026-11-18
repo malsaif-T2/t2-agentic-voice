@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from t2_agentic_voice.agent.context import Unnoted
-from t2_agentic_voice.agent.events import TalkerEvent
+from t2_agentic_voice.agent.events import ModelReplied, TalkerEvent
 from t2_agentic_voice.agent.plain_speech import DotRuns
 from t2_agentic_voice.core.errors import ProviderError
 from t2_agentic_voice.core.logging import get_logger
@@ -47,6 +47,18 @@ class Answer:
     first_token_s: float | None = None
     warm: bool | None = None
 
+    def replied(self, model: str, stray: int, scripts: tuple[str, ...]) -> ModelReplied:
+        """The request to `model` ended: its usage, first token's time and warmth, and how many
+        characters of it the stray-script filter took out (`stray`), of which `scripts`."""
+        return ModelReplied(
+            model=model,
+            usage=self.usage,
+            first_token_s=self.first_token_s,
+            warm_connection=self.warm,
+            stray_characters=stray,
+            stray_scripts=scripts,
+        )
+
 
 async def answer_events(
     reply: Turn, request: ChatRequest, answer: Answer
@@ -70,7 +82,7 @@ async def answer_events(
                     answer.text += piece
                     for said in reply.gate.said(splitter.feed(unnoted.feed(piece))):
                         yield said
-                    if reply.gate.stopped or reply.gate.not_speech:
+                    if reply.gate.stopped or reply.gate.ended:  # D-111, guard.retry_claims
                         reply.leak.close()  # what the leak check held of it is never said
                         return
                     if reply.leak.found:  # the rest is reasoning: what was held is said

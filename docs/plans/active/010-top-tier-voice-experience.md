@@ -1476,6 +1476,12 @@ Block 0.
   and none better; Saudi +1.19), so `detected` stands. The socket's measurement in the owner's
   voice: first audio 0.19 s against HTTP's 0.23 s, gaps 0.29 against 0.31 s; renders sent for
   the owner's ear.
+- 2026-11-18: Najdi by default and no false booking claim built, checked and merged (D-123,
+  D-124): with `words.saudi_first` the flight agent reads a caller as Saudi unless a turn plainly
+  speaks MSA, with the app's own Saudi forms («ودي», «الجاي», «طويل العمر» and others); the owner's
+  call reads Saudi at every turn and every MSA dev scenario still reads MSA. book_trip declares
+  its claims, so rule A blocks «تم حجز رحلتك» until it has booked, and the request is sent again
+  once so the caller hears the summary and no error notice.
 - 2026-11-17: the text-to-speech candidates for the owner's pick by ear (D-114, branch
   `plan-010-tts`): `tts.provider` takes `elevenlabs`, `groq` and `telnyx`, each speaking the
   provider's default voices with `tts.languages` unset. The owner picked ElevenLabs v4 Turbo in

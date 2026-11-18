@@ -20,7 +20,13 @@ Saudi, MSA and English turns, each answered in its own.
   one is Saudi, one that holds none is MSA (and a turn with no Arabic word keeps the Saudi
   default). A reply follows the call's: Saudi once any heard turn of the caller's held a form,
   so a short plain turn after a Saudi one (tamam, okay; kammil, go on) stays Saudi, and MSA
-  while none of them has. An `ar-SA` reply's language section and its
+  while none of them has. A team adds its own Saudi forms (`words.dialect`, a phrase of several
+  words heard as those words in a row). Under `words.saudi_first` (off by default, GP-18; the
+  owner's call of 2026-11-18 was answered in MSA to a Najdi caller), a turn with
+  no Saudi form is MSA only when it plainly speaks MSA, by a short list of forms only MSA says
+  (`MSA_WORDS`: ureed, awadd, hal, matha and the like); one with neither (a greeting, «إي
+  نعم», a city) is no evidence, so the call is Saudi until an MSA turn is heard, MSA from then
+  on until a Saudi form is. An `ar-SA` reply's language section and its
   line after a tool result then ask for that register (agent/prompt.py); an agent's Arabic tag
   that is not Saudi (`ar`) keeps its section as it was. Run K's first dev round had 8 of 10 MSA
   callers answered in Saudi Arabic while the model alone was asked to tell the two apart.
@@ -35,10 +41,11 @@ from __future__ import annotations
 import itertools
 import re
 from collections.abc import Sequence
+from functools import lru_cache
 
 from t2_agentic_voice.core.conversation import TalkerTurn
 from t2_agentic_voice.core.settings.tts import LanguageTag
-from t2_agentic_voice.core.settings.words import LanguageCode, primary_code
+from t2_agentic_voice.core.settings.words import LanguageCode, WordSettings, primary_code
 from t2_agentic_voice.domain.text.arabic_numbers import Register as Register  # re-exported
 from t2_agentic_voice.domain.words import heard_code, rule_form
 
@@ -131,6 +138,39 @@ DIALECT_WORDS: frozenset[str] = frozenset(
         "\u062e\u0631\u0628\u0627\u0646",  # kharban, broken: khah, reh, beh, alef, noon
     }
 )
+# The forms only MSA says, by which a turn plainly speaks MSA under `words.saudi_first`, each a
+# whole word in the rule's form, with or without wa before it (but `_NOT_WA`); a Saudi caller
+# says each otherwise (abi, wain, al-heen, fih, mu, bukra, al-jay, indi, tayyib, illi).
+MSA_WORDS: frozenset[str] = frozenset(
+    {
+        "\u0627\u0631\u064a\u062f",  # ureed, I want: alef, reh, yeh, dal
+        "\u0646\u0631\u064a\u062f",  # nureed, we want: noon, reh, yeh, dal
+        "\u0627\u0648\u062f",  # awadd, I would like: alef, waw, dal
+        "\u0647\u0644",  # hal, the question's opener: heh, lam
+        "\u0645\u0627\u0630\u0627",  # matha, what: meem, alef, thal, alef
+        "\u0644\u0645\u0627\u0630\u0627",  # limatha, why: lam, meem, alef, thal, alef
+        "\u0627\u064a\u0646",  # ayna, where: alef, yeh, noon
+        "\u0627\u0644\u0627\u0646",  # al-aan, now: alef, lam, alef, noon
+        "\u0633\u0648\u0641",  # sawfa, will: seen, waw, feh
+        "\u0644\u0646",  # lan, will not: lam, noon
+        "\u0644\u064a\u0633",  # laysa, is not: lam, yeh, seen
+        "\u064a\u0648\u062c\u062f",  # yujad, there is: yeh, waw, jeem, dal
+        "\u062a\u0648\u062c\u062f",  # tujad, there is (feminine): teh, waw, jeem, dal
+        "\u0627\u0631\u063a\u0628",  # arghab, I wish: alef, reh, ghain, beh
+        "\u0646\u0631\u063a\u0628",  # narghab, we wish: noon, reh, ghain, beh
+        "\u063a\u062f\u0627",  # ghadan, tomorrow: ghain, dal, alef
+        "\u063a\u062f",  # ghad, tomorrow (ba'da ghad, the day after): ghain, dal
+        "\u0627\u0644\u0642\u0627\u062f\u0645",  # al-qadim, next: alef, lam, qaf, alef, dal, meem
+        "\u0627\u0644\u0642\u0627\u062f\u0645\u0647",  # al-qadima, next (feminine): ... heh
+        "\u0644\u062f\u064a",  # ladayya, I have (and lada, at): lam, dal, yeh
+        "\u0644\u062f\u064a\u0646\u0627",  # ladayna, we have: lam, dal, yeh, noon, alef
+        "\u062d\u0633\u0646\u0627",  # hasanan, all right: hah, seen, noon, alef
+        "\u0627\u0644\u0630\u064a",  # allathi, who or which: alef, lam, thal, yeh
+        "\u0627\u0644\u062a\u064a",  # allati, who or which (feminine): alef, lam, teh, yeh
+    }
+)
+# A word of its own, not wa and a form of `MSA_WORDS`: waladi, my son: waw, lam, dal, yeh.
+_NOT_WA: frozenset[str] = frozenset({"\u0648\u0644\u062f\u064a"})
 # A dialect form only as the turn's first word: fih, there is (is there?): feh, yeh, heh. MSA
 # writes it after what it is in, never to open a question.
 DIALECT_OPENERS: frozenset[str] = frozenset({"\u0641\u064a\u0647"})
@@ -182,30 +222,75 @@ def _dialect(word: str) -> bool:
     return word in DIALECT_WORDS or (word.startswith(_AND) and word[1:] in DIALECT_WORDS)
 
 
-def register_of(words: str) -> Register:
-    """The register of the caller's Arabic in `words` (the module's docstring): Saudi when it
-    holds a dialect form (`DIALECT_WORDS`, a word of `DIALECT_OPENERS` first, or ma before a
-    verb, each word with or without wa before it), or holds no Arabic word; else MSA."""
-    heard = rule_form(words).split()
-    if not any(_ARABIC_LETTER.search(word) for word in heard):
-        return "saudi"
-    if heard[0] in DIALECT_OPENERS or any(_dialect(word) for word in heard):
-        return "saudi"
+def _msa(word: str) -> bool:
+    joined = word.startswith(_AND) and word not in _NOT_WA
+    return word in MSA_WORDS or (joined and word[1:] in MSA_WORDS)
+
+
+@lru_cache(maxsize=64)
+def _forms(dialect: tuple[str, ...]) -> tuple[tuple[str, ...], ...]:
+    """A team's Saudi forms (`words.dialect`), each as its words in the rule's form."""
+    return tuple(tuple(words) for form in dialect if (words := rule_form(form).split()))
+
+
+def _added(heard: Sequence[str], dialect: tuple[str, ...]) -> bool:
+    """Whether `heard` holds one of the `dialect` forms as words in a row, its first with or
+    without wa before it."""
+    for form in _forms(dialect):
+        for at in range(len(heard) - len(form) + 1):
+            first, rest = heard[at], heard[at + 1 : at + len(form)]
+            if first in (form[0], _AND + form[0]) and tuple(rest) == form[1:]:
+                return True
+    return False
+
+
+def _saudi(heard: Sequence[str], dialect: tuple[str, ...]) -> bool:
+    """Whether the words `heard`, in the rule's form, hold a Saudi form (`register_of`)."""
+    opener = bool(heard) and heard[0] in DIALECT_OPENERS
+    if opener or any(_dialect(word) for word in heard):
+        return True
     negated = (NEGATION, _AND + NEGATION)
     pairs = itertools.pairwise(heard)
-    return "saudi" if any(ma in negated and _verb(after) for ma, after in pairs) else "msa"
+    return any(ma in negated and _verb(after) for ma, after in pairs) or _added(heard, dialect)
 
 
-def call_register(turns: Sequence[str]) -> Register:
+def _arabic(words: str) -> bool:
+    return any(map(_ARABIC_LETTER.search, words.split()))
+
+
+def _read(words: str, dialect: tuple[str, ...]) -> Register | None:
+    """What an Arabic turn's `words` plainly hold: saudi for a Saudi form, msa for a form only
+    MSA says and no Saudi one (`MSA_WORDS`), None for neither."""
+    heard = rule_form(words).split()
+    if _saudi(heard, dialect):
+        return "saudi"
+    return "msa" if any(_msa(word) for word in heard) else None
+
+
+def register_of(words: str, *, dialect: Sequence[str] = (), saudi_first: bool = False) -> Register:
+    """The register of the caller's Arabic in `words` (the module's docstring): Saudi when it
+    holds a dialect form (`DIALECT_WORDS`, a word of `DIALECT_OPENERS` first, ma before a
+    verb, each word with or without wa before it, or one of a team's `dialect` forms), or holds
+    no Arabic word; else MSA, or under `saudi_first` MSA only when it holds a form only MSA says
+    (`MSA_WORDS`) and Saudi when it holds neither."""
+    if not _arabic(words):
+        return "saudi"
+    return _read(words, tuple(dialect)) or ("saudi" if saudi_first else "msa")
+
+
+def call_register(turns: Sequence[str], settings: WordSettings | None = None) -> Register:
     """The register of the caller's Arabic over the call so far, from the words of each of
     their heard `turns`, the one answered now among them (the module's docstring): Saudi once a
-    turn held a dialect form, or while none held an Arabic word; MSA while every turn with
-    Arabic in it held none. Each turn is read on its own (`register_of`), so a form opens only
-    its own turn and ma pairs only with a word of its own turn."""
-    arabic = [words for words in turns if any(map(_ARABIC_LETTER.search, words.split()))]
-    if any(register_of(words) == "saudi" for words in arabic) or not arabic:
+    turn held a dialect form (a team's too, `settings.dialect`), or while none held an Arabic
+    word; MSA while every turn with Arabic in it held none, or under `settings.saudi_first`
+    once one plainly spoke MSA, Saudi before. Each turn is read on its own (`register_of`), so
+    a form opens only its own turn and ma pairs only with a word of its own turn."""
+    dialect = () if settings is None else settings.dialect
+    read = {_read(words, dialect) for words in turns if _arabic(words)}
+    if not read or "saudi" in read:
         return "saudi"
-    return "msa"
+    first = settings is not None and settings.saudi_first
+    return "msa" if "msa" in read or not first else "saudi"
 
 
 def wording(tag: LanguageTag, register: Register) -> LanguageTag:

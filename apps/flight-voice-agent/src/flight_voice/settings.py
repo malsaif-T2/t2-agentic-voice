@@ -16,21 +16,23 @@ default (persona.py's `Names`).
   process a folder and both servers start with `--env-file .env`;
 - **books up to 50 a caller a day** (`ACTIONS_PER_DAY`) unless the environment sets
   `limits.actions_per_caller_per_day`: a demo day books more than the library's default;
-- **turns on** `guard.question_stop_drops_calls`, `guard.drop_stage_notes` and
-  `guard.plain_speech` (`GUARD_ON`), sets `llm.max_requests_per_turn` to 4 (`REQUESTS_PER_TURN`),
-  and, for the scripted agent alone, turns on `interruptions.yes_over_read_back`
+- **turns on** `guard.question_stop_drops_calls`, `guard.drop_stage_notes`, `guard.plain_speech`
+  and `guard.retry_claims` (`GUARD_ON`), sets `llm.max_requests_per_turn` to 4
+  (`REQUESTS_PER_TURN`), and, for the scripted agent alone, `interruptions.yes_over_read_back`
   (`YES_OVER_READ_BACK`), for the lean agent alone `interruptions.answer_yes_over_question`
   (`YES_OVER_QUESTION`), each unless the environment sets it (run F's rounds 2 and 3): a
   question the limit stopped ends the turn with no call of its request run, a stage note or a
-  tag the model writes is never said, nor a clause that is not speech, its request tried once
-  more (D-111), a refused booking's next pick and its read-back fit in one turn, and a yes over
-  the read-back books once its summary has played (D-108, the owner's "Any yes books"); the lean
-  agent has no read-back to hold a yes over, so a yes over its closing question ("Shall I book
-  it?") is answered once the reply ends instead (D-116; `for_the_app`'s `agent`);
+  tag the model writes is never said, nor a clause that is not speech or a booking's claim the
+  guard held back, its request tried once more (D-111, lean/book.py), a refused booking's next
+  pick and its read-back fit in one turn, and a yes over the read-back books once its summary
+  has played (D-108, the owner's "Any yes books"); the lean agent has no read-back to hold a
+  yes over, so a yes over its closing question ("Shall I book it?") is answered once the reply
+  ends instead (D-116; `for_the_app`'s `agent`);
 - **for the lean agent alone, adds the booking's send words** (booking/lines.py's `SEND_WORDS`:
   «احجزها», «احجز», "book it", "confirm" and the like) to `words.send` unless the environment sets
   it, so «إي احجزها» or «نعم، احجزها» said over its closing question is the yes D-116 answers, as
   over the scripted agent's read-back, which declares them as its action's own;
+- **reads a caller as Saudi first**, the app's forms added (caller_register.py), unless set;
 - **says numbers, times and dates in the caller's register** (`tts.spoken_numbers =
   "by_register"`, `SPOKEN_NUMBERS`, D-107) unless the environment sets it: "14:00" is said
   «ثنتين الظهر» to a Saudi caller and "two in the afternoon" in English, never digit by digit,
@@ -73,6 +75,7 @@ from t2_agentic_voice import (
 from flight_voice.airline.bookings import Mode
 from flight_voice.airline.system import SLOW_S, ProfileMode, SearchMode, live_today
 from flight_voice.booking.lines import SEND_WORDS
+from flight_voice.caller_register import REGISTER_WORDS
 from flight_voice.persona import Names, breaking
 from flight_voice.traveler import demo_caller
 from flight_voice.turned_on import turned_on
@@ -85,7 +88,7 @@ TOKENS_PER_DAY: Final = 50
 ACTIONS_PER_DAY: Final = 50
 # The library's guard settings the app turns on, its most model requests a turn, and its
 # interruption setting it turns on, each unless set.
-GUARD_ON: Final = ("question_stop_drops_calls", "drop_stage_notes", "plain_speech")
+GUARD_ON: Final = ("question_stop_drops_calls", "drop_stage_notes", "plain_speech", "retry_claims")
 REQUESTS_PER_TURN: Final = 4
 YES_OVER_READ_BACK: Final = "yes_over_read_back"
 SPOKEN_NUMBERS: Final = "by_register"
@@ -248,9 +251,9 @@ def for_the_app(voice: VoiceSettings, *, agent: AgentKind = "scripted") -> Voice
     a day `ACTIONS_PER_DAY`, the guard's `GUARD_ON` on, its most requests a turn
     `REQUESTS_PER_TURN`, for the scripted agent `YES_OVER_READ_BACK` on and for the lean one
     (which has no read-back) `YES_OVER_QUESTION`, with the booking's `SEND_WORDS` its `words.send`,
-    numbers said `SPOKEN_NUMBERS`, turned_on.py's `TURNED_ON` (and its `READ_BACK_TURNS` for the
-    scripted agent), each unless set, and under `env` dev alone the demo traveler the test
-    console's dev caller; every other setting as it was."""
+    `REGISTER_WORDS` for the caller's register, numbers said `SPOKEN_NUMBERS`, turned_on.py's
+    `TURNED_ON` (and its `READ_BACK_TURNS` for the scripted agent), each unless set, and under
+    `env` dev alone the demo traveler the console's dev caller; every other setting as it was."""
     storage = StorageSettings.model_validate(
         voice.storage.model_dump() | {"var_dir": voice.storage.var_dir / APP_FOLDER}
     )
@@ -266,10 +269,9 @@ def for_the_app(voice: VoiceSettings, *, agent: AgentKind = "scripted") -> Voice
         update["interruptions"] = InterruptionSettings.model_validate(
             voice.interruptions.model_dump() | {yes: True}
         )
-    if agent == "lean" and "send" not in voice.words.model_fields_set:
-        update["words"] = WordSettings.model_validate(
-            voice.words.model_dump() | {"send": SEND_WORDS}
-        )
+    words = REGISTER_WORDS | ({"send": SEND_WORDS} if agent == "lean" else {})
+    if unset := {k: v for k, v in words.items() if k not in voice.words.model_fields_set}:
+        update["words"] = WordSettings.model_validate(voice.words.model_dump() | unset)
     if "max_requests_per_turn" not in voice.llm.model_fields_set:
         update["llm"] = LlmSettings.model_validate(
             voice.llm.model_dump() | {"max_requests_per_turn": REQUESTS_PER_TURN}

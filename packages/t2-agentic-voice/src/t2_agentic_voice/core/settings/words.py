@@ -7,6 +7,11 @@ app sets its own additions without code; none by default. `yes` and `send` are t
 (domain/yes_words.py), added to the presets' and to an action's own send words. And the product
 terms added to the declaration's vocabulary (`VoiceAgent(vocabulary=...)`), which becomes the
 Whisper prompt (plan 006), in any language: none by default.
+
+The register of the caller's Arabic (agent/language.py's `call_register`) reads the caller's
+words too: `dialect`, the Saudi forms a team adds to the library's list (none by default), and
+`saudi_first`, an `ar-SA` call read as Saudi unless the caller plainly speaks MSA (off by
+default, so a turn with no Saudi form is MSA, as before; GP-18).
 """
 
 from __future__ import annotations
@@ -64,5 +69,23 @@ class WordSettings(Group):
         description=(
             "Product terms added to the declaration's vocabulary, which becomes the Whisper "
             'prompt, as a JSON list: ["VPN", "Outlook"]. A value replaces the list.'
+        ),
+    )
+    dialect: tuple[_Word, ...] = Field(
+        default=(),
+        description=(
+            "Saudi forms added to the library's list the register of the caller's Arabic is "
+            "read by, as a JSON list of Arabic words or phrases; a phrase of several words is "
+            "one of them heard as those words in a row. A value replaces the list."
+        ),
+    )
+    saudi_first: bool = Field(
+        default=False,
+        description=(
+            "Whether an ar-SA call reads the caller as Saudi unless they plainly speak MSA: a "
+            "turn with no Saudi form is MSA only when it holds one of the library's few forms "
+            "only MSA says (ureed, awadd, hal, matha, al-aan, sawfa and the like), and a turn "
+            "with neither keeps the call's register, Saudi until an MSA one is heard; a Saudi "
+            "form makes the call Saudi from then on. Off: a turn with no Saudi form is MSA."
         ),
     )
