@@ -132,6 +132,8 @@ def test_the_setup_names_what_answered_and_holds_no_key() -> None:
     assert setup["agent"] == "flight-lean" and setup["release"] == "abc123"
     assert setup["flight_data"] == "mock" and setup["record_audio"] is True
     assert setup["tts"]["provider"] == "groq"  # type: ignore[index, call-overload]
+    stt = setup["stt"]
+    assert isinstance(stt, dict) and stt["provider"] == "elevenlabs" and stt["model"] is None
     text = json.dumps(setup).lower()
     assert "key" not in text and "secret" not in text and "code" not in text
 

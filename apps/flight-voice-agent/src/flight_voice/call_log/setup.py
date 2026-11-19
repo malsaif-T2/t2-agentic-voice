@@ -48,7 +48,12 @@ def call_setup(
             "model": voice.llm.model,
             "reasoning_effort": voice.llm.reasoning_effort,
         },
-        "stt": {"provider": voice.stt.provider, "model": voice.stt.model},
+        "stt": {
+            "provider": voice.stt.provider,
+            "model": voice.stt.model if voice.stt.provider == "groq" else None,  # Whisper's alone
+            "live_language": voice.stt.live_language,
+            "streaming": voice.stt.streaming,
+        },
         "tts": {
             "provider": voice.tts.provider,
             "voices": {tag: v.model_dump() for tag, v in voice.tts.languages.items()},
