@@ -136,9 +136,10 @@ def test_the_guards_rules_and_four_requests_a_turn_hold_unless_set(
         "drop_stage_notes",
         "plain_speech",
         "retry_claims",
+        "day_month_apart",
     )
     assert (voice.guard.question_stop_drops_calls, voice.guard.drop_stage_notes) == (True, True)
-    assert voice.guard.plain_speech and voice.guard.retry_claims
+    assert voice.guard.plain_speech and voice.guard.retry_claims and voice.guard.day_month_apart
     assert voice.llm.max_requests_per_turn == REQUESTS_PER_TURN == 4
     environment.setenv("T2V_GUARD__QUESTION_STOP_DROPS_CALLS", "false")
     environment.setenv("T2V_GUARD__QUESTIONS_PER_REPLY", "2")

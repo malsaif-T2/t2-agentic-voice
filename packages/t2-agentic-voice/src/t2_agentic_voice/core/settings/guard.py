@@ -38,6 +38,14 @@ class GuardSettings(Group):
             "(the empty text) is refused. Unset: none."
         ),
     )
+    day_month_apart: bool = Field(
+        default=False,
+        description=(
+            "Whether a day and a month alone with one hyphen between them in a clause (26-11), "
+            "no third number joined to it, are read as two numbers, not one ID of their digits "
+            "(D-134); off, they are one group as before."
+        ),
+    )
     min_id_digits: int = Field(
         default=3,
         ge=1,

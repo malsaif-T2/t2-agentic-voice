@@ -67,3 +67,20 @@ def test_the_real_listing_line_sends_one_airline_to_another_search() -> None:
         assert "call find_flights again with airline, never answer from the options" in text
     for text in instructions(Names(), TODAY, last).values():
         assert "never answer from the options" not in text
+
+
+def test_the_priciest_and_each_airlines_first_and_cheapest_are_named_and_chosen_by_id() -> None:
+    """The model trial of 2026-11-19: careful models hedged on "the priciest", and "flyadeal's
+    first one" was missed when the options left it out; the day names them by id, and
+    choose_flights takes an id of the day's pool, listed or not."""
+    call = _call()
+    day = data(call.find(destination="Jeddah", depart=DAY))["outbound"]
+    prices = {o["id"]: o["price"] for o in day["options"]}
+    assert day["priciest_id"] == max(prices, key=lambda i: (prices[i], i))
+    adeal = next(a for a in day["airlines"] if a["airline"] == "flyadeal")
+    assert adeal["first_departs"] == "05:20" and adeal["first_id"].startswith("F3")
+    assert adeal["cheapest_id"].startswith("F3") and adeal["cheapest"] == 499
+    if adeal["first_id"] not in prices:  # left out of the options: still chosen by its id
+        chosen = data(call.choose(outbound_id=adeal["first_id"]))
+        assert chosen["status"] == "ok"
+        assert chosen["outbound"]["departs"] == "05:20"

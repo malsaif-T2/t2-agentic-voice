@@ -195,6 +195,15 @@ the flight number to pick; an airline's own prefilled search replaces it where P
   on OpenAI; gpt-6.1-sol cannot take tools on Chat Completions and judges only); the default
   model is unchanged. The trial's report (its dialogues, transcripts and the judge's scores) is
   the lead's, outside the repository.
+- 2026-11-19, the model trial (8 fixed dialogues, 48 turns, over the recorded flights, judged
+  reply by reply by gpt-6.1-sol): gpt-5.5 wrote the most natural and correct Arabic (Najdi 4.48,
+  correctness 5.0, task 4.81, no leak, error or booking claim) at a first clause of 1.78 s p50,
+  against gpt-oss-120b's 3.39 / 4.74 / 4.40 at 0.71 s; gpt-6-luna as natural but chose flights
+  nobody picked; every Groq alternative was worse than gpt-oss. The OpenAI key's credit ran
+  out during the judging. Three faults every model met, fixed in general: the day answer names
+  its priciest flight and each airline's first and cheapest by id, choose_flights takes any
+  flight of the day's pool, and a day and a month with a hyphen no longer block a clause
+  (D-134).
 
 ## Decision log
 

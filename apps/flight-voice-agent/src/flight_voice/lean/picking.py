@@ -69,9 +69,10 @@ class Picking:
         return found
 
     def find(self, leg: LegKind, wanted: str) -> Offer | None:
-        """The leg's listed offer of id `wanted`, or its pick by that id."""
+        """The leg's listed offer of id `wanted` (one of the pool it was listed from too, which
+        the day's airline summary names by id), or its pick by that id."""
         listed = self.draft.listed(leg)
-        offers = () if listed is None else listed.offers
+        offers = () if listed is None else (*listed.offers, *listed.pool)
         chosen = self.draft.chosen(leg)
         return next((o for o in (*offers, *([chosen] if chosen else [])) if o.id == wanted), None)
 

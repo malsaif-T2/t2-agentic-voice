@@ -51,7 +51,13 @@ APP_FOLDER: Final = "flight"
 ACTIONS_PER_DAY: Final = 50
 # The library's guard settings the app turns on, its most model requests a turn, and its
 # interruption setting it turns on, each unless set.
-GUARD_ON: Final = ("question_stop_drops_calls", "drop_stage_notes", "plain_speech", "retry_claims")
+GUARD_ON: Final = (
+    "question_stop_drops_calls",
+    "drop_stage_notes",
+    "plain_speech",
+    "retry_claims",
+    "day_month_apart",
+)
 REQUESTS_PER_TURN: Final = 4
 YES_OVER_READ_BACK: Final = "yes_over_read_back"
 YES_OVER_QUESTION: Final = "answer_yes_over_question"

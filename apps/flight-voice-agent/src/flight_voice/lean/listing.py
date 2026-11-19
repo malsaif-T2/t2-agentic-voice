@@ -109,7 +109,9 @@ def _count(held: list[Offer], r: Register) -> AirlineCount:
         airline=held[0].carrier.name(r),
         flights=len(held),
         first_departs=held[0].departs.strftime("%H:%M"),
+        first_id=held[0].id,
         last_departs=held[-1].departs.strftime("%H:%M"),
         cheapest=cheapest.price.amount,
         cheapest_departs=cheapest.departs.strftime("%H:%M"),
+        cheapest_id=cheapest.id,
     )

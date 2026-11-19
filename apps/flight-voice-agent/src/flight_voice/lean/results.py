@@ -124,14 +124,18 @@ class LeanOption(_Data):
 class AirlineCount(_Data):
     """An airline that flies the day: its flights, its first and last departures, and its
     cheapest price with that flight's departure, so a question about one airline is answered
-    right from it (a live call of 2026-11-18 answered flyadeal from the 2 of its 5 listed)."""
+    right from it (a live call of 2026-11-18 answered flyadeal from the 2 of its 5 listed),
+    and the ids of its first and its cheapest flight, which choose_flights takes though the
+    options leave them out (the model trial of 2026-11-19: "flyadeal's first one")."""
 
     airline: str
     flights: int
     first_departs: str
+    first_id: str
     last_departs: str
     cheapest: int
     cheapest_departs: str
+    cheapest_id: str
 
 
 class LegList(_Data):
@@ -142,6 +146,7 @@ class LegList(_Data):
     first_departs: str | None = None
     last_departs: str | None = None
     cheapest_id: str | None = None
+    priciest_id: str | None = None
     airlines: tuple[AirlineCount, ...] | None = None
     options: tuple[LeanOption, ...]
     more: int | None = None
@@ -205,6 +210,13 @@ def cheapest_id(options: Sequence[LeanOption]) -> str | None:
     return min(seated)[2] if seated else None
 
 
+def priciest_id(options: Sequence[LeanOption]) -> str | None:
+    """The priciest option that seats everyone, the first listed of two as dear; None when none
+    does or only one is listed (the listing keeps the day's priciest, lean/listing.py)."""
+    seated = [(-o.price, n, o.id) for n, o in enumerate(options) if o.seats_ok is not False]
+    return min(seated)[2] if len(seated) > 1 else None
+
+
 def leg_list(
     day: date,
     options: tuple[LeanOption, ...],
@@ -223,6 +235,7 @@ def leg_list(
         first_departs=times[0] if times else None,
         last_departs=times[-1] if times else None,
         cheapest_id=cheapest_id(options),
+        priciest_id=priciest_id(options),
         airlines=airlines,
         options=options,
         more=counted - len(options) if counted > len(options) else None,

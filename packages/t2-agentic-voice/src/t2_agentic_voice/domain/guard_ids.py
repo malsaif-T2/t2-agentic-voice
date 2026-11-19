@@ -19,9 +19,12 @@ What `check_ids` does:
   numbers joined by a colon, a point or a slash (a time, "16:00"; a decimal, "12.75"; "24/7";
   "7/11/2026"), or by the hyphens of a date around a year ("7-11-2026", or the prompt's own
   date, "2026-11-07"; the non-breaking hyphen, the en dash or the minus a model writes for '-'
-  alike), are each read alone, joined to no number beside them. The current year and the next
-  (`year`, `year + 1`) pass with no evidence, since the prompt holds the current date, and each
-  ends a group, so "6 2026" is a day and a year, not a number of five digits.
+  alike), are each read alone, joined to no number beside them; under `guard.day_month_apart`
+  (off by default, GP-18; D-134) a day and a month alone with one hyphen between them
+  ("26-11", or with a non-breaking hyphen), no third number joined to it, are too. The
+  current year and the next (`year`, `year + 1`) pass with no evidence, since the prompt
+  holds the current date, and each ends a group, so "6 2026" is a day and a year, not a
+  number of five digits.
 - **ID-shaped** is a group of `guard.min_id_digits` digits or more, a run of digits that long
   inside a word ("lt00423"), or a match of one of `guard.id_patterns`, read on the clause as
   written with its digits made ASCII.
@@ -70,6 +73,12 @@ _APART = re.compile(
     f"|{_YEAR}{_HYPHEN}{_MONTH}{_HYPHEN}{_DAY})(?![0-9])"
 )
 _APART_MARK = re.compile("[-\u2010-\u2013\u2212:./\u066b]")
+# A day and a month alone with one hyphen (`guard.day_month_apart`): no digit or hyphened number
+# on either side, so "45-21-33" stays one group.
+_DAY_MONTH = re.compile(
+    f"(?<![0-9])(?<![0-9]{_HYPHEN})(?:{_DAY}{_HYPHEN}{_MONTH}|{_MONTH}{_HYPHEN}{_DAY})"
+    f"(?![0-9])(?!{_HYPHEN}[0-9])"
+)
 
 
 class IdVerdict(BaseModel):
@@ -89,15 +98,16 @@ def guard_form(text: str) -> str:
     return normalize_digits(normalize_arabic(text.translate(DIGIT_CHARACTERS)))
 
 
-def _pieces(text: str) -> list[str]:
-    """`text` as the guard reads it (`guard_form`), cut around each number of an `_APART` form, at
-    a NUL, which no clause holds, put on each side of it."""
+def _pieces(text: str, *, day_month: bool = False) -> list[str]:
+    """`text` as the guard reads it (`guard_form`), cut around each number of an `_APART` form
+    (and of `_DAY_MONTH` when `day_month`), at a NUL, which no clause holds, put on each side."""
     written = text.translate(DIGIT_CHARACTERS)
-    cut = _APART.sub(lambda apart: "\0" + _APART_MARK.sub("\0", apart.group()) + "\0", written)
-    return [guard_form(piece) for piece in cut.split("\0")]
+    for form in (_APART, _DAY_MONTH) if day_month else (_APART,):
+        written = form.sub(lambda m: "\0" + _APART_MARK.sub("\0", m.group()) + "\0", written)
+    return [guard_form(piece) for piece in written.split("\0")]
 
 
-def _groups(text: str, year: int) -> tuple[list[list[str]], list[str]]:
+def _groups(text: str, year: int, *, day_month: bool = False) -> tuple[list[list[str]], list[str]]:
     """The groups of numbers standing next to each other as whole words in `text` as the guard
     reads it (each the list of its numbers), and the runs of digits inside other words; an
     exempt year (`year`, the next) is in neither, and ends a group, as a cut of `_pieces`
@@ -105,7 +115,7 @@ def _groups(text: str, year: int) -> tuple[list[list[str]], list[str]]:
     exempt = (str(year), str(year + 1))
     groups: list[list[str]] = []
     inside: list[str] = []
-    for piece in _pieces(text):
+    for piece in _pieces(text, day_month=day_month):
         group: list[str] = []
         for word in piece.split():
             if _NUMBER.fullmatch(word) and word not in exempt:
@@ -147,7 +157,7 @@ def check_ids(
     be `year` or the next (the module's docstring)."""
     texts = tuple(evidence)
     known = frozenset().union(*(_numbers(text, year) for text in texts))
-    groups, inside = _groups(clause, year)
+    groups, inside = _groups(clause, year, day_month=settings.day_month_apart)
     shortest = settings.min_id_digits
     unsupported = [
         "".join(group)

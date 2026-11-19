@@ -4489,3 +4489,19 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Decision:** `llm.model` names four more models, each with its provider in `PROVIDER_OF`: `qwen/qwen3.8-27b` and `minimaxai/minimax-m2.7` (groq), `gpt-5.5` and `gpt-4.1` (openai). `EFFORTS` gives qwen3.8-27b none, low, medium and high, and gpt-5.5 none alone; minimax-m2.7 and gpt-4.1 are not reasoning models to the settings, so no effort is sent to them, as for the Llama models. A new `HIDDEN_REASONING` (core/settings/llm.py) names minimax-m2.7, and the Groq adapter sends it `reasoning_format: "hidden"` on every request, with tools or without, and nothing new to any other model. The default model stays `openai/gpt-oss-120b`; which model the flight app runs is the lead's call on the trial's report.
 - **Consequences:** a team may run the talker on any of the four; under `openai`, gpt-4.1 needs no effort set (one is accepted and never sent). Nothing changes for a request to a model already listed.
 - **Evidence:** tests/t2_agentic_voice/adapters/test_groq_chat.py (the effort to qwen3.8-27b and not to minimax-m2.7; `reasoning_format` hidden to minimax-m2.7 alone, with and without tools), tests/t2_agentic_voice/adapters/test_openai_chat.py (an effort to gpt-5.5, none to gpt-4.1), tests/t2_agentic_voice/api/test_chat_route.py (each new model loads with its provider; a wrong provider or effort refused with the fix).
+
+## D-134 · A day and a month alone with a hyphen read as a date's two numbers, under `guard.day_month_apart` · 2026-11-19 · Accepted (plan 011's model trial; a library setting, off by default, GP-18; the flight app turns it on)
+
+- **Context:** in the model trial of 2026-11-19, gpt-oss-120b wrote a day as «26‑11» (a
+  non-breaking hyphen); rule B read its digits as one ID of four, with no evidence, blocked the
+  clause, and the caller heard the error notice. A full date with its year was already read
+  apart (D-022's forms); a day and a month alone were not.
+- **Decision:** with `guard.day_month_apart`, a day and a month alone with one hyphen between
+  them (the ASCII hyphen, the non-breaking one, the figure dash, the en dash or the minus), no
+  digit or hyphened number on either side, are read as two numbers (domain/guard_ids.py's
+  `_DAY_MONTH`), so neither needs evidence. Three or more hyphened numbers ("45-21-33") stay one
+  group, and every other reading is unchanged. Off by default; the flight app turns it on
+  (voice_settings.py's `GUARD_ON`).
+- **Consequences:** a four-digit ID written as a valid day and month with one hyphen ("12-10")
+  passes unchecked under the setting; the flight app has no such IDs (its ids are flight codes,
+  read whole).

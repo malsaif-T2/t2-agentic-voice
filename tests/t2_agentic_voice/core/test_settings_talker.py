@@ -29,6 +29,7 @@ def test_the_llm_and_guard_defaults_are_the_designs() -> None:
     }
     assert settings.guard.model_dump() == {
         "id_patterns": (),
+        "day_month_apart": False,
         "min_id_digits": 3,
         "on_block": "drop_rest",
         "claims": {},
