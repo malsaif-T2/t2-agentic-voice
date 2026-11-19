@@ -1630,8 +1630,9 @@ same airline, trip state, persona, names, words and page, compared on live calls
 kept. The setting `FLIGHT_VOICE_AGENT` chooses it (`scripted` by default, or `lean`); the server
 declares the agent chosen and, for the lean one, registers its booking check's observers
 (`AgentSpeechEnded`, `UserTurnEnded`, `CallEnded`). Its settings path turns on
-`guard.plain_speech`, `guard.drop_stage_notes` (a sentence opening as the reasoning does, "We
-need…", after an Arabic sentence is a leak after a space too: f-dev-lean-4's f25 said one),
+`guard.plain_speech`, `guard.drop_stage_notes` (a word opening as the reasoning does, "We
+need…", after Arabic text is a leak wherever a word starts: f-dev-lean-4's f25 said one after a
+sentence, the owner's call of 2026-11-19 one after a parenthesis, D-131),
 `guard.question_stop_drops_calls`, four model requests a turn and `tts.spoken_numbers = "by_register"` (D-107: the times and fares it writes in
 digits are said as words in the caller's register, "14:00" «ثنتين الظهر»), as the scripted
 agent's does, and not the yes held over a read-back, which it has none of: it turns on `interruptions.answer_yes_over_question` instead (D-116), so a yes

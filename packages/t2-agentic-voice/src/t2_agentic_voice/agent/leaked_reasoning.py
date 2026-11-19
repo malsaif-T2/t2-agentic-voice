@@ -22,11 +22,15 @@ a2-dev saw too («…حالياً.We need to respond accordingly.…»).
   letter after it, in a reply in Arabic script; in any language, at one anywhere that opens a
   stage word (`STAGE_WORDS`, in any case); and at a "<" that opens a tag (`TAGS`, or a tool's or
   an action's name, after "<" or "</"). Arabic in parentheses («(الأرخص)») never begins one.
-  In a reply in Arabic script, a sentence that opens as the reasoning does (`TELLS`) after text
+  In a reply in Arabic script, a word that opens as the reasoning does (`TELLS`) after text
   written in Arabic script (the reply's text before it, its earlier requests' too, has more
-  Arabic letters than Latin ones) begins one after a space too: an English "We need to
-  check…" after an Arabic sentence is never said (run F's f25, f-dev-lean-4: «حجزت الرحلة
-  بنجاح. We need to check if everything follows guidelines. …» was said whole). An English
+  Arabic letters than Latin ones) begins one wherever a word starts: after a space, a
+  parenthesis, an ellipsis or any mark, not only at a sentence's start (D-131). An English "We
+  need to check…" after an Arabic sentence is never said (run F's f25, f-dev-lean-4: «حجزت
+  الرحلة بنجاح. We need to check if everything follows guidelines. …» was said whole), nor
+  after a fragment and a parenthesis (the owner's call of 2026-11-19: «الرحلة مع ططمطم طيران
+  الط … (… ) We need to respond in Arabic Najdi dialect. …», where only a sentence's start was
+  read). A Latin word that opens no tell («على (Business)», «T2 Air») is said. An English
   reply, under an Arabic tag too (a caller who speaks English on a call that did not move),
   keeps the glued rule alone: there "Let me check" is speech.
 - **What goes.** From a leak's first character, every piece of the model's text in that request
@@ -35,8 +39,9 @@ a2-dev saw too («…حالياً.We need to respond accordingly.…»).
   request runs and no request follows. What the model wrote is kept without the leak, so no
   later request reads it.
 - **As it streams** (`text`): the text after a possible beginning (with stage notes on, each
-  parenthesis, bracket and "<" too) is held until it is one or cannot be (a few characters: the
-  longest opening), so the clause before it is never held.
+  parenthesis, bracket and "<" too, and in a reply in Arabic script each capital Latin letter
+  that starts a word) is held until it is one or cannot be (a few characters: the longest
+  opening), so the clause before it is never held.
   `close` gives what is held at the end of a request's text, when it is none; each request of
   the reply's is read on its own, so one's first sentence is never glued to the last's.
 - **The count.** `logged` writes `talker_reasoning_dropped` with the call, the turn and the
@@ -55,7 +60,7 @@ from typing import Final
 
 from t2_agentic_voice.core.events import CallId, TurnId
 from t2_agentic_voice.core.logging import get_logger
-from t2_agentic_voice.domain.text.clauses import AFTER_WORD, SENTENCE_ENDS
+from t2_agentic_voice.domain.text.clauses import AFTER_WORD, SENTENCE_ENDS, WORD_MARKS
 
 _log = get_logger(__name__)
 
@@ -109,6 +114,11 @@ _NOTES: Final = tuple(f"{b}{word.casefold()}" for b in BRACKETS for word in STAG
 _ENDS = rf"^\s*|{AFTER_WORD}(?P<glued>[{SENTENCE_ENDS}])|[{SENTENCE_ENDS}]\s+"
 _START = re.compile(rf"(?:{_ENDS})(?=\S)")
 _NOTE_START = re.compile(rf"(?:{_ENDS}|(?=[(\[<]))(?=\S)")
+# In a reply in Arabic script with stage notes, a word's start too (group `word`): a capital
+# Latin letter after no letter, digit or letter's mark, as a tell opens (D-131).
+_WORD_START = re.compile(
+    rf"(?:{_ENDS}|(?=[(\[<])|(?P<word>)(?<![^\W_])(?<![{WORD_MARKS}])(?=[A-Z]))(?=\S)"
+)
 # The letters that tell a text written in Arabic script from one in Latin.
 _ARABIC_LETTER: Final = re.compile("[\u0621-\u063a\u0641-\u064a\u0671-\u06d3]")
 _LATIN_LETTER: Final = re.compile("[A-Za-z]")
@@ -133,6 +143,8 @@ class LeakedReasoning:
     ) -> None:
         self._arabic, self._stage_notes, self._names = arabic, stage_notes, tuple(names)
         self._start = _NOTE_START if stage_notes else _START
+        if stage_notes and arabic:  # a tell at a word's start, after Arabic text (D-131)
+            self._start = _WORD_START
         tags = (f"<{end}{name.casefold()}" for end in ("", "/") for name in (*TAGS, *names))
         self._notes = (*_NOTES, *tags) if stage_notes else ()
         self._longest_note = max((len(note) for note in self._notes), default=0)
@@ -176,7 +188,10 @@ class LeakedReasoning:
             if at < self._given:
                 continue
             glued = start.group("glued") is not None
-            tells = glued or (self._arabic and self._stage_notes and self._after_arabic(at))
+            after_arabic = self._arabic and self._stage_notes and self._after_arabic(at)
+            if start.groupdict().get("word") is not None and not after_arabic:
+                continue  # a word's start is read only after Arabic text
+            tells = glued or after_arabic
             verdict = self._leaks(self._text[at:], glued=glued, tells=tells)
             if verdict is None and not closing:
                 until = at  # held until it is a leak or cannot be one

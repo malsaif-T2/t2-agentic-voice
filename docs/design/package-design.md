@@ -1250,9 +1250,11 @@ response)" glued to a question, and the search after it ran), a stage note or a 
 too: in a reply in Arabic, a parenthesis or bracket glued to a sentence's end with a capital
 Latin letter after it; in any language, one that opens a stage word ("(Waiting", "[No output");
 and a "<" that opens a tag ("<action", "<data", or a tool's or an action's name). Arabic in
-parentheses never is. In a reply in Arabic, a sentence that opens as the reasoning does ("We
-need", "The user") after text written in Arabic script is one after a space too, not only glued
-(run F's f25 said an English self-check after «حجزت الرحلة بنجاح.»); an English reply, under an
+parentheses never is. In a reply in Arabic, a word that opens as the reasoning does ("We
+need", "The user") after text written in Arabic script is one wherever a word starts, after a
+space, a parenthesis, an ellipsis or any mark, not only glued to a sentence's end (run F's f25
+said an English self-check after «حجزت الرحلة بنجاح.»; the owner's call of 2026-11-19 said one
+after «… (… ) », D-131); a Latin word that opens no tell is said; an English reply, under an
 Arabic tag too, keeps the glued rule alone, as "Let me check" is speech there. With `guard.plain_speech` (off by default; D-111, after the owner's English
 call of 2026-11-17 said markdown, zero-width spaces and a broken note whole), a run of dots
 after a sentence's mark is taken out and one after a word made one ellipsis before the leak
