@@ -5,8 +5,9 @@ lifespan (`aclose`).
 **One day** is one `GET /search` with a day's params (serpapi_params.py's `search_params`).
 **A span** is first one fare-calendar search (`calendar`: `calendar_params`, read by
 serpapi_calendar.py), a price a day for the whole span with no flight count; when the calendar
-prices no day (SerpApi's "hasn't returned any results") or holds no recorded answer, the span is
-read day by day, cut to `span_days` (setting `checked_last`) and fanned out (fanout.py). Never
+prices no day (SerpApi's "hasn't returned any results") or holds no recorded answer, or the span
+asks `each_day`, the span is read day by day, cut to `span_days` (setting `checked_last`) and
+fanned out (fanout.py). Never
 `no_cache`: SerpApi's hour-long cache is free and fast.
 
 **The deadline.** A search (a day, or a calendar) runs under `deadline_s`; the first attempt
@@ -150,8 +151,8 @@ class SerpApiFlightData:
 
     async def days(self, q: SpanQuery) -> DayFares:
         """The lowest price of each day of the span: the calendar's, else day by day, cut to
-        `span_days` (the module's docstring)."""
-        found = await self.calendar(q)
+        `span_days` (the module's docstring); day by day at once when it asks `each_day`."""
+        found = None if q.each_day else await self.calendar(q)
         return found if found is not None else await self.span(self.day, q)
 
     async def calendar(self, q: SpanQuery) -> DayFares | None:

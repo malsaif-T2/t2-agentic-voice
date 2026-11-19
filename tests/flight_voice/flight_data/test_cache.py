@@ -254,3 +254,20 @@ def test_the_inner_sources_facts_are_passed_on_and_aclose_cancels_and_closes() -
 
     asyncio.run(scene())
     assert inner.closed
+
+
+def test_a_span_asked_each_day_skips_the_calendar_and_fills_each_days_entry() -> None:
+    cache, inner, _ = _cached()
+    span = _span().model_copy(update={"each_day": True})
+    inner.priced = DayFares(query=span, status="ok", days=(DayFare(day=DAY),))
+
+    async def scene() -> DayFares:
+        fares = await cache.days(span)
+        for n in range(3):
+            await cache.day(query(DAY + timedelta(n)))
+        return fares
+
+    fares = asyncio.run(scene())
+    assert inner.calendars == [] and len(inner.fetched) == 3  # each day once, then cached
+    assert all(f.offers for f in fares.days) and fares.checked_last == DAY + timedelta(2)
+    assert span.key().endswith("-each") and not _span().key().endswith("-each")

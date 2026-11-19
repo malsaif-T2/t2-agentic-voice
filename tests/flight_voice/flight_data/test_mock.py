@@ -136,3 +136,13 @@ def test_logged_keeps_each_day_it_answered() -> None:
     asyncio.run(logged.days(_span("RUH", "JED", DAY, DAY)))
     assert [a.query.key() for a in logged.answers] == ["RUH-JED-2026-11-19-economy-1"]
     assert logged.name == "mock" and logged.span_days == 62
+
+
+def test_a_span_asked_each_day_gives_each_days_offers_from_the_timetable() -> None:
+    first, last = date(2026, 11, 16), date(2026, 11, 22)
+    data = _data()
+    answer = asyncio.run(data.days(_span("RUH", "SIN", first, last, adults=2, each_day=True)))
+    for each in answer.days:
+        day = asyncio.run(data.day(_q("RUH", "SIN", each.day, adults=2)))
+        assert each.offers == day.offers and each.flights == len(day.offers)
+    assert asyncio.run(data.days(_span("RUH", "SIN", first, last))).days[0].offers is None

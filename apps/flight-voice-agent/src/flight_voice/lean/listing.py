@@ -7,9 +7,11 @@ beside flyadeal's 899 nonstop).
 
 **The listing** (`listed`): the whole pool when it holds at most `MAX_LISTED`; else, kept in
 this order until there are `MAX_LISTED`: the cheapest; each airline's cheapest, the airlines in
-the order of their first departure; the earliest and the latest; one for each part of the day
-not yet covered (its cheapest); then the cheapest of the rest. Always in departure order, ties
-by id. The mock (at most four a day, one airline, all nonstop) lists exactly its day's flights.
+the order of their first departure; the earliest and the latest; the priciest (so "the most
+expensive", asked of a day or of a span's day, is always one to choose: plan 011's round 2);
+one for each part of the day not yet covered (its cheapest); then the cheapest of the rest.
+Always in departure order, ties by id. The mock (at most four a day, one airline, all nonstop)
+lists exactly its day's flights.
 
 `by_airline` gives each airline's flights and cheapest over the pool, in the order of their
 first departure, when two or more fly the day.
@@ -36,6 +38,10 @@ def _order(offer: Offer) -> tuple[object, ...]:
 
 def _cost(offer: Offer) -> tuple[object, ...]:
     return (offer.price.amount, offer.departs, offer.id)
+
+
+def _dear(offer: Offer) -> tuple[object, ...]:
+    return (-offer.price.amount, offer.departs, offer.id)
 
 
 def pool(offers: Sequence[Offer]) -> tuple[Offer, ...]:
@@ -71,6 +77,7 @@ def listed(offers: Sequence[Offer], limit: int = MAX_LISTED) -> tuple[Offer, ...
         keep(min((o for o in ordered if o.carrier.code == code), key=_cost))
     keep(ordered[0])
     keep(ordered[-1])
+    keep(min(ordered, key=_dear))
     for part in dict.fromkeys(words.part_of_day(o.departs.time()) for o in ordered):
         covered = {words.part_of_day(o.departs.time()) for o in kept.values()}
         if part not in covered:

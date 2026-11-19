@@ -7,7 +7,9 @@ An answer's `status` says what the source found: `ok` (offers, in departure orde
 alone, with what it serves or sells). A source that could not answer raises
 `FlightDataUnavailableError` (port.py) instead, so a failure is never read as no flights. In a
 span, a day that could not be checked is `known=False`, and a day whose flights were not counted
-(a fare calendar prices each day but counts none) has `flights` None.
+(a fare calendar prices each day but counts none) has `flights` None. A span asked `each_day`
+(plan 011's round 2: the caller asks beyond each day's cheapest price) is read day by day, never
+from a fare calendar, and each day it answered holds its `offers`.
 """
 
 from __future__ import annotations
@@ -56,7 +58,8 @@ class OfferQuery(_Frozen):
 
 
 class SpanQuery(_Frozen):
-    """One leg on each day from `first` to `last`, both included."""
+    """One leg on each day from `first` to `last`, both included; `each_day` when every day is
+    to be searched for its flights (no fare calendar), each day's offers then given."""
 
     origin: Place
     destination: Place
@@ -64,6 +67,7 @@ class SpanQuery(_Frozen):
     last: date
     cabin: Cabin = "economy"
     adults: int = Field(default=1, ge=1, le=9)
+    each_day: bool = False
 
     @model_validator(mode="after")
     def _in_order(self) -> Self:
@@ -83,7 +87,7 @@ class SpanQuery(_Frozen):
 
     def key(self) -> str:
         """The span as one string, for a cache and the logs:
-        "RUH-JED-2026-11-19..2027-01-15-economy-1"."""
+        "RUH-JED-2026-11-19..2027-01-15-economy-1", "-each" after it when `each_day`."""
         days = f"{self.first.isoformat()}..{self.last.isoformat()}"
         return "-".join(
             (
@@ -92,6 +96,7 @@ class SpanQuery(_Frozen):
                 days,
                 self.cabin,
                 str(self.adults),
+                *(("each",) if self.each_day else ()),
             )
         )
 
@@ -130,12 +135,14 @@ class DayOffers(_Frozen):
 class DayFare(_Frozen):
     """One day of a span: its lowest price and how many flights it has, or `known=False` when
     that day could not be checked. `lowest` is None on a day with no flights; `flights` is None
-    when the source did not count them (a fare calendar)."""
+    when the source did not count them (a fare calendar); `offers` are the day's own when the
+    day was searched (a span read day by day), None otherwise."""
 
     day: date
     lowest: Money | None = None
     flights: int | None = Field(default=0, ge=0)
     known: bool = True
+    offers: tuple[Offer, ...] | None = None
 
 
 class DayFares(_Frozen):

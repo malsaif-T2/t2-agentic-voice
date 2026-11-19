@@ -3,11 +3,11 @@
 
 One task a day, at most `concurrency` at once, all under one `deadline_s`; a day still running
 then is cancelled and unknown (a cache's shielded fetch keeps running and fills the cache). A
-day with offers gives its lowest price and how many it lists; a day with none, no price; a day
-that failed or ran out of time is `known=False`. The answer is `no_flights` when no day it knows
-has a flight, else `ok`. Only a span where every day failed raises, `lasting` when any day's
-failure was. A cancellation (the caller barging in) cancels every day and propagates; an error
-that is not the port's (a bug) propagates too.
+day with offers gives its lowest price, how many it lists and the offers themselves; a day
+with none, no price; a day that failed or ran out of time is `known=False`. The answer is
+`no_flights` when no day it knows has a flight, else `ok`. Only a span where every day failed
+raises, `lasting` when any day's failure was. A cancellation (the caller barging in) cancels
+every day and propagates; an error that is not the port's (a bug) propagates too.
 """
 
 from __future__ import annotations
@@ -99,9 +99,11 @@ def _fares(
 
 def _fare(day: date, answer: DayOffers) -> DayFare:
     if not answer.offers:
-        return DayFare(day=day)
+        return DayFare(day=day, offers=())
     lowest = min(o.price.amount for o in answer.offers)
-    return DayFare(day=day, lowest=Money(amount=lowest), flights=len(answer.offers))
+    return DayFare(
+        day=day, lowest=Money(amount=lowest), flights=len(answer.offers), offers=answer.offers
+    )
 
 
 def _every_day_failed(failures: Sequence[FlightDataUnavailableError]) -> FlightDataUnavailableError:

@@ -18,6 +18,15 @@ the last day it checked (`checked_last`) with a note. Then, by the span's length
   week's first and last days, how many of its days have a flight, and its cheapest day with its
   price; no list of single days, so the result stays short however long the span.
 
+**Each day's flights** (`flights_per_day`, plan 011's round 2: asked for the priciest flight of
+a span, the model had only each day's lowest price): when the caller asks beyond each day's
+cheapest price, every day is searched (the span cut to `DAILY_DAYS` and to the source's own
+`span_days`, `checked_last` then set; on the real network each day cached, under the span's
+concurrency and deadline), and each day that has a flight also gives, over the flights a day's
+search lists from (listing.py's pool), its highest price, its first and last departures and the
+airlines flying it, with a note that a day's flights come from find_flights for that day, at
+once (`TO_PICK`).
+
 Nothing is written to the call's trip, so no day the caller did not choose is kept. Its card is
 a calendar of days in the outbound segment: a row a day, the two cheapest marked; past a card's
 most rows, the cheapest days alone, in date order. A span with no flight at all is `no_flights`,
@@ -36,7 +45,7 @@ from t2_agentic_voice import Card, CardRow, ToolResult
 
 from flight_voice.flight_data.model import Cabin, Place
 from flight_voice.flight_data.port import FlightData
-from flight_voice.flight_data.queries import DayFares, SpanQuery
+from flight_voice.flight_data.queries import SpanQuery
 from flight_voice.lean.offer_cards import leg_title
 from flight_voice.lean.results import (
     Day,
@@ -47,6 +56,7 @@ from flight_voice.lean.results import (
     lean_result,
     route_said,
 )
+from flight_voice.lean.span_days import SpanDay, read_days
 from flight_voice.said import Tag, arabic
 from flight_voice.tools import cards
 
@@ -64,6 +74,10 @@ TO_HEAR: Final = (
     "its flight."
 )
 CHECKED_LAST: Final = "Only the days up to checked_last were checked; offer the days after."
+TO_PICK: Final = (
+    "To choose a flight, call find_flights with its day as depart: an instant answer, since "
+    "each day was just searched."
+)
 
 
 class DaySpan(_Data):
@@ -71,16 +85,6 @@ class DaySpan(_Data):
 
     first: date
     last: date
-
-
-class SpanDay(_Data):
-    """A day of a span that has a flight: its weekday, its flights (left out when the source
-    did not count them, as a fare calendar does not) and its lowest price."""
-
-    date: str
-    weekday: str
-    flights: int | None = None
-    lowest_price: int
 
 
 class SpanWeek(_Data):
@@ -119,7 +123,7 @@ class Spanned(_Data):
 @dataclass(frozen=True)
 class SpanAsked:
     """A span search as asked: the source, the route, the cabin and travelers, the day it is,
-    the network and the reply's tag."""
+    the network, the reply's tag, and whether each day's flights are asked (`each_day`)."""
 
     data: FlightData
     route: tuple[Place, Place]
@@ -128,28 +132,7 @@ class SpanAsked:
     today: date
     network: Network
     tag: Tag
-
-
-def _read(found: DayFares, tag: Tag) -> tuple[list[SpanDay], list[Day], list[Day]]:
-    """The span's days with a flight, with none, and not checked."""
-    days: list[SpanDay] = []
-    empty: list[Day] = []
-    unknown: list[Day] = []
-    for each in found.days:
-        if not each.known:
-            unknown.append(day_of(each.day, tag))
-        elif each.lowest is None:
-            empty.append(day_of(each.day, tag))
-        else:
-            days.append(
-                SpanDay(
-                    date=each.day.isoformat(),
-                    weekday=day_of(each.day, tag).weekday,
-                    flights=each.flights,
-                    lowest_price=each.lowest.amount,
-                )
-            )
-    return days, empty, unknown
+    each_day: bool = False
 
 
 async def span_search(asked: SpanAsked, span: DaySpan) -> ToolResult | dict[str, JsonValue]:
@@ -160,21 +143,25 @@ async def span_search(asked: SpanAsked, span: DaySpan) -> ToolResult | dict[str,
     tag, today = asked.tag, asked.today
     first = max(span.first, today)
     last = max(first, min(span.last, asked.data.last_day(today)))
+    cut = first + timedelta(days=DAILY_DAYS - 1)
+    cut_at = cut if asked.each_day and last > cut else None
     q = SpanQuery(
         origin=start,
         destination=end,
         first=first,
-        last=last,
+        last=last if cut_at is None else cut_at,
         cabin=asked.cabin,
         adults=asked.travelers,
+        each_day=asked.each_day,
     )
+    last = q.last
     found = await asked.data.days(q)
     if found.status == "not_served":
         return {"status": "not_served"}
     if found.status == "cabin_not_sold":
         offered: list[JsonValue] = list(found.cabins or ())
         return {"status": "cabin_not_offered", "cabin": asked.cabin, "offered": offered}
-    days, empty, unknown = _read(found, tag)
+    days, empty, unknown = read_days(found, tag, asked.each_day)
     if not days and not unknown:
         nearest = await asked.data.nearest(q.day(first), today)
         near: list[JsonValue] = [day_of(n, tag).model_dump() for n in nearest]
@@ -185,7 +172,8 @@ async def span_search(asked: SpanAsked, span: DaySpan) -> ToolResult | dict[str,
     basis, basis_msa = fares_are(
         tag, round_trip=False, travelers=asked.travelers, network=asked.network
     )
-    note = TO_BOOK if asked.network == "mock" else TO_HEAR
+    note = TO_PICK if asked.each_day else (TO_BOOK if asked.network == "mock" else TO_HEAR)
+    checked_last = found.checked_last or cut_at
     answer = Spanned(
         route=said,
         route_msa=msa,
@@ -200,10 +188,10 @@ async def span_search(asked: SpanAsked, span: DaySpan) -> ToolResult | dict[str,
         weeks=() if daily else by_week(days, tag),
         no_flight_days=tuple(empty) if daily else (),
         unknown_days=tuple(unknown) or None,
-        checked_last=None if found.checked_last is None else found.checked_last.isoformat(),
+        checked_last=None if checked_last is None else checked_last.isoformat(),
         cheapest=tuple(cheapest),
         cheapest_days=tuple(d.date for d in cheapest),
-        note=note if found.checked_last is None else f"{note} {CHECKED_LAST}",
+        note=note if checked_last is None else f"{note} {CHECKED_LAST}",
     )
     shown = (
         days

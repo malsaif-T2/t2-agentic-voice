@@ -92,3 +92,14 @@ def test_each_airline_is_counted_when_two_or_more_fly() -> None:
     arabic = by_airline(day, "ar-SA")
     assert arabic is not None and arabic[0].airline == "السعودية"
     assert by_airline(day[:1], "en") is None
+
+
+def test_the_priciest_is_always_listed() -> None:
+    # Plan 011's round 2: "the most expensive" of a day must be among the flights to choose.
+    day = [
+        nonstop(SAUDIA, f"10{n:02d}", ("RUH", "JED"), _at(6 + n), 110, 500 + 10 * n)
+        for n in range(9)
+    ]
+    dear = nonstop(SAUDIA, "1100", ("RUH", "JED"), _at(16, 30), 110, 2400)
+    kept = listed([*day, dear, nonstop(SAUDIA, "1102", ("RUH", "JED"), _at(17), 110, 560)])
+    assert len(kept) == 6 and dear in kept

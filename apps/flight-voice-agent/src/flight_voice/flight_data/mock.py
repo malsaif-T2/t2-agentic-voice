@@ -9,7 +9,8 @@ airline's departures, its fail and slow modes applied once. Each departure that 
 is an `Offer` of one segment, its local times with their zone dropped (the same HH:MM), its
 price the fare times the travelers, its seats the exact count. `days` refuses the same way
 before one read of the fare calendar. `nearest` is the scripted search's nearest days with a
-flight; `last_day` the booking window's.
+flight; `last_day` the booking window's. A span asked `each_day` gives each day's offers too,
+from the same exact timetable, after the one read.
 
 `MockPlaces` matches a caller's words as `find_airport` does, over the ten airports.
 """
@@ -125,11 +126,22 @@ class MockFlightData:
         found = await self._read(
             "days", lambda: self.airline.calendar(*route, q.first, q.last, q.cabin)
         )
+        at = self._clock()
+
+        def offers(day: date) -> tuple[Offer, ...] | None:
+            if not q.each_day:
+                return None
+            flying = departures(*route, day)
+            return tuple(
+                self._offer(d, q.day(day), at) for d in flying if q.cabin in d.flight.cabins
+            )
+
         days = tuple(
             DayFare(
                 day=each.day,
                 lowest=None if each.fare is None else Money(amount=each.fare * q.adults),
                 flights=sum(q.cabin in d.flight.cabins for d in departures(*route, each.day)),
+                offers=offers(each.day),
             )
             for each in found
         )

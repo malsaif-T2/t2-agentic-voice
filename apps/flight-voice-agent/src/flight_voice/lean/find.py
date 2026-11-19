@@ -29,7 +29,9 @@ held over its date (weekday.py). Then:
   outbound chosen, A to B on day D, a one-way search B to A on a day on or after D is read as
   the trip's return (the search of A to B on D with that return day, the pick kept), noted
   `RETURN_ADDED`.
-- **A span** (span.py): nothing is written to the trip.
+- **A span** (span.py): nothing is written to the trip; with `flights_per_day` each day is
+  searched and summed up (its flights, lowest and highest prices, first and last departures,
+  airlines), for a question beyond each day's cheapest price.
 
 A source that does not answer is a `ToolError` that says the search failed (`SEARCH_DOWN` when
 it will not answer again soon), never "no flights".
@@ -104,6 +106,11 @@ _AIRLINE: Final = (
     "airline."
 )
 LOST: Final = "A flight chosen before is no longer offered with seats for everyone: choose again."
+_PER_DAY: Final = (
+    "For a span only: true when the caller asks about the days' flights beyond each day's "
+    "cheapest price (the priciest, a time of day, an airline, nonstop only); each day is then "
+    "searched, which takes longer."
+)
 # On the real network, a day's options are some of its flights (plan 011: asked for flyadeal
 # after a listing of 6 of 15, the model once answered from the 2 it was given, of 4).
 MORE_REAL: Final = (
@@ -154,6 +161,7 @@ def find_flights(deps: LeanDeps) -> Tool:
         depart_weekday: Annotated[Weekday | None, Field(description=SAID)] = None,
         return_weekday: Annotated[Weekday | None, Field(description=SAID)] = None,
         airline: Annotated[str | None, Field(max_length=40, description=_AIRLINE)] = None,
+        flights_per_day: Annotated[bool, Field(description=_PER_DAY)] = False,
     ) -> ToolResult:
         tag: Tag = ctx.language
         draft = deps.trips.get(ctx.call_id)
@@ -183,7 +191,16 @@ def find_flights(deps: LeanDeps) -> Tool:
         party = draft.travelers if travelers is None else travelers
         try:
             if isinstance(depart, DaySpan):
-                asked = SpanAsked(deps.data, (start, end), kept, party, today, deps.network, tag)
+                asked = SpanAsked(
+                    deps.data,
+                    (start, end),
+                    kept,
+                    party,
+                    today,
+                    deps.network,
+                    tag,
+                    each_day=flights_per_day,
+                )
                 spanned = await span_search(asked, depart)
                 if isinstance(spanned, ToolResult):
                     return spanned
