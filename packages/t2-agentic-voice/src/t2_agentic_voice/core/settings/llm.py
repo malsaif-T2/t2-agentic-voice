@@ -19,19 +19,26 @@ LlmProvider = Literal["groq", "openai"]
 # Groq's production chat models, read on 2026-11-06 from its model list (plan 006's progress
 # log): the arms the plan's runs compare. A preview model may change or go without notice. Then
 # OpenAI's on its own API, read on 2026-11-17 from its model list (D-112): the candidates
-# measured beside gpt-oss-120b.
+# measured beside gpt-oss-120b. Then plan 011's trial for natural Arabic (D-133), each probed on
+# 2026-11-19 with one request through these adapters: Groq's qwen/qwen3.8-27b and
+# minimaxai/minimax-m2.7, OpenAI's gpt-5.5 and gpt-4.1.
 LlmModel = Literal[
     "openai/gpt-oss-120b",
     "openai/gpt-oss-20b",
     "llama-3.3-70b-versatile",
     "llama-3.1-8b-instant",
+    "qwen/qwen3.8-27b",
+    "minimaxai/minimax-m2.7",
     "gpt-6-luna",
     "gpt-5.6-luna",
     "gpt-5.4-mini",
     "gpt-6.1-terra",
+    "gpt-5.5",
+    "gpt-4.1",
 ]
 # How hard a reasoning model thinks before it answers, as the providers' APIs name the levels:
-# Groq's gpt-oss take low to high; OpenAI's `none` is no reasoning at all.
+# Groq's gpt-oss take low to high, its qwen3.8 none to high; OpenAI's `none` is no reasoning
+# at all.
 ReasoningEffort = Literal["none", "low", "medium", "high"]
 # Which provider serves each model the settings name.
 PROVIDER_OF: Final[dict[str, LlmProvider]] = {
@@ -39,28 +46,42 @@ PROVIDER_OF: Final[dict[str, LlmProvider]] = {
     "openai/gpt-oss-20b": "groq",
     "llama-3.3-70b-versatile": "groq",
     "llama-3.1-8b-instant": "groq",
+    "qwen/qwen3.8-27b": "groq",
+    "minimaxai/minimax-m2.7": "groq",
     "gpt-6-luna": "openai",
     "gpt-5.6-luna": "openai",
     "gpt-5.4-mini": "openai",
     "gpt-6.1-terra": "openai",
+    "gpt-5.5": "openai",
+    "gpt-4.1": "openai",
 }
 _GPT_OSS: Final[frozenset[ReasoningEffort]] = frozenset({"low", "medium", "high"})
 _NONE: Final[frozenset[ReasoningEffort]] = frozenset({"none"})
+_QWEN: Final[frozenset[ReasoningEffort]] = frozenset({"none", "low", "medium", "high"})
 # The efforts each reasoning model takes with the talker's tools: groq 1.7.0's reference for
 # gpt-oss ("support 'low', 'medium', or 'high'"); OpenAI's Chat Completions, probed 2026-11-17,
 # refuse function tools with any effort but `none` for gpt-5.4 and later ("To use function
-# tools, use /v1/responses or set reasoning_effort to 'none'"), so its models take `none` alone.
+# tools, use /v1/responses or set reasoning_effort to 'none'"), so its models take `none` alone;
+# groq 1.7.0's reference for qwen/qwen3.8-27b (`none` turns its reasoning off, "additionally
+# supports `low`, `medium`, and `high`"). Probed 2026-11-19 (D-133): gpt-4.1 refuses the field,
+# and so does minimaxai/minimax-m2.7 ("`reasoning_effort` is not supported with this model").
 EFFORTS: Final[dict[str, frozenset[ReasoningEffort]]] = {
     "openai/gpt-oss-120b": _GPT_OSS,
     "openai/gpt-oss-20b": _GPT_OSS,
+    "qwen/qwen3.8-27b": _QWEN,
     "gpt-6-luna": _NONE,
     "gpt-5.6-luna": _NONE,
     "gpt-5.4-mini": _NONE,
     "gpt-6.1-terra": _NONE,
+    "gpt-5.5": _NONE,
 }
-# The models that take `reasoning_effort`; the others the settings name (the Llama models)
-# refuse the field, so they are sent none.
+# The models that take `reasoning_effort`; the others the settings name (the Llama models,
+# minimax-m2.7, gpt-4.1) refuse the field, so they are sent none.
 REASONING_MODELS: Final[frozenset[str]] = frozenset(EFFORTS)
+# The Groq models that write their reasoning into the reply's text, inside <think> tags, when a
+# request offers no tools, unless it asks Groq to hide it (`reasoning_format = "hidden"`), which
+# the Groq adapter does for these alone: minimax-m2.7, probed 2026-11-19 (D-133).
+HIDDEN_REASONING: Final[frozenset[str]] = frozenset({"minimaxai/minimax-m2.7"})
 
 
 class LlmSettings(Group):
@@ -83,9 +104,10 @@ class LlmSettings(Group):
         validate_default=True,
         description=(
             "The chat model: on groq openai/gpt-oss-120b, openai/gpt-oss-20b, "
-            "llama-3.3-70b-versatile or llama-3.1-8b-instant; on openai gpt-6-luna, "
-            "gpt-5.6-luna, gpt-5.4-mini or gpt-6.1-terra. The default changes only on a "
-            "registered measurement (GP-18)."
+            "llama-3.3-70b-versatile, llama-3.1-8b-instant, qwen/qwen3.8-27b or "
+            "minimaxai/minimax-m2.7; on openai gpt-6-luna, gpt-5.6-luna, gpt-5.4-mini, "
+            "gpt-6.1-terra, gpt-5.5 or gpt-4.1. The default changes only on a registered "
+            "measurement (GP-18)."
         ),
     )
     reasoning_effort: ReasoningEffort = Field(
@@ -93,8 +115,9 @@ class LlmSettings(Group):
         validate_default=True,
         description=(
             "How much a reasoning model thinks before it answers: none, low, medium or high, "
-            "as its model takes them (the gpt-oss models low to high; OpenAI's only none, the "
-            "one its Chat Completions take with tools). Sent only to a model that takes it. "
+            "as its model takes them (the gpt-oss models low to high; qwen3.8-27b none to "
+            "high; OpenAI's only none, the one its Chat Completions take with tools). Sent only "
+            "to a model that takes it. "
             "Medium, as the owner ruled on run K's dev pass (plan 006, Q26): gpt-oss-120b "
             "invented 6 answers of 136 against 18 at low, for about 0.33 s more to the first "
             "clause."

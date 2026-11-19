@@ -189,6 +189,12 @@ the flight number to pick; an airline's own prefilled search replaces it where P
   card carries its link at once; JED-RUH on the 29th after that one-way pick is read as the
   return (the pick kept, the trip round, the return's 6 options), and the way back's pick
   completes it with a link per leg and the total of both.
+- 2026-11-19, the model trial for natural Arabic (the owner: "even if it meant that we have to
+  change the LLM model"), branch plan-011-trial: the candidates the keys reach are selectable
+  (D-133: qwen3.8-27b and minimax-m2.7 on Groq, minimax's reasoning hidden; gpt-5.5 and gpt-4.1
+  on OpenAI; gpt-6.1-sol cannot take tools on Chat Completions and judges only); the default
+  model is unchanged. The trial's report (its dialogues, transcripts and the judge's scores) is
+  the lead's, outside the repository.
 
 ## Decision log
 
