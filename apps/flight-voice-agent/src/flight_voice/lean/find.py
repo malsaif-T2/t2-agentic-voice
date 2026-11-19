@@ -33,6 +33,9 @@ held over its date (weekday.py). Then:
   searched and summed up (its flights, lowest and highest prices, first and last departures,
   airlines), for a question beyond each day's cheapest price.
 
+Its progress line is due at once on the mock (run F's timing) and after about 1.5 s on the
+real network (`PROGRESS_LIVE_AT_S`), so a fast or cached answer never opens with it.
+
 A source that does not answer is a `ToolError` that says the search failed (`SEARCH_DOWN` when
 it will not answer again soon), never "no flights".
 """
@@ -82,7 +85,7 @@ from flight_voice.lean.results import (
 )
 from flight_voice.lean.span import DaySpan, SpanAsked, span_search
 from flight_voice.lean.weekday import SAID, Weekday, on_weekday
-from flight_voice.persona import PROGRESS_AT_S
+from flight_voice.persona import PROGRESS_AT_S, PROGRESS_LIVE_AT_S
 from flight_voice.said import Tag
 from flight_voice.tools.results import SEARCH_FAILED
 
@@ -147,7 +150,7 @@ def find_flights(deps: LeanDeps) -> Tool:
         name=FIND_FLIGHTS,
         description=DESCRIPTION,
         progress=progress,
-        progress_after_s=PROGRESS_AT_S,
+        progress_after_s=PROGRESS_AT_S if deps.network == "mock" else PROGRESS_LIVE_AT_S,
         timeout_s=TIMEOUT_S,
     )
     async def find(

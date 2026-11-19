@@ -4,7 +4,7 @@ listing carries its flight's link (the `tfs=` search checked in a browser), «ا
 the trip card carries one per chosen leg the moment a flight is chosen, with no tool to call,
 and `choose_flights` says each chosen leg's link is ready; no url is in any text the guard or
 the model reads; the real line declares the booking's claims and backs none; the mock's cards
-carry no link."""
+carry no link. And a search's progress line waits about 1.5 s on the real network alone."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from flight_voice.lean.book import LEAN_CLAIMS
 from flight_voice.lean.booking_check import BookingCheck
 from flight_voice.lean.deps import LeanDeps
 from flight_voice.lean.draft import LeanBook
+from flight_voice.persona import PROGRESS_AT_S, PROGRESS_LIVE_AT_S
 from flight_voice.said import Tag
 from t2_agentic_voice import ToolResult
 from t2_agentic_voice.voice.protocol import ShowCard, wire
@@ -140,3 +141,13 @@ def test_the_real_line_claims_no_booking_and_the_mock_says_no_link() -> None:
     found = call.find(destination="Jeddah", depart=MOCK_OUT)
     picked = data(call.choose(outbound_id=ids(found)[0]))
     assert "link" not in picked["outbound"]
+
+
+def test_the_progress_line_waits_on_the_real_network_and_not_on_the_mock() -> None:
+    # A day already searched answers from the cache at once: its reply never opens with
+    # "let me check" (the owner's calls of 2026-11-19); the mock keeps run F's timing.
+    real = {t.name: t for t in lean_tools(real_call().deps)}["find_flights"]
+    mock = {t.name: t for t in lean_tools(LeanCall().deps)}["find_flights"]
+    assert (real.progress, real.progress_after_s) == ("searching_live", PROGRESS_LIVE_AT_S)
+    assert (mock.progress, mock.progress_after_s) == ("searching", PROGRESS_AT_S)
+    assert PROGRESS_LIVE_AT_S == 1.5 and PROGRESS_AT_S == 0.1

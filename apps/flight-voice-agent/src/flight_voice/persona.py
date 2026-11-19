@@ -92,6 +92,9 @@ PROGRESS: Final[dict[Tag, dict[str, tuple[str, ...]]]] = {
 # search starts, since its tool call always lands later than this (the library's 2.6 s
 # otherwise); never once the answer has begun (plan 010's 1.15).
 PROGRESS_AT_S: Final = 0.1
+# On real flights the line waits about a second and a half, so a fast answer (a day already
+# searched, from the cache) never opens with "let me check" (the owner's calls of 2026-11-19).
+PROGRESS_LIVE_AT_S: Final = 1.5
 # The terms a transcript should write as the airline writes them, the airline's name after them.
 TERMS: Final = (
     "Riyadh",
