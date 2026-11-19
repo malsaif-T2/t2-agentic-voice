@@ -123,6 +123,14 @@ def test_the_request_holds_every_message_the_tools_and_the_models_settings() -> 
     }
 
 
+@pytest.mark.parametrize(("model", "sent"), [("gpt-5.5", True), ("gpt-4.1", False)])
+def test_an_effort_goes_to_gpt_5_5_and_none_to_gpt_4_1(model: str, sent: bool) -> None:
+    request = REQUEST.model_copy(update={"model": model, "reasoning_effort": "none"})
+    _, fake = _events(streamed(_words("Hi.")), request)
+    body = body_of(fake.requests[0])
+    assert body.get("reasoning_effort") == ("none" if sent else None)  # gpt-4.1 refuses it
+
+
 def test_a_value_left_out_is_not_sent_nor_an_effort_to_a_model_that_takes_none() -> None:
     request = REQUEST.model_copy(
         update={"model": "gpt-made-up", "tools": (), "reasoning_effort": "none"}

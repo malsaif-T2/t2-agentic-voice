@@ -1,6 +1,7 @@
 """GroqChat's stream (adapters/groq_chat.py) on a fake transport: the request
 as Groq takes it (every kind of message, the tools, the model's settings, `reasoning_effort`
-only to a model that takes it), and the events in order (the text as it comes and never the
+only to a model that takes it, `reasoning_format` hidden only to a model that writes its
+reasoning into the text otherwise), and the events in order (the text as it comes and never the
 reasoning, each tool call whole however its pieces came, the usage with and without cached
 tokens, one `Done`). Its failures are tested in test_groq_chat_errors.py. Nothing leaves the
 machine."""
@@ -12,7 +13,12 @@ from typing import Any, get_args
 
 import httpx
 import pytest
-from t2_agentic_voice.core.settings.llm import PROVIDER_OF, REASONING_MODELS, LlmModel
+from t2_agentic_voice.core.settings.llm import (
+    HIDDEN_REASONING,
+    PROVIDER_OF,
+    REASONING_MODELS,
+    LlmModel,
+)
 from t2_agentic_voice.domain.ports.chat_model import (
     ChatMessage,
     ChatRequest,
@@ -105,6 +111,8 @@ def test_what_the_request_leaves_out_is_not_sent() -> None:
         ("openai/gpt-oss-20b", True),
         ("llama-3.3-70b-versatile", False),  # Groq refuses the field for the Llama models
         ("llama-3.1-8b-instant", False),
+        ("qwen/qwen3.8-27b", True),
+        ("minimaxai/minimax-m2.7", False),  # probed 2026-11-19: "not supported with this model"
     ],
 )
 def test_reasoning_effort_goes_only_to_a_model_that_takes_it(model: str, sent: bool) -> None:
@@ -117,11 +125,33 @@ def test_reasoning_effort_goes_only_to_a_model_that_takes_it(model: str, sent: b
     )
 
 
-def test_the_closed_list_names_the_gpt_oss_models_of_the_settings() -> None:
+def test_the_closed_list_names_the_gpt_oss_and_qwen_models_of_the_settings() -> None:
     models: tuple[str, ...] = get_args(LlmModel)
     groqs = {name for name in models if PROVIDER_OF[name] == "groq"}
-    gpt_oss = {name for name in groqs if name.startswith("openai/gpt-oss")}
-    assert gpt_oss == REASONING_MODELS & groqs
+    reasoning = {name for name in groqs if name.startswith(("openai/gpt-oss", "qwen/"))}
+    assert reasoning == REASONING_MODELS & groqs
+
+
+@pytest.mark.parametrize(
+    ("model", "hidden"),
+    [
+        ("minimaxai/minimax-m2.7", True),  # else its <think> text streams as the reply's
+        ("qwen/qwen3.8-27b", False),
+        ("openai/gpt-oss-120b", False),
+        ("llama-3.3-70b-versatile", False),
+    ],
+)
+def test_reasoning_format_hidden_goes_only_to_a_model_that_writes_it_in_the_text(
+    model: str, hidden: bool
+) -> None:
+    for tools in (REQUEST.tools, ()):  # with tools offered and without
+        request = REQUEST.model_copy(update={"model": model, "tools": tools})
+        _, fake = _events(streamed(sse(*text("Hi."))), request)
+        body = body_of(fake.requests[0])
+        assert body.get("reasoning_format") == ("hidden" if hidden else None)
+        assert "include_reasoning" not in body  # the two fields exclude each other
+    assert {name for name, p in PROVIDER_OF.items() if p == "groq"} >= HIDDEN_REASONING
+    assert not HIDDEN_REASONING & REASONING_MODELS
 
 
 def test_the_text_streams_piece_by_piece_and_never_the_reasoning() -> None:

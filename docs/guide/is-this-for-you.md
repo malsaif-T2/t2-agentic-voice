@@ -75,8 +75,9 @@ belongs on storage that survives a restart.
   Orpheus models are previews and take at most 200 characters a request, which the library
   keeps to.
 - **OpenAI for the talker, behind a setting** (D-112): `llm.provider = "openai"` sends the
-  talker's requests to OpenAI's own API (`gpt-6-luna`, `gpt-5.6-luna`, `gpt-5.4-mini` or
-  `gpt-6.1-terra`, at `reasoning_effort = "none"`), with `T2V_OPENAI__API_KEY`; the yes rule's
+  talker's requests to OpenAI's own API (`gpt-6-luna`, `gpt-5.6-luna`, `gpt-5.4-mini`,
+  `gpt-6.1-terra` or `gpt-5.5`, at `reasoning_effort = "none"`, or `gpt-4.1`, which takes no
+  effort), with `T2V_OPENAI__API_KEY`; the yes rule's
   check and the uncertain overlap's request stay on Groq's gpt-oss-120b, so the Groq key is still
   needed.
 - **The published limits are low.** Groq's rate-limits page, read on 2026-10-31 (the design's

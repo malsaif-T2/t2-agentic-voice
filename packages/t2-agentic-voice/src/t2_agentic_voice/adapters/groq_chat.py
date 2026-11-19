@@ -11,12 +11,13 @@ a `groq` type (the design's 5.3). Public through the `groq` facade (D-021).
   tool calls it asked for, each tool's result naming its call), the tools as functions, the
   request's `model`, its `max_output_tokens` as Groq's `max_completion_tokens`, its temperature,
   and its `reasoning_effort` only to a model that takes it (core/settings/llm.py's
-  `REASONING_MODELS`: Groq refuses the field for the Llama models); a value the request leaves
-  out is not sent, so Groq's default holds. groq 1.7.0 builds the body in its parameters' order,
-  the messages first, with no space (groq/resources/chat/completions.py; groq/_utils/_json.py),
-  and sends JSON as its `Accept` for a streamed request too (the client's `default_headers`):
-  Groq streams because the body asks (`"stream":true`), so the request hook sends the SDK's own
-  values.
+  `REASONING_MODELS`: Groq refuses the field for the Llama models), and `reasoning_format`
+  `hidden` for a model that writes its reasoning into the text otherwise (`HIDDEN_REASONING`,
+  D-133); a value the request leaves out is not sent, so Groq's default holds. groq 1.7.0
+  builds the body in its parameters' order, the messages first, with no space
+  (groq/resources/chat/completions.py; groq/_utils/_json.py), and sends JSON as its `Accept`
+  for a streamed request too (the client's `default_headers`): Groq streams because the body
+  asks (`"stream":true`), so the request hook sends the SDK's own values.
 - **The events**, in order: a `TextDelta` for each piece of the reply's text, never the model's
   reasoning (which gpt-oss streams beside it, in `delta.reasoning`); each tool call whole once
   its choice has finished, its pieces joined by index (the id and the name from the first piece
@@ -86,7 +87,7 @@ from t2_agentic_voice.adapters.groq_client import (
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ProviderError
 from t2_agentic_voice.core.logging import get_logger
-from t2_agentic_voice.core.settings.llm import REASONING_MODELS, LlmSettings
+from t2_agentic_voice.core.settings.llm import HIDDEN_REASONING, REASONING_MODELS, LlmSettings
 from t2_agentic_voice.domain.ports.chat_model import ChatEvent, ChatRequest
 from t2_agentic_voice.domain.ports.speech_to_text import DataFlow
 
@@ -181,6 +182,7 @@ class GroqChat:
                     reasoning_effort=given(
                         request.reasoning_effort if request.model in REASONING_MODELS else None
                     ),
+                    reasoning_format=given("hidden" if request.model in HIDDEN_REASONING else None),
                 )
             async with chunks:  # the response closed however the stream ends
                 while True:

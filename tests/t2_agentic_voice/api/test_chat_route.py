@@ -169,6 +169,40 @@ def test_a_model_and_provider_or_effort_that_do_not_fit_are_refused_with_the_fix
     assert fix in raised.value.message
 
 
+@pytest.mark.parametrize(
+    ("provider", "model", "effort"),
+    [
+        ("groq", "qwen/qwen3.8-27b", "none"),
+        ("groq", "qwen/qwen3.8-27b", "low"),
+        ("groq", "minimaxai/minimax-m2.7", "medium"),  # its effort is never sent
+        ("openai", "gpt-5.5", "none"),
+        ("openai", "gpt-4.1", "medium"),  # its effort is never sent
+    ],
+)
+def test_each_model_of_plan_011s_trial_loads_with_its_provider(
+    provider: str, model: str, effort: str
+) -> None:
+    llm = LlmSettings.model_validate(
+        {"provider": provider, "model": model, "reasoning_effort": effort}
+    )
+    assert (llm.provider, llm.model, llm.provider_of(model)) == (provider, model, provider)
+
+
+@pytest.mark.parametrize(
+    ("values", "fix"),
+    [
+        ({"provider": "openai", "model": "gpt-5.5", "reasoning_effort": "low"}, "none"),
+        ({"provider": "groq", "model": "gpt-4.1"}, "llm.provider to openai"),
+        ({"provider": "openai", "model": "qwen/qwen3.8-27b"}, "llm.provider to groq"),
+    ],
+)
+def test_a_trial_model_with_the_wrong_provider_or_effort_is_refused(
+    values: dict[str, str], fix: str
+) -> None:
+    with pytest.raises(ValueError, match=fix):
+        LlmSettings.model_validate(values)
+
+
 def test_an_openai_model_at_effort_none_loads() -> None:
     llm = LlmSettings(provider="openai", model="gpt-6.1-terra", reasoning_effort="none")
     assert (llm.provider, llm.model, llm.reasoning_effort) == ("openai", "gpt-6.1-terra", "none")
