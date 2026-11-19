@@ -6,13 +6,14 @@ under `guard.drop_stage_notes`; run F's f-dev-5, where a Saudi question was said
 - **On**: in a reply in Arabic script, a parenthesis or bracket glued to a sentence's end with a
   capital Latin letter after it begins a leak; in any language, one that opens a stage word,
   glued or not, in any case; and a "<" that opens a tag (`TAGS`, a tool's or an action's name,
-  "</" too); and in a reply in Arabic script, a sentence that opens as the reasoning does
-  ("We need") after an Arabic sentence, after a space too, the reply's earlier request's
-  sentence too (run F's f25). Arabic in parentheses, a Latin word in a parenthesis not glued,
-  an English parenthesis that opens no stage word, a "<" before no tag, a Latin name after an
-  Arabic sentence and an English "Let me check" after a space, under an Arabic tag too (a
-  caller who speaks English on a call that did not move), are said, however the text is cut
-  into pieces.
+  "</" too); and in a reply in Arabic script, a word that opens as the reasoning does ("We
+  need") after Arabic text, wherever a word starts (after a space, a parenthesis, an ellipsis,
+  a comma or a colon, D-131: the owner's call of 2026-11-19), the reply's earlier request's text
+  too (run F's f25). Arabic in parentheses, a Latin word in a parenthesis not glued, an English
+  parenthesis that opens no stage word, a "<" before no tag, a Latin name after Arabic text, a
+  tell glued inside an Arabic word, and an English "Let me check" or "We need" anywhere in an
+  English reply, under an Arabic tag too (a caller who speaks English on a call that did not
+  move), are said, however the text is cut into pieces.
 - **In the talker**: what came before the note is said, the request's tool does not run and no
   request follows; a tag of the agent's own tool is found; a reply moved to another language
   keeps the setting (`anew`)."""
@@ -41,6 +42,10 @@ from tests.t2_agentic_voice.agent.chat_support import (
 NAMES = ("hold_seat",)
 # mita tibi tsaafir? (when do you want to travel?)
 ASKED = "متى تبي تسافر؟"
+# The owner's call of 2026-11-19: ar-riHla ma'a TaTmaTam Tayaraan aT … (the trip with … the
+# airline …), a garbled start, then the model's English reasoning after a parenthesis.
+GARBLED = "الرحلة مع ططمطم طيران الط … (… ) "
+OWNERS = f"{GARBLED}We need to respond in Arabic Najdi dialect. The previous output is garbled."
 # ayy waHda tibi? (which one do you want?)
 WHICH = "أي وحدة تبي؟"
 CASES = [
@@ -72,6 +77,20 @@ CASES = [
     ),
     # tamm al-Hajz. T2 Air tirHab bik (it is booked. T2 Air welcomes you): a name, no tell.
     ("تم الحجز. T2 Air ترحب بك.", True, None),
+    # D-131: a tell wherever a word starts after Arabic text, not only at a sentence's start.
+    (OWNERS, True, GARBLED),
+    # riHlatak ma'a as-sa'uudiyya, (your trip with Saudia,), a tell after a comma, glued
+    ("رحلتك مع السعودية،The user wants the cheapest.", True, "رحلتك مع السعودية،"),
+    # as-sa'r: (the price:), a tell after a colon
+    ("السعر: We should say it once.", True, "السعر: "),
+    # si'rha 450 riyaal (its price 450 riyals), a tell inside a parenthesis
+    ("سعرها 450 ريال (Possibly the cheapest).", True, "سعرها 450 ريال ("),
+    # ar-riHla 'ala Saudia as-saa'a 8 (the trip on Saudia at 8): a Latin name, no tell
+    ("الرحلة على Saudia الساعة 8 الصبح.", True, None),
+    # a tell glued inside an Arabic word, after a letter's mark: no word starts there
+    ("مَWe need", True, None),
+    ("Sure, the 8:15 (Let me know if it suits you).", True, None),
+    ("Okay: We need your return date.", True, None),
     ("Sure. Let me check the flights for you.", False, None),
     # An English reply under the call's ar-SA tag: no Arabic sentence before the tell, so it is
     # speech, at the reply's start too.
@@ -111,6 +130,17 @@ def test_a_tell_after_a_space_reads_the_replys_earlier_requests_too() -> None:
     assert _streamed(english, "Sure.", 3) == "Sure."
     said_whole = "Let me check the flights."
     assert (_streamed(english, said_whole, 3), english.found) == (said_whole, False)
+
+
+def test_the_owners_garbled_reply_says_only_what_came_before_the_tell() -> None:
+    # The talker over the owner's call of 2026-11-19: the tell after "(… ) " is never said,
+    # nor anything after it, and the request's tool does not run.
+    pieces: list[Step] = [TextDelta(text=OWNERS[at : at + 4]) for at in range(0, len(OWNERS), 4)]
+    model = FakeChat([*pieces, call("quick"), Done(finish_reason="tool_calls")])
+    events = reply(talker(model, quick, language="ar-SA", settings=_noted(True)), TURN)
+    spoken = " ".join(_spoken(events))
+    assert spoken.startswith("الرحلة مع") and "need" not in spoken and "garbled" not in spoken
+    assert "ToolBegan" not in kinds(events) and len(model.requests) == 1
 
 
 def test_a_check_made_anew_for_another_language_keeps_the_stage_notes() -> None:

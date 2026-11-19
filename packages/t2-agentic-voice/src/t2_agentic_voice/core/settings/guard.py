@@ -102,8 +102,9 @@ class GuardSettings(Group):
             "end with a capital Latin letter after it; in any language, one that opens a stage "
             'word ("(Waiting", "[No output"); and a "<" that opens a tag ("<action", "<data", '
             "or a tool's or an action's name). Arabic in parentheses never counts. In a reply in "
-            'Arabic script, a sentence that opens as the reasoning does ("We need", "The user") '
-            "after text written in Arabic script counts after a space too, not only glued; an "
+            'Arabic script, a word that opens as the reasoning does ("We need", "The user") '
+            "after text written in Arabic script counts wherever a word starts (after a space, "
+            "a parenthesis, an ellipsis or any mark), not only glued to a sentence's end; an "
             "English reply keeps the glued rule alone. Off: none counts."
         ),
     )

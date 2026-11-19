@@ -53,7 +53,9 @@ turn and the call as it was heard to the events the session plays, within the re
   words, told so in the turn's message (agent/context.py).
 - **Failure and cancel.** A `ProviderError` from the model ends the reply: it is raised from the
   stream after any clause already given, for the session to say the `error` notice (which it says
-  too for a reply that ends with no clause); a request cut at `max_output_tokens` (`length`) is
+  too for a reply that ends with no clause), unless `llm.retry_rejected` sends a request the
+  provider rejected once more, before any of it was said (agent/turn_answer.py's `requested`,
+  D-132); a request cut at `max_output_tokens` (`length`) is
   logged by its model, its words so far given as written; any other error comes out as it is (a
   fake's `ScriptExhaustedError`, an AssertionError, fails its test). A cancel of the reply's scope
   cancels the task that iterates the stream, so the model's request and every tool of the scope
@@ -94,7 +96,6 @@ from t2_agentic_voice.agent.context import (
 )
 from t2_agentic_voice.agent.events import (
     LanguageMoved,
-    ModelRequested,
     ReadBackRequested,
     ReplyDone,
     ReplyScope,
@@ -107,7 +108,7 @@ from t2_agentic_voice.agent.question_limit import REASON
 from t2_agentic_voice.agent.speech_guard import claimants
 from t2_agentic_voice.agent.stray_script import StrayScript
 from t2_agentic_voice.agent.tool_calls import Memory, ToolCalls, exchange
-from t2_agentic_voice.agent.turn_answer import Answer, answer_events
+from t2_agentic_voice.agent.turn_answer import Answer, requested
 from t2_agentic_voice.agent.turn_request import request_of
 from t2_agentic_voice.core.clock import Clock
 from t2_agentic_voice.core.config import VoiceSettings
@@ -207,7 +208,8 @@ class Turn:
         while requests < most:
             last = requests == most - 1
             tools = () if last else tool_definitions(self.runner, self.actions)
-            request = request_of(
+            build = partial(
+                request_of,
                 llm,
                 messages,
                 tools,
@@ -216,16 +218,13 @@ class Turn:
                 register=self.register,
             )
             requests += 1
-            yield ModelRequested(model=request.model)
             answer = Answer()
-            self.gate.begin()
-            asked = answer_events(self, request, answer)
+            asked = requested(self, build, answer)  # a rejected one sent once more (D-132)
             try:
                 async for event in asked:
                     yield event
             finally:
                 await asked.aclose()
-            yield answer.replied(request.model, *self.scripts.take())
             warm = answer.warm if requests == 1 else warm
             if self.gate.held:  # a claim held back: sent once more, one past the limit
                 messages += self.gate.held_back()

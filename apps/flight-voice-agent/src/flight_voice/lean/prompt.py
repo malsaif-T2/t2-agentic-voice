@@ -1,7 +1,9 @@
-"""The lean agent's instructions (lean/instructions/<tag>.md, about 30 lines each), filled with
-the persona's names, the lines of its network (network_text.py: the mock's, or the real
-network's of every airline, which does not book) and the calendar the model reads every date
-from.
+"""The lean agent's instructions, filled with the persona's names and the calendar the model
+reads every date from: on the mock, lean/instructions/<tag>.md (about 30 lines each) with the
+mock's lines (network_text.py), as run F has read them; on the real network, of every airline,
+which books nothing, lean/instructions/real_<tag>.md, short guidance on manner and goals and the
+tools' facts, never a reply's template (plan 011's round 2: the owner's "too structured and
+following a script"), with no blocks.
 
 **The calendar** (`calendar`), written in code in the reply's language: today with its weekday,
 then the next `AHEAD` days, each with its weekday (tomorrow named), then the days "this week",
@@ -112,13 +114,18 @@ def instructions(
     network: Network = "mock",
     traveler: Traveler = TRAVELER,
 ) -> dict[Tag, str]:
-    """The lean agent's instructions for each language, filled with the names, the traveler,
-    the network's lines and the calendar of `today` to `last` in that language."""
+    """The lean agent's instructions for each language, filled with the names, on the mock the
+    traveler and the mock's lines, and the calendar of `today` to `last` in that language (the
+    module's docstring)."""
     folder = files("flight_voice") / "lean" / "instructions"
     found: dict[Tag, str] = {}
     for tag in TAGS:
-        text = (folder / f"{tag}.md").read_text(encoding="utf-8")
         values = filled(names, traveler)
-        values |= blocks(network, tag, values) | {"calendar": calendar(today, tag, last, network)}
+        if network == "mock":
+            text = (folder / f"{tag}.md").read_text(encoding="utf-8")
+            values |= blocks(tag, values)
+        else:
+            text = (folder / f"real_{tag}.md").read_text(encoding="utf-8")
+        values["calendar"] = calendar(today, tag, last, network)
         found[tag] = Template(text).substitute(values)
     return found

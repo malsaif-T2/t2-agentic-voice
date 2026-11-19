@@ -82,8 +82,10 @@ The talker answers one turn at a time, and starts again from what the caller hea
 
 A turn makes at most three model requests (`llm.max_requests_per_turn`, from 2 to 5). Each but the
 last offers the agent's tools, the last none, so the turn ends in words: a question answered with
-one tool takes two requests, one that calls the tool and one that answers from its result. While the
-talker or a tool works with nothing to play, the client shows `thinking`
+one tool takes two requests, one that calls the tool and one that answers from its result. With
+`llm.retry_rejected` (off by default, D-132), a request the provider rejects, such as a tool call
+the model wrote malformed, is sent once more before any of it was said, not counted among them.
+While the talker or a tool works with nothing to play, the client shows `thinking`
 ([browser-client.md](browser-client.md)).
 
 One turn of the quickstart's helper, under the default settings:

@@ -1160,6 +1160,9 @@ agents with the fake-microphone rig, F.4's recordings, tester days), one token p
   booking's next pick and its read-back fit in one turn), each unless the environment sets it; the
   library's defaults keep each off and 3 (run F's round 2: f27's search on a day nobody said, f10's
   spoken stage notes, f26's spoken book_trip tag);
+- turns on `llm.retry_rejected` unless the environment sets it (D-132): a request the provider
+  rejected before any of it was said, such as the malformed tool call Groq refused in the owner's
+  call of 2026-11-19, is sent once more instead of the error notice;
 - under `env` dev, names the demo traveler the dev caller, as Ole5's names its customer.
 
 ### 6.3 What it needs from the library
@@ -1632,8 +1635,9 @@ same airline, trip state, persona, names, words and page, compared on live calls
 kept. The setting `FLIGHT_VOICE_AGENT` chooses it (`scripted` by default, or `lean`); the server
 declares the agent chosen and, for the lean one, registers its booking check's observers
 (`AgentSpeechEnded`, `UserTurnEnded`, `CallEnded`). Its settings path turns on
-`guard.plain_speech`, `guard.drop_stage_notes` (a sentence opening as the reasoning does, "We
-need…", after an Arabic sentence is a leak after a space too: f-dev-lean-4's f25 said one),
+`guard.plain_speech`, `guard.drop_stage_notes` (a word opening as the reasoning does, "We
+need…", after Arabic text is a leak wherever a word starts: f-dev-lean-4's f25 said one after a
+sentence, the owner's call of 2026-11-19 one after a parenthesis, D-131),
 `guard.question_stop_drops_calls`, four model requests a turn and `tts.spoken_numbers = "by_register"` (D-107: the times and fares it writes in
 digits are said as words in the caller's register, "14:00" «ثنتين الظهر»), as the scripted
 agent's does, and not the yes held over a read-back, which it has none of: it turns on `interruptions.answer_yes_over_question` instead (D-116), so a yes
@@ -1793,6 +1797,24 @@ written when the agent is declared, so a server holds the day it started, and it
 that day as its today; the library's "Today is" line follows the clock, so the server is restarted
 each day and `FLIGHT_VOICE_TODAY` pinned only to today, and each call on a calendar whose day is
 not Riyadh's today logs an error (`lean_calendar_stale`).
+
+**The real network's prompt** (`lean/instructions/real_en.md` and `real_ar-SA.md`, plan 011's
+round 2, after the owner's "The agent feels too structured and following a script"): files of
+their own, about two thirds of round 1's length, with no blocks (`lean/network_text.py` holds the
+mock's alone, so the mock renders byte for byte as before and run F is unchanged:
+`tests/flight_voice/lean/test_lean_prompt_real.py` pins it). They give the manner and the goals,
+never a reply's shape: Saad, T2's flight assistant for anyone at the company, every airline, no
+profile, booking nothing; a friendly, quick travel agent on the phone, in English plain and warm,
+in Arabic the register the last section names, Najdi held for the call in everyday words and
+natural Saudi phrasing, with no word list, and every city, airline and place name written as the
+tools wrote it; varied wording, the question asked answered with what matters for it, one
+question at most, `fares_are` once; after a pick a brief confirmation and the link to book it
+ready (it comes by itself once a flight is chosen; never read, never "booked"); the whole trip
+summed up only when it helps. Then the tools' facts: the calendar and its weekday arguments, one
+way or round trip, a way back added to a chosen one-way trip by searching it (read as the
+return), a span's cheapest day by day and `flights_per_day` for anything else over the days, the
+airline filter, picks worked out from the options, connections said briefly, failures never "no
+flights", and nothing no tool gave.
 
 **Run F's outcome mode** (`poe eval-flights --agent lean`; `evals/lean_call.py` and
 `lean_checks.py`): the same scenarios, the lean agent in each play, scored by outcomes. Kept:

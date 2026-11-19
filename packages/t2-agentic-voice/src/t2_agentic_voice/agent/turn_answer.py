@@ -1,21 +1,31 @@
 """What one model request of a turn gives (agent/turn.py's `Turn`, whose docstring holds the
-rules): its clauses as the answer streams (`answer_events`), each piece through the stray-script
-filter, the dot runs under `guard.plain_speech` (agent/plain_speech.py), the leak check, the
-clause splitter and the output guard, an action's text after its
-call dropped (rule C), a cut at `max_output_tokens` and a model's failure logged; and the rest
-of the answer (`Answer`): its text, its tool calls, its usage, its first token's time, and
-whether the request went out on a kept-alive connection (`warm`, read from the model just before
-it went: domain/ports/connection_warmth.py's `warm_now`, None when the model does not say).
+rules): the request from its `ModelRequested` to its `ModelReplied` (`requested`); its clauses as
+the answer streams (`answer_events`), each piece through the stray-script filter, the dot runs
+under `guard.plain_speech` (agent/plain_speech.py), the leak check, the clause splitter and the
+output guard, an action's text after its call dropped (rule C), a cut at `max_output_tokens`
+and a model's failure logged; and the rest of the answer (`Answer`): its text, its tool calls,
+its usage, its first token's time, and whether the request went out on a kept-alive connection
+(`warm`, read from the model just before it went: domain/ports/connection_warmth.py's
+`warm_now`, None when the model does not say).
+
+**A rejected request sent once more** (`llm.retry_rejected`, off by default, D-132; the owner's
+call of 2026-11-19, where Groq refused a request whose tool call the model wrote malformed,
+`tool_use_failed`, and the caller heard the error notice): a request the provider rejects
+(`ProviderError` of kind `rejected`) before any clause of it was given, while neither a leak nor
+the question limit stopped the reply, is built again (a new first line, under
+`llm.vary_first_line`) and sent once more, nothing of the first kept (its text, its tool calls,
+what the leak check held); logged as `talker_request_sent_again`. A second rejection of the
+same request, a rejection after a clause, or any other failure ends the reply as before.
 """
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from t2_agentic_voice.agent.context import Unnoted
-from t2_agentic_voice.agent.events import ModelReplied, TalkerEvent
+from t2_agentic_voice.agent.events import ModelReplied, ModelRequested, TalkerEvent
 from t2_agentic_voice.agent.plain_speech import DotRuns
 from t2_agentic_voice.core.errors import ProviderError
 from t2_agentic_voice.core.logging import get_logger
@@ -47,6 +57,11 @@ class Answer:
     first_token_s: float | None = None
     warm: bool | None = None
 
+    def clear(self) -> None:
+        """Nothing gathered: its request is sent once more (the module's docstring)."""
+        self.text, self.calls, self.usage = "", [], None
+        self.first_token_s = self.warm = None
+
     def replied(self, model: str, stray: int, scripts: tuple[str, ...]) -> ModelReplied:
         """The request to `model` ended: its usage, first token's time and warmth, and how many
         characters of it the stray-script filter took out (`stray`), of which `scripts`."""
@@ -58,6 +73,40 @@ class Answer:
             stray_characters=stray,
             stray_scripts=scripts,
         )
+
+
+async def requested(
+    reply: Turn, build: Callable[[], ChatRequest], answer: Answer
+) -> AsyncGenerator[TalkerEvent, None]:
+    """One request of the turn `reply`, built by `build`: its `ModelRequested`, its clauses as
+    they stream and its `ModelReplied`, sent once more when the provider rejects it first (the
+    module's docstring); `answer` gathers the rest."""
+    again = reply.settings.llm.retry_rejected
+    while True:
+        request = build()
+        yield ModelRequested(model=request.model)
+        reply.gate.begin()
+        asked = answer_events(reply, request, answer)
+        given = False  # a clause of it was given: said, or blocked with the notice
+        try:
+            async for event in asked:
+                given = True
+                yield event
+        except ProviderError as error:
+            stopped = reply.leak.found or reply.gate.questions.stopped
+            if not again or given or stopped or error.kind != "rejected":
+                raise
+            again = False  # never twice for one request
+            reply.leak.close()  # what it held of the first is never said
+            reply.scripts.take()
+            answer.clear()
+            ids = {"call_id": reply.ctx.call_id, "turn_id": reply.turn.turn_id}
+            _log.info("talker_request_sent_again", **ids, kind=error.kind)
+            continue
+        finally:
+            await asked.aclose()
+        yield answer.replied(request.model, *reply.scripts.take())
+        return
 
 
 async def answer_events(

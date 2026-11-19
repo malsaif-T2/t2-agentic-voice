@@ -166,6 +166,18 @@ the flight number to pick; an airline's own prefilled search replaces it where P
   priciest right after the cheapest, so a day of four or more airlines keeps it too; and the
   mock's `find_flights` is as run F read it before round 2 (no `flights_per_day` in its
   schema, no way back read as the return, the outbound's card), so run F needs no new baseline.
+- 2026-11-19, block H (round 2, naturalness and robustness) on branch plan-011-block-h: the real
+  network's instructions are files of their own (`lean/instructions/real_en.md`, `real_ar-SA.md`,
+  about two thirds of round 1's length): manner and goals, no reply template and no word list
+  (the owner: "I don't want you to tune the prompt for specific cases"), Najdi held for the call,
+  names written as the tools wrote them, the link ready by itself after a pick, and the tools'
+  facts block G builds (`flights_per_day` over a span, a way back added to a chosen one-way trip);
+  the mock's render pinned byte for byte, so run F is unchanged. The leak check reads a reasoning
+  tell wherever a word starts after Arabic text, the owner's «… (… ) We need …» its test (D-131,
+  under `guard.drop_stage_notes`), and a request the provider rejected before any of it was said
+  (the malformed tool call Groq refused) is sent once more (`llm.retry_rejected`, D-132, off in
+  the library, on in the flight app). The lean VERSION is in `lean/agent.py`, block G's file: it
+  is bumped at the merge.
 
 ## Decision log
 

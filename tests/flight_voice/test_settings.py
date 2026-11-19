@@ -162,6 +162,18 @@ def test_plain_speech_is_off_when_the_environment_sets_it_so(
     assert not voice.guard.plain_speech and voice.guard.drop_stage_notes
 
 
+def test_a_rejected_request_is_sent_once_more_unless_the_environment_sets_it(
+    environment: pytest.MonkeyPatch,
+) -> None:
+    # D-132: the owner's call of 2026-11-19, a malformed tool call Groq refused.
+    for agent in ("scripted", "lean"):
+        assert for_the_app(VoiceSettings(env="test"), agent=agent).llm.retry_rejected
+    assert load().voice.llm.retry_rejected and not VoiceSettings(env="test").llm.retry_rejected
+    environment.setenv("T2V_LLM__RETRY_REJECTED", "false")
+    voice = load().voice
+    assert not voice.llm.retry_rejected and voice.llm.max_requests_per_turn == REQUESTS_PER_TURN
+
+
 def test_a_yes_over_the_read_back_is_held_unless_the_environment_sets_it(
     environment: pytest.MonkeyPatch,
 ) -> None:

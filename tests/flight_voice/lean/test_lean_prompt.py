@@ -233,36 +233,6 @@ def test_the_mock_lines_change_only_on_another_search_and_a_price_as_given(tag: 
     )
 
 
-@pytest.mark.parametrize("tag", TAGS)
-def test_the_real_lines_name_every_airline_and_book_nothing(tag: Tag) -> None:
-    text = instructions(Names(), TODAY, LAST, network="real")[tag]
-    assert "$" not in text and "the flight assistant of T2" in text and "T2 Air" not in text
-    for gone in ("Every flight starts or ends in Riyadh.", "ask whether to book", "book_trip"):
-        assert gone not in text, gone
-    for held in (
-        "and others, nonstop or with one stop",
-        "Want the link to book it?",
-        "There is no tool to call for the link: each chosen flight's link to book it on the "
-        "airline's site is ready as soon as it is chosen (link: ready)",
-        "the caller books on the airline's own site from the link",
-        "never say a trip is booked",
-        '"Saudia 1020"',
-        "unknown_days",
-        "checked_last",
-        "the airlines do not show flights that far ahead yet",
-        "Hotels, cars, visas, seats on the plane, meals, baggage, or changes to a past booking",
-        "Say a price as the tool gives it; never divide or multiply one.",
-    ):
-        assert held in text, held
-    opened = "Flights can be searched up to" if tag == "en" else "يمكن البحث عن الرحلات حتى"
-    assert opened in text and "Bookings are open" not in text and "الحجز مفتوح" not in text
-    if tag == "ar-SA":
-        assert "«فيها ترانزيت في دبي ساعتين»" in text
-        # The register's examples close on the link's offer, which books nothing (D-126).
-        assert "أحجز" not in text
-        assert "«تبي رابط الحجز؟»" in text and "«هل تريد رابط الحجز؟»" in text
-
-
 @pytest.mark.parametrize("network", ["mock", "real"])
 def test_the_instructions_name_only_tools_the_agent_declares(network: Network) -> None:
     # Plan 011's round 2: the real lines told the model to call booking_link after that tool

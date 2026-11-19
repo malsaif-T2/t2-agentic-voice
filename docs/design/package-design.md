@@ -1174,7 +1174,7 @@ The defaults below are the agent's starting values, to be measured in the milest
 | top level | `env` (required) | — |
 | `groq` | `api_key` (required for Groq adapters), `api_key_file`, `base_url`, `timeout_s` | — |
 | `stt` | `provider` (groq), `model` (`whisper-large-v3`, chosen by the M1 baseline: D-025), `timeout_s` (6), `no_speech_max` (0.55) and `caption_filter` (true), the filter for text from silence (D-063, D-068); `live_language` (`session`; or `auto`, `classified`, `detected`, `hinted` or `single`: D-066, D-086, D-038, D-115, D-117), `detect_from_s` (1.2) and `switch_min_probability` (0.8), its classifier, `classifier` (`silero`; or `ecapa`), `classifier_dir` (none), `classifier_from_s` (2.0), `classifier_min_share` (0.7) and `classifier_threads` (2), registered for run H | M1, M3, plan 007 |
-| `llm` | `provider` (groq), `model` (openai/gpt-oss-120b), `reasoning_effort` (medium: D-074), `max_output_tokens`, `timeout_s` (8), `vary_first_line` (true: D-072), `max_requests_per_turn` (3, from 2 to 5; the flight app's 4) | M4 |
+| `llm` | `provider` (groq), `model` (openai/gpt-oss-120b), `reasoning_effort` (medium: D-074), `max_output_tokens`, `timeout_s` (8), `vary_first_line` (true: D-072), `max_requests_per_turn` (3, from 2 to 5; the flight app's 4), `retry_rejected` (false: a request the provider rejected sent once more before any of it was said, D-132; the flight app turns it on) | M4 |
 | `tts` | `provider` (groq), `languages` (a map from language to `{model, voice}`; models `canopylabs/orpheus-arabic-saudi` and `canopylabs/orpheus-v1-english`; voices chosen in M2), `timeout_s`, `cache_phrases` (true), `cache_clauses` (true, the owner's ruling of 2026-11-12) and `clause_cache_mb` (512), the clause cache (D-087), and `stream_replies` (false), the talker's replies on the provider's socket (D-121) | M2, M5 |
 | `turns` | `vad_confidence`, `vad_start_ms`, `vad_stop_ms` (200), `smart_turn` (true), `smart_turn_threshold` (0.5), `complete_hold_ms` (600, the hold after Smart Turn's "complete": D-067), `max_silence_ms` (fallback end of turn) | M2, M3 |
 | `interruptions` | `mode` (two_step, by the owner's ruling: D-068; or drop), `duck_level` (0.25), `first_window_ms` (750), `min_words` (2), `short_words` (2), `short_s` (1.2), `own_words_s` (5) (D-061), `yes_over_read_back` (false: section 8.3, D-108; the flight app turns it on), `answer_yes_over_question` (false: section 8.3, D-116; the flight app's lean agent turns it on) | M3 (from the M1 overlap data) |
@@ -1250,9 +1250,11 @@ response)" glued to a question, and the search after it ran), a stage note or a 
 too: in a reply in Arabic, a parenthesis or bracket glued to a sentence's end with a capital
 Latin letter after it; in any language, one that opens a stage word ("(Waiting", "[No output");
 and a "<" that opens a tag ("<action", "<data", or a tool's or an action's name). Arabic in
-parentheses never is. In a reply in Arabic, a sentence that opens as the reasoning does ("We
-need", "The user") after text written in Arabic script is one after a space too, not only glued
-(run F's f25 said an English self-check after «حجزت الرحلة بنجاح.»); an English reply, under an
+parentheses never is. In a reply in Arabic, a word that opens as the reasoning does ("We
+need", "The user") after text written in Arabic script is one wherever a word starts, after a
+space, a parenthesis, an ellipsis or any mark, not only glued to a sentence's end (run F's f25
+said an English self-check after «حجزت الرحلة بنجاح.»; the owner's call of 2026-11-19 said one
+after «… (… ) », D-131); a Latin word that opens no tell is said; an English reply, under an
 Arabic tag too, keeps the glued rule alone, as "Let me check" is speech there. With `guard.plain_speech` (off by default; D-111, after the owner's English
 call of 2026-11-17 said markdown, zero-width spaces and a broken note whole), a run of dots
 after a sentence's mark is taken out and one after a word made one ellipsis before the leak
