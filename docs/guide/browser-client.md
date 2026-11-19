@@ -118,9 +118,9 @@ read its text, as it reads a clause's.
 
 The client hands the page each card as one `card` event, and drops a message that is not one
 (no title, steps that are not text). A card's option `rows` (a tool's `CardRow`s: the flights or
-plans a reply listed, at most 8) come each as `{title, detail, value, mark}`: a title of up to 80
-characters, a detail of up to 120 and a value of up to 40, each text or `null`, and a `mark` of
-`best`, `chosen` or `unavailable`, or `null`. The client drops a row that is not one and keeps
+plans a reply listed, at most 8) come each as `{title, detail, value, mark, link}`: a title of up
+to 80 characters, a detail of up to 120 and a value of up to 40, each text or `null`, a `mark` of
+`best`, `chosen` or `unavailable`, or `null`, and the row's own `link` (D-130) or `null`. The client drops a row that is not one and keeps
 the rest; a card from a session that sends no rows has an empty list. A card may name its
 `slot` on the page (D-110): lowercase letters and `_`, at most 20 of them (`outbound`, say), or
 `null`, `null` too from a session that sends none, and the client drops a card whose slot is of

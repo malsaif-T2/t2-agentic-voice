@@ -5,6 +5,8 @@ reads, and whose url never is; and `t2v/1`'s `card` carries it with its row."""
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from pydantic import ValidationError
 from t2_agentic_voice import Card, CardLink, CardRow
@@ -41,7 +43,7 @@ def test_the_payload_carries_each_rows_link_as_the_tool_gave_it() -> None:
         CardRow(title="06:00 to 07:45", link=CardLink(label="احجز", url=URL)),
         CardRow(title="Total", value="429 SAR"),
     )
-    sent = wire(ShowCard.of(Card(title="x", rows=rows)))
+    sent: dict[str, Any] = wire(ShowCard.of(Card(title="x", rows=rows)))
     assert [row["link"] for row in sent["rows"]] == [{"label": "احجز", "url": URL}, None]
     assert ShowCard.model_validate(sent) == ShowCard.of(Card(title="x", rows=rows))
 

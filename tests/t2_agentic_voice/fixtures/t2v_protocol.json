@@ -119,7 +119,7 @@
   "objects": {
     "IceServer": {"urls": "[string]", "username": "string | null", "credential": "string | null"},
     "IceCandidate": {"candidate": "string", "sdp_mid": "string", "sdp_mline_index": "integer"},
-    "CardRow": {"title": "string", "detail": "string | null", "value": "string | null", "mark": "best | chosen | unavailable | null"},
+    "CardRow": {"title": "string", "detail": "string | null", "value": "string | null", "mark": "best | chosen | unavailable | null", "link": "CardLink | null"},
     "CardLink": {"label": "string", "url": "string"}
   }
 }
