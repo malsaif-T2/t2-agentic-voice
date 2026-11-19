@@ -5,7 +5,7 @@ over the file. This is the only module of the app that reads the environment.
 The app's own (`AppSettings`, each field's description says what it does): the access code a caller
 types on the page (at least 16 characters, made with `GENERATOR`; unset, no code is asked: the
 alpha's open line, D-129), the website allowed to frame the page, the token route's tokens a day
-(50), the airline's today (`live`, or a date pinned), the mock airline's modes (its bookings'
+(200), the airline's today (`live`, or a date pinned), the mock airline's modes (its bookings'
 writes and lookup, its searches, its profile, a slow read's seconds), the agent served (`agent`:
 `scripted`, today's, by default, or `lean`, the model-led one beside it, D-113), the persona's
 names, the owner's picks by default (persona.py's `Names`), and the flight data's
@@ -106,7 +106,7 @@ __all__ = [
     "load_flight_data",
 ]
 
-TOKENS_PER_DAY: Final = 50
+TOKENS_PER_DAY: Final = 200  # the alpha's daily cap on calls (the owner, 2026-11-19)
 MIN_ACCESS_CODE_CHARS: Final = 16
 GENERATOR: Final = 'python -c "import secrets; print(secrets.token_urlsafe(24))"'
 # A name: one line of at most 40 characters, with no control character, brace or dollar.

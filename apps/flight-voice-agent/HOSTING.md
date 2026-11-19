@@ -65,7 +65,7 @@ Then set, or change, these for the server:
 | `T2V_SERVER__FORWARDED_ALLOW_IPS` | the proxy's address, e.g. `["127.0.0.1"]` |
 | `T2V_STORAGE__VAR_DIR` | where the server keeps its data (default `var/` in the checkout) |
 | `FLIGHT_VOICE_ACCESS_CODE` | leave it unset: the page asks no code and anyone with the address can call (D-129). Set it to require a code |
-| `FLIGHT_VOICE_TOKENS_PER_DAY` | the most calls a day across all users (50 by default): with no code, the cap on what the keys spend; e.g. `300` for the alpha |
+| `FLIGHT_VOICE_TOKENS_PER_DAY` | the most calls a day across all users (200 by default, the alpha's): with no code, the cap on what the keys spend |
 | `T2V_SERVER__ICE_SERVERS`, `T2V_SERVER__TURN_SECRET` | the TURN server's URLs and its shared secret (see "TURN") |
 | `T2V_JOIN__KEYS`, `T2V_JOIN__CURRENT_KID` | a new signing key for the server's join tokens, e.g. `{"k1": "<40+ random bytes>"}` and `k1` |
 
@@ -77,8 +77,13 @@ log and recording on (both the app's defaults).
 ## Run
 
 ```bash
-uv run --offline python -m flight_voice.server --env-file .env --host 127.0.0.1 --port 7862
+uv run poe flight
 ```
+
+`poe flight` sets `FLIGHT_VOICE_AGENT=lean` and `FLIGHT_VOICE_FLIGHT_DATA=serpapi` and runs
+`python -m flight_voice.server --env-file .env` on 127.0.0.1:7862 (add `--host` or `--port` after
+it to change them). Without those two settings the server runs the older scripted demo on the
+mock airline (the page that greets "Khalid").
 
 One process, one worker (the calls live in its memory). Run it as a service (systemd, NSSM or
 the Task Scheduler) that restarts it each night and on failure: the assistant's calendar is

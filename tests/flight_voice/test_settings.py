@@ -46,7 +46,7 @@ def test_both_settings_load_from_the_environment(environment: pytest.MonkeyPatch
     loaded = load()
     assert loaded.app.access_code is not None
     assert loaded.app.access_code.get_secret_value() == CODE
-    assert loaded.app.tokens_per_day == TOKENS_PER_DAY == 50
+    assert loaded.app.tokens_per_day == TOKENS_PER_DAY == 200
     assert loaded.app.today == "live"
     assert loaded.app.names().persona_name_en == "Saad"
     assert loaded.voice.join.current_kid == "k1"

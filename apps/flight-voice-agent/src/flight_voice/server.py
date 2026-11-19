@@ -1,6 +1,6 @@
 """The flight agent's server: one FastAPI app that serves its page (apps/flight-voice-agent/web/),
 the token route (the library's `access_code_router`, at most `FLIGHT_VOICE_TOKENS_PER_DAY`
-tokens a day, 50 by default), the page's own routes (routes.py) and the library's router mounted
+tokens a day, 200 by default), the page's own routes (routes.py) and the library's router mounted
 under `VOICE_PREFIX`, with its test console under `env` dev, run by uvicorn with one worker.
 
 `uv run --offline python -m flight_voice.server --env-file .env` serves it on 127.0.0.1:7862,
