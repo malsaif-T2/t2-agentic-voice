@@ -66,7 +66,8 @@ REASONING_MODELS: Final[frozenset[str]] = frozenset(EFFORTS)
 class LlmSettings(Group):
     """The chat model the talker writes its replies with: the adapter, the model, how much it
     reasons, the most it may write, how long a request may take, whether each request opens
-    with a line of its own, and the most requests a turn."""
+    with a line of its own, the most requests a turn, and whether a rejected request is sent
+    once more."""
 
     provider: LlmProvider = Field(
         default="groq",
@@ -131,6 +132,17 @@ class LlmSettings(Group):
         description=(
             "The most model requests one turn makes: each but the last offers the agent's "
             "tools, the last none, so the turn ends in words."
+        ),
+    )
+    retry_rejected: bool = Field(
+        default=False,
+        description=(
+            "Whether a request of a turn the provider rejects (a rejected error, such as "
+            "Groq's tool_use_failed when the model wrote a malformed tool call) is sent once "
+            "more, with a new first line and nothing of the first kept, when nothing of it was "
+            "said yet and neither a leak nor the question limit stopped the reply (D-132): "
+            "never twice for one request, and not counted in max_requests_per_turn. Off: the "
+            "reply ends with the error notice, as before."
         ),
     )
 

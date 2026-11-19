@@ -25,6 +25,7 @@ def test_the_llm_and_guard_defaults_are_the_designs() -> None:
         "timeout_s": 8.0,
         "vary_first_line": True,
         "max_requests_per_turn": 3,
+        "retry_rejected": False,
     }
     assert settings.guard.model_dump() == {
         "id_patterns": (),
@@ -47,6 +48,7 @@ def test_the_new_settings_load_from_the_environment(monkeypatch: pytest.MonkeyPa
     monkeypatch.setenv("T2V_LLM__REASONING_EFFORT", "medium")
     monkeypatch.setenv("T2V_LLM__VARY_FIRST_LINE", "false")
     monkeypatch.setenv("T2V_LLM__MAX_REQUESTS_PER_TURN", "4")
+    monkeypatch.setenv("T2V_LLM__RETRY_REJECTED", "true")
     monkeypatch.setenv("T2V_GUARD__ID_PATTERNS", '["LT-\\\\d{5}"]')
     monkeypatch.setenv("T2V_GUARD__ON_BLOCK", "drop_clause")
     monkeypatch.setenv("T2V_GUARD__QUESTIONS_PER_REPLY", "2")
@@ -63,7 +65,7 @@ def test_the_new_settings_load_from_the_environment(monkeypatch: pytest.MonkeyPa
     assert (settings.guard.id_patterns, settings.guard.on_block) == (("LT-\\d{5}",), "drop_clause")
     assert settings.guard.questions_per_reply == 2
     assert settings.guard.question_stop_drops_calls and settings.guard.drop_stage_notes
-    assert settings.llm.max_requests_per_turn == 4
+    assert settings.llm.max_requests_per_turn == 4 and settings.llm.retry_rejected
     assert (settings.words.vocabulary, settings.session.mode) == (("VPN", "Outlook"), "talker")
 
 

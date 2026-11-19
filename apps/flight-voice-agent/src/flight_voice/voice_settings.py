@@ -5,7 +5,9 @@ every one of them, and its docstring says what `load` does with them.
 
 `for_the_app` adds the booking's send words and `answer_yes_over_question` for the lean agent
 only when it can book (`bookable`: the mock airline; on the real network the caller books on the
-airline's own site, from the link `booking_link` gives, D-126).
+airline's own site, from the link `booking_link` gives, D-126); and it sends a request the
+provider rejected once more (`llm.retry_rejected`, D-132; the owner's call of 2026-11-19, a tool
+call the model wrote malformed that Groq refused) for either agent.
 """
 
 from __future__ import annotations
@@ -63,7 +65,8 @@ def for_the_app(
 ) -> VoiceSettings:
     """`voice` as the app runs `agent`: its folder nested (`APP_FOLDER`), its bookings a caller a
     day `ACTIONS_PER_DAY`, the guard's `GUARD_ON` on, its most requests a turn
-    `REQUESTS_PER_TURN`, for the scripted agent `YES_OVER_READ_BACK` on and for the lean one
+    `REQUESTS_PER_TURN` and a rejected request sent once more (`llm.retry_rejected`), for the
+    scripted agent `YES_OVER_READ_BACK` on and for the lean one
     (which has no read- back), when it can book, `YES_OVER_QUESTION`, with the booking's
     `SEND_WORDS` its `words.send`, `REGISTER_WORDS` for the caller's register, app_voice.py's
     speech, the calls' audio recorded where the caller consents, turned_on.py's `TURNED_ON` (and
@@ -88,10 +91,9 @@ def for_the_app(
     words = REGISTER_WORDS | ({"send": SEND_WORDS} if books else {})
     if unset := {k: v for k, v in words.items() if k not in voice.words.model_fields_set}:
         update["words"] = WordSettings.model_validate(voice.words.model_dump() | unset)
-    if "max_requests_per_turn" not in voice.llm.model_fields_set:
-        update["llm"] = LlmSettings.model_validate(
-            voice.llm.model_dump() | {"max_requests_per_turn": REQUESTS_PER_TURN}
-        )
+    model = {"max_requests_per_turn": REQUESTS_PER_TURN, "retry_rejected": True}  # D-132
+    if llm := {k: v for k, v in model.items() if k not in voice.llm.model_fields_set}:
+        update["llm"] = LlmSettings.model_validate(voice.llm.model_dump() | llm)
     update["tts"] = app_tts(voice.tts)
     if "record_audio" not in voice.privacy.model_fields_set:  # the alpha keeps its calls' audio
         update["privacy"] = voice.privacy.model_copy(update={"record_audio": True})

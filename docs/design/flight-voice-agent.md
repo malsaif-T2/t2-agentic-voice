@@ -1158,6 +1158,9 @@ agents with the fake-microphone rig, F.4's recordings, tester days), one token p
   booking's next pick and its read-back fit in one turn), each unless the environment sets it; the
   library's defaults keep each off and 3 (run F's round 2: f27's search on a day nobody said, f10's
   spoken stage notes, f26's spoken book_trip tag);
+- turns on `llm.retry_rejected` unless the environment sets it (D-132): a request the provider
+  rejected before any of it was said, such as the malformed tool call Groq refused in the owner's
+  call of 2026-11-19, is sent once more instead of the error notice;
 - under `env` dev, names the demo traveler the dev caller, as Ole5's names its customer.
 
 ### 6.3 What it needs from the library

@@ -150,7 +150,7 @@ Speech-to-text: the adapter, the Whisper model, how long a request may take, the
 
 ## `llm`
 
-The chat model the talker writes its replies with: the adapter, the model, how much it reasons, the most it may write, how long a request may take, whether each request opens with a line of its own, and the most requests a turn.
+The chat model the talker writes its replies with: the adapter, the model, how much it reasons, the most it may write, how long a request may take, whether each request opens with a line of its own, the most requests a turn, and whether a rejected request is sent once more.
 
 | Variable | Type | Default | Unit | Description |
 | --- | --- | --- | --- | --- |
@@ -161,6 +161,7 @@ The chat model the talker writes its replies with: the adapter, the model, how m
 | `T2V_LLM__TIMEOUT_S` | number | `8` | seconds | The longest one model request may take before it is a timeout. |
 | `T2V_LLM__VARY_FIRST_LINE` | true or false | `true` | — | Whether each request's system message opens with a line new on every request, so no two requests share a prefix the provider has cached. Groq's cache can be slow: on openai/gpt-oss-120b with one app's system prompt, 3 of the 8 requests it served from its cache took 1.03, 1.25 and 5.71 s to the first token, while 12 requests with a first line of their own all took 0.15 to 0.30 s (2026-11-07, D-072). |
 | `T2V_LLM__MAX_REQUESTS_PER_TURN` | integer | `3` | — | The most model requests one turn makes: each but the last offers the agent's tools, the last none, so the turn ends in words. |
+| `T2V_LLM__RETRY_REJECTED` | true or false | `false` | — | Whether a request of a turn the provider rejects (a rejected error, such as Groq's tool_use_failed when the model wrote a malformed tool call) is sent once more, with a new first line and nothing of the first kept, when nothing of it was said yet and neither a leak nor the question limit stopped the reply (D-132): never twice for one request, and not counted in max_requests_per_turn. Off: the reply ends with the error notice, as before. |
 
 ## `tts`
 
