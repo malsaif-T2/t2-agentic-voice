@@ -1,7 +1,8 @@
 """The page's own routes, beside the token route and the library's router (server.py):
 
-- `GET /api/profile`: what the page shows, in both languages, with the line's `network` and
-  whether it books (`bookings`). On the mock: the demo traveler's first name and tier, the
+- `GET /api/profile`: what the page shows, in both languages, with the line's `network`, whether
+  it books (`bookings`) and whether the token route asks for a code (`access`: `code`, or `open`
+  with no access code set, D-129). On the mock: the demo traveler's first name and tier, the
   persona's and the airline's names, and three lines the caller could say (the most visited
   city, a cheapest-days ask, a business ask). On real flights (plan 011) no traveler at all,
   since anyone at the company calls with no profile (the owner, 2026-11-18): the persona, the
@@ -36,6 +37,8 @@ from flight_voice.airline.system import Airline
 from flight_voice.persona import Names, Network
 
 MAX_RESET_BYTES: Final = 64
+
+
 NO_STORE: Final = {"Cache-Control": "no-store"}
 # The cities of the cheapest-days line and the business line.
 CHEAPEST_CITY: Final = "LHR"
@@ -44,16 +47,19 @@ BUSINESS_CITY: Final = "CDG"
 FIRST_CITY: Final = "DXB"
 
 
-def api_router(airline: Airline, names: Names, network: Network = "mock") -> APIRouter:
-    """The page's routes over `airline`, the persona named by `names`, on `network` (the
-    module's docstring)."""
+def api_router(
+    airline: Airline, names: Names, network: Network = "mock", *, open_access: bool = False
+) -> APIRouter:
+    """The page's routes over `airline`, the persona named by `names`, on `network`, the token
+    route asking for no code when `open_access` (the module's docstring)."""
+    access = {"access": "open" if open_access else "code"}
     router = APIRouter()
 
     @router.get("/api/profile")
     async def profile() -> JSONResponse:
         if network == "real":
-            return JSONResponse(real_profile_view(names), headers=NO_STORE)
-        return JSONResponse(profile_view(airline, names), headers=NO_STORE)
+            return JSONResponse(real_profile_view(names) | access, headers=NO_STORE)
+        return JSONResponse(profile_view(airline, names) | access, headers=NO_STORE)
 
     @router.get("/api/bookings")
     async def bookings(request: Request) -> JSONResponse:
@@ -69,7 +75,7 @@ def api_router(airline: Airline, names: Names, network: Network = "mock") -> API
         kind = request.headers.get("content-type", "").split(";")[0].strip().lower()
         if kind != "application/json":
             return _refused(415, "The request's body is sent as application/json.")
-        body = await _read(request)
+        body = await _read(request, MAX_RESET_BYTES)
         if body is None:
             return _refused(413, "The request's body is too large.")
         try:
@@ -166,15 +172,15 @@ def on_this_machine(request: Request) -> bool:
     return address.is_loopback
 
 
-async def _read(request: Request) -> bytes | None:
-    """The body, or None once it passes MAX_RESET_BYTES, by its length or as it streams."""
+async def _read(request: Request, limit: int) -> bytes | None:
+    """The body, or None once it passes `limit` bytes, by its length or as it streams."""
     declared = request.headers.get("content-length", "")
-    if declared.isdigit() and int(declared) > MAX_RESET_BYTES:
+    if declared.isdigit() and int(declared) > limit:
         return None
     body = b""
     async for chunk in request.stream():
         body += chunk
-        if len(body) > MAX_RESET_BYTES:
+        if len(body) > limit:
             return None
     return body
 

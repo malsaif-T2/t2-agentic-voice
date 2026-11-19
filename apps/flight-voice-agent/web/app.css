@@ -171,6 +171,16 @@ h3 { margin-block: 0 10px; font-size: 1rem; font-weight: 600; }
 .call-button.end { border-color: rgb(252 165 165 / 0.5); background: rgb(190 18 60 / 0.75); color: #ffffff; font-weight: 600; box-shadow: 0 10px 34px rgb(190 18 60 / 0.35); }
 .call-button.end:hover:not(:disabled) { background: rgb(190 18 60 / 0.9); }
 
+/* The mute button beside the end-call button: round and smaller, its microphone crossed when muted. */
+.actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px; }
+.mute { display: inline-grid; place-items: center; width: 60px; height: 60px; padding: 0; border-radius: 50%; }
+.mute svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.mute:not([aria-pressed="true"]) .mute-cross { display: none; }
+.mute[aria-pressed="true"] { border-color: rgb(252 165 165 / 0.55); background: rgb(190 18 60 / 0.3); color: var(--warn); }
+
+/* The alpha's notice: small and quiet, under the call button. */
+.alpha { max-inline-size: 42ch; margin: 0; color: var(--faint); font-size: 0.8rem; line-height: 1.45; }
+
 .could-say { margin-block-start: 14px; }
 .could-say h2 { margin-block-end: 6px; }
 .lines, .card-list, .trip-list, .captions { margin: 0; padding: 0; list-style: none; }

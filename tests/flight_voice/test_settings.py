@@ -44,6 +44,7 @@ def test_the_apps_prefix_is_the_one_the_suite_drops() -> None:
 
 def test_both_settings_load_from_the_environment(environment: pytest.MonkeyPatch) -> None:
     loaded = load()
+    assert loaded.app.access_code is not None
     assert loaded.app.access_code.get_secret_value() == CODE
     assert loaded.app.tokens_per_day == TOKENS_PER_DAY == 50
     assert loaded.app.today == "live"
@@ -88,9 +89,10 @@ def test_a_wrong_value_is_refused_naming_its_setting_never_the_value(
     assert "FIX" in error.message
 
 
-def test_a_missing_access_code_is_refused(environment: pytest.MonkeyPatch) -> None:
+def test_no_access_code_opens_the_line(environment: pytest.MonkeyPatch) -> None:
+    """The owner, 2026-11-19: "do not require Access code for users" (D-129)."""
     environment.delenv("FLIGHT_VOICE_ACCESS_CODE")
-    assert "is not set" in _refused(["FLIGHT_VOICE_ACCESS_CODE"]).message
+    assert load().app.access_code is None
 
 
 def test_the_join_key_that_signs_is_required(environment: pytest.MonkeyPatch) -> None:

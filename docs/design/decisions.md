@@ -4416,3 +4416,36 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Consequences:** the scripted agent stays on the mock airline. A SerpApi search is a scrape of
   Google (Google's suit against SerpApi was dismissed twice in 2026, with leave to refile); the
   port lets a contracted provider replace it. The free tier gives 250 searches a month.
+
+## D-128 · Each call's TURN credentials minted at join, so a call works over the internet; the flight app keeps every call in a local database · 2026-11-19 · Accepted (the owner: "It must work over the internet"; "keep all the relevant data we can gather from each call ... save them to a local database")
+
+- **TURN.** A call's audio is WebRTC, UDP between the browser and the server; a browser behind
+  a strict NAT, or a network that lets only web traffic out, reaches the server only through a
+  TURN relay, over TLS on 443 with a `turns:` URL where HTTPS passes. With `server.turn_secret`
+  set, `/join` gives each TURN server of `server.ice_servers` the call's own credentials,
+  coturn's `use-auth-secret` scheme (adapters/turn_credentials.py: the user name the expiry,
+  `server.turn_ttl_s` from the join, and the call's ID; the password the base64 HMAC-SHA1 of it
+  under the secret), STUN with none (api/turn_credentials.py); the server's own peer is given
+  the STUN servers alone. This builds what D-029 said `/join` answers and closes TD-048. With
+  no secret set, every ICE server is given as it is, as before (GP-18).
+- **The call log** (flight_voice/call_log/): every call of the flight app, in a SQLite file in
+  the app's storage folder (`var/flight/calls.sqlite3`): its setup (the agent and version, the
+  models, the voice, the flight source, the commit), every event whole, its turns and their
+  times, its tool calls, and its recording's folder; the calls' audio is recorded where the
+  caller leaves the page's box ticked (on by default, a notice on the page), as
+  `privacy.record_audio` and the signed consent allow (invariant 8). `FLIGHT_VOICE_CALL_LOG`
+  turns it off. No feedback form: the owner asks the alpha's users themselves.
+- **Hosting** (apps/flight-voice-agent/HOSTING.md): one process behind HTTPS, coturn beside it
+  for the relay, and `python -m flight_voice.hosting` to hand the server's manager every
+  setting this laptop gives, secrets blank.
+
+## D-129 · The flight app's alpha line is open: no access code unless one is set; a mute button on the page · 2026-11-19 · Accepted (the owner: "Also add a mute button, and do not require "Access code" for users")
+
+- **Open line.** The library's access-code token route takes `access_code` None for an app that
+  serves it open (api/access_code.py): the body is then `{"consent": ...}` and no code is
+  compared; the address's delay and `tokens_per_day` still hold, the cap on what the keys spend.
+  The flight app's `FLIGHT_VOICE_ACCESS_CODE` is no longer required: unset, the page asks none
+  (`/api/profile` says `"access": "open"`); set, it is asked as before. Anyone with the address
+  can call, so the hosting guide sets a daily cap for the alpha.
+- **Mute.** The page's mute button sends silence while held muted, with the reference client's
+  own switch (push-to-talk on, released), so the call goes on and nothing reaches the server.

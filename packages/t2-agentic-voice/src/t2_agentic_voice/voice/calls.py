@@ -164,7 +164,8 @@ class VoiceCalls:
         try:
             detectors = await self._spare.take()
             took = perf_counter()
-            peer = await WebRTCPeer.answer(offer, self._settings.server.ice_servers)
+            stun = [u for u in self._settings.server.ice_servers if u.startswith("stun:")]
+            peer = await WebRTCPeer.answer(offer, stun)  # the relay's are the browser's
             answered = perf_counter()
             try:
                 transport = peer.transport()

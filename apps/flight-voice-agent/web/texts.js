@@ -1,6 +1,7 @@
-// Every fixed text of the flight agent's page (index.html, app.js, cards.js, bookings.js), in
-// Arabic and English: our own words, the Arabic written fresh. A text that holds a name or a
-// number takes it through `fill` ("{name}"), never as markup: each is set with textContent. The
+// Every fixed text of the flight agent's page (index.html, app.js, cards.js, bookings.js,
+// microphone.js), in Arabic and English: our own words, the Arabic written fresh. A text that
+// holds a name or a number takes it through `fill` ("{name}"), never as markup: each is set with
+// textContent (the mute button's name as its attribute). The
 // `free` texts are the line that books nothing (the profile's `bookings` false): no traveler, the
 // heading a question to anyone, the brand the assistant and its company.
 
@@ -20,6 +21,9 @@ export const TEXT = {
     traveler: "{name} · {tier}",
     start: "ابدأ مكالمة",
     end: "إنهاء",
+    mute: "كتم",
+    unmute: "إلغاء الكتم",
+    muted: "مكتوم",
     states: {
       listening: "يسمعك",
       thinking: "يفكر",
@@ -35,7 +39,8 @@ export const TEXT = {
     conversation: "اعرض المحادثة",
     options: "خيارات",
     code: "رمز الدخول",
-    record: "سجّل صوت هذه المكالمة، ويُحفظ على هذا الجهاز لتجربة المساعد.",
+    record: "سجّل المكالمة لنحسّن المساعد (نسخة تجريبية).",
+    alpha: "نسخة تجريبية: نحفظ المكالمات لتحسين المساعد، وتقدر توقف التسجيل من الخيارات.",
     pushToTalk: "التحدث بالضغط (اضغط مطولاً على المسافة أو على الزر)",
     talk: "اضغط مطولاً للتحدث",
     you: "أنت",
@@ -84,6 +89,9 @@ export const TEXT = {
     traveler: "{name} · {tier}",
     start: "Start a call",
     end: "End",
+    mute: "Mute",
+    unmute: "Unmute",
+    muted: "Muted",
     states: {
       listening: "Listening",
       thinking: "Thinking",
@@ -99,7 +107,8 @@ export const TEXT = {
     conversation: "Show conversation",
     options: "Options",
     code: "Access code",
-    record: "Record this call's audio, kept on this laptop to test the agent.",
+    record: "Record this call to help improve the assistant (alpha).",
+    alpha: "Alpha: calls are saved to improve the assistant. You can turn recording off in Options.",
     pushToTalk: "Push to talk (hold Space or the button)",
     talk: "Hold to talk",
     you: "You",

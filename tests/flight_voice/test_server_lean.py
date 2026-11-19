@@ -27,7 +27,13 @@ from flight_voice.lean.agent import NAME as LEAN
 from flight_voice.lean.agent import calendar_watch
 from flight_voice.settings import AGENTS, for_the_app, load
 from t2_agentic_voice import ConfigurationError, VoiceSettings
-from t2_agentic_voice.events import AgentSpeechEnded, CallEnded, CallStarted, UserTurnEnded
+from t2_agentic_voice.events import (
+    AgentSpeechEnded,
+    CallEnded,
+    CallStarted,
+    Event,
+    UserTurnEnded,
+)
 
 from tests.flight_voice.flight_data.serpapi_support import FIXTURES
 
@@ -65,7 +71,7 @@ def test_the_scripted_agent_is_served_unless_the_setting_says_lean(
     assert AGENTS == ("scripted", "lean")
     runtime = _served(environment)
     assert runtime.agent.name == NAME and load().app.agent == "scripted"
-    assert [kind for kind, _ in runtime.observers] == [CallEnded]
+    assert [kind for kind, _ in runtime.observers] == [Event, CallEnded]  # the call log first
 
 
 def test_the_lean_agent_is_served_with_its_check_observing_each_call(
@@ -77,8 +83,8 @@ def test_the_lean_agent_is_served_with_its_check_observing_each_call(
     names = [t.name for t in runtime.agent.tools]
     assert names == ["find_flights", "choose_flights", "book_trip", "traveler_profile"]
     kinds = [kind for kind, _ in runtime.observers]
-    assert kinds == [CallEnded, AgentSpeechEnded, UserTurnEnded, CallEnded, CallStarted]
-    checks = {observer.__self__ for _, observer in runtime.observers[1:4]}
+    assert kinds == [Event, CallEnded, AgentSpeechEnded, UserTurnEnded, CallEnded, CallStarted]
+    checks = {observer.__self__ for _, observer in runtime.observers[2:5]}
     assert len(checks) == 1  # one booking check for every call
 
 

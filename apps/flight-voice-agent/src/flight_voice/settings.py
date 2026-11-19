@@ -2,56 +2,55 @@
 both read from the environment and, only when one is given, a `.env` file; the environment wins
 over the file. This is the only module of the app that reads the environment.
 
-The app's own (`AppSettings`, each field's description says what it does): the access code the
-owner types on the page (required, at least 16 characters, made with `GENERATOR`), the website
-allowed to frame the page, the token route's tokens a day (50), the airline's today (`live`, or
-a date pinned), the mock airline's modes (its bookings' writes and lookup, its searches, its
-profile, a slow read's seconds), the agent served (`agent`: `scripted`, today's, by default, or
-`lean`, the model-led one beside it, D-113), the persona's names, the owner's picks by default
-(persona.py's `Names`), and the flight data's (flight_data/settings.py's `FlightDataFields`:
-the source, `mock` by default, SerpApi's key, its deadlines, span and cache).
+The app's own (`AppSettings`, each field's description says what it does): the access code a caller
+types on the page (at least 16 characters, made with `GENERATOR`; unset, no code is asked: the
+alpha's open line, D-129), the website allowed to frame the page, the token route's tokens a day
+(50), the airline's today (`live`, or a date pinned), the mock airline's modes (its bookings'
+writes and lookup, its searches, its profile, a slow read's seconds), the agent served (`agent`:
+`scripted`, today's, by default, or `lean`, the model-led one beside it, D-113), the persona's
+names, the owner's picks by default (persona.py's `Names`), and the flight data's
+(flight_data/settings.py's `FlightDataFields`: the source, `mock` by default, SerpApi's key, its
+deadlines, span and cache).
 
-The library's settings as the app runs them are voice_settings.py's `for_the_app`; this module
-re-exports it and its constants (`AgentKind`, `AGENTS`, `PREFIX`, ...).
+The library's settings as the app runs them: voice_settings.py's `for_the_app`, re-exported.
 
 `load` also, whatever else sets them:
-- **nests the runtime's folder** under `<storage.var_dir>/flight` (`APP_FOLDER`): its used
-  tokens, outbox, phrase cache and lock apart from Ole5's, since the runtime's lock allows one
-  process a folder and both servers start with `--env-file .env`;
+- **nests the runtime's folder** under `<storage.var_dir>/flight` (`APP_FOLDER`): its used tokens,
+  outbox, phrase cache and lock apart from Ole5's, since the runtime's lock allows one process a
+  folder and both servers start with `--env-file .env`;
 - **books up to 50 a caller a day** (`ACTIONS_PER_DAY`) unless the environment sets
   `limits.actions_per_caller_per_day`: a demo day books more than the library's default;
-- **turns on** `guard.question_stop_drops_calls`, `guard.drop_stage_notes`, `guard.plain_speech` and
-  `guard.retry_claims` (`GUARD_ON`), sets `llm.max_requests_per_turn` to 4 (`REQUESTS_PER_TURN`),
-  and, for the scripted agent alone, `interruptions.yes_over_read_back` (`YES_OVER_READ_BACK`), for
-  the lean agent on the mock alone (the one that books) `interruptions.answer_yes_over_question`
-  (`YES_OVER_QUESTION`), each unless the environment sets it (run F's rounds 2 and 3): a question
-  the limit stopped ends the turn with no call of its request run, a stage note or a tag the model
-  writes is never said, nor a clause that is not speech or a booking's claim the guard held back,
-  its request tried once more (D-111, lean/book.py), a refused booking's next pick and its read-back
-  fit in one turn, and a yes over the read-back books once its summary has played (D-108, the
-  owner's "Any yes books"); the lean agent has no read-back to hold a yes over, so a yes over its
-  closing question ("Shall I book it?") is answered once the reply ends instead (D-116;
-  `for_the_app`'s `agent`);
+- **turns on** `guard.question_stop_drops_calls`, `guard.drop_stage_notes`, `guard.plain_speech`
+  and `guard.retry_claims` (`GUARD_ON`), sets `llm.max_requests_per_turn` to 4
+  (`REQUESTS_PER_TURN`), and, for the scripted agent alone, `interruptions.yes_over_read_back`
+  (`YES_OVER_READ_BACK`), for the lean agent on the mock alone (the one that books)
+  `interruptions.answer_yes_over_question` (`YES_OVER_QUESTION`), each unless the environment sets
+  it (run F's rounds 2 and 3): a question the limit stopped ends the turn with no call of its
+  request run, a stage note or a tag the model writes is never said, nor a clause that is not
+  speech or a booking's claim the guard held back, its request tried once more (D-111,
+  lean/book.py), a refused booking's next pick and its read-back fit in one turn, and a yes over
+  the read-back books once its summary has played (D-108, the owner's "Any yes books"); the lean
+  agent has no read-back to hold a yes over, so a yes over its closing question ("Shall I book
+  it?") is answered once the reply ends instead (D-116; `for_the_app`'s `agent`);
 - **for the lean agent on the mock alone, adds the booking's send words** (booking/lines.py's
   `SEND_WORDS`: «احجزها», «احجز», "book it", "confirm" and the like) to `words.send` unless the
   environment sets it, so «إي احجزها» or «نعم، احجزها» said over its closing question is the yes
   D-116 answers, as over the scripted agent's read-back, which declares them as its action's own;
 - **reads a caller as Saudi first**, the app's forms added (caller_register.py), unless set;
-- **speaks in Groq's Orpheus voices** (the owner, 2026-11-18) and says numbers, times and dates
-  in the caller's register (D-107), each unless the environment sets it (app_voice.py);
-- **turns on plan 010's first changes to how soon a call answers** (turned_on.py), each unless
-  the environment sets it: the warm-up, Smart Turn on two threads, 0.1 s of silence after a
-  progress line's speech, the early start from the detector's stop and over a reply, and for the
-  scripted agent alone a 1.8 s fallback end of a turn (3 s while a read-back awaits its answer);
+- **speaks in Groq's Orpheus voices** (the owner, 2026-11-18) and says numbers, times and dates in
+  the caller's register (D-107), each unless the environment sets it (app_voice.py);
+- **turns on plan 010's first changes to how soon a call answers** (turned_on.py), each unless the
+  environment sets it: the warm-up, Smart Turn on two threads, 0.1 s of silence after a progress
+  line's speech, the early start from the detector's stop and over a reply, and for the scripted
+  agent alone a 1.8 s fallback end of a turn (3 s while a read-back awaits its answer);
 - **under `env` dev alone**, names the demo traveler the test console's dev caller, so a call the
   console starts is the traveler's, as a page's call is;
 - **refuses a name that breaks the lines' rule** (persona.py's `breaking`), naming its setting;
 - **refuses a flight data source it cannot run** (flight_data/settings.py's `refused_source`):
-  `serpapi` with no key, the scripted agent on a source other than the mock, `recorded` with
-  today live.
+  `serpapi` with no key, the scripted agent on a source other than the mock, `recorded` with today
+  live.
 
-`load_flight_data` reads the flight data's settings alone, for the opt-in live smoke run
-(flight_data/smoke.py), which needs no access code.
+`load_flight_data` reads the flight data's settings alone, for the smoke run (smoke.py).
 
 A blank value counts as unset, as the library's do. The token route signs every token with the
 join key `T2V_JOIN__CURRENT_KID` names, so that one is required too. Every failure is one
@@ -72,6 +71,7 @@ from t2_agentic_voice import ConfigurationError, ServerSettings, VoiceSettings
 
 from flight_voice.airline.bookings import Mode
 from flight_voice.airline.system import SLOW_S, ProfileMode, SearchMode, live_today
+from flight_voice.call_log.settings import CallLogFields
 from flight_voice.flight_data.settings import FlightDataFields, refused_source
 from flight_voice.persona import Names, breaking
 from flight_voice.voice_settings import (
@@ -122,9 +122,9 @@ def _name(default: str, what: str) -> str:
     return Field(default=default, pattern=NAME_PATTERN, description=what)
 
 
-class AppSettings(FlightDataFields):
-    """The flight agent's own settings, read-only once loaded, the flight data's among them
-    (flight_data/settings.py)."""
+class AppSettings(FlightDataFields, CallLogFields):
+    """The flight agent's own settings, read-only once loaded, the flight data's and the call
+    log's among them (flight_data/settings.py, call_log/settings.py)."""
 
     model_config = SettingsConfigDict(
         env_prefix=PREFIX,
@@ -134,9 +134,10 @@ class AppSettings(FlightDataFields):
         hide_input_in_errors=True,
     )
 
-    access_code: SecretStr = Field(
-        description="The code the owner types on the page to get a join token, at least 16 "
-        "characters."
+    access_code: SecretStr | None = Field(
+        default=None,
+        description="The code a caller types on the page to get a join token, at least 16 "
+        "characters; unset, the page asks for none and any caller may call (the daily cap holds).",
     )
     website_origin: str | None = Field(
         default=None,
@@ -190,7 +191,9 @@ class AppSettings(FlightDataFields):
 
     @field_validator("access_code")
     @classmethod
-    def _long_enough(cls, value: SecretStr) -> SecretStr:
+    def _long_enough(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is None:
+            return None
         code = value.get_secret_value().strip()
         if len(code) < MIN_ACCESS_CODE_CHARS:
             raise ValueError(f"holds fewer than {MIN_ACCESS_CODE_CHARS} characters")

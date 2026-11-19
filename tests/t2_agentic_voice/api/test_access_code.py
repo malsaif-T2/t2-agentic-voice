@@ -151,7 +151,6 @@ def test_the_body_can_set_nothing_but_the_code_and_the_consent(
         b"not json",
         b"[]",
         b'{"code": "' + CODE.encode() + b'"}',
-        b'{"consent": {"version": null, "record_audio": true}}',
         b'{"code": 12345678901234567, "consent": {"version": null, "record_audio": true}}',
         b'{"code": "", "consent": {"version": null, "record_audio": true}}',
         b'{"code": "' + b"x" * 257 + b'", "consent": {"version": null, "record_audio": true}}',
@@ -345,3 +344,25 @@ def test_a_guard_number_below_one_or_not_whole_is_refused(field: str, value: obj
         AccessCodeGuard(**{field: value})  # type: ignore[arg-type]
     assert refused.value.details == {"field": field}
     assert field in refused.value.message
+
+
+def test_a_missing_code_is_a_wrong_code_where_one_is_asked(app: FastAPI, minter: Minter) -> None:
+    body = b'{"consent": {"version": null, "record_audio": true}}'
+    answer = client(app).post("/token", content=body, headers={"content-type": "application/json"})
+    assert answer.status_code == 403 and answer.json()["code"] == "wrong_code"
+    assert minter.minted == []
+
+
+def test_an_open_route_mints_with_no_code_and_keeps_its_daily_count(
+    minter: Minter, clock: Clock
+) -> None:
+    """D-129: with no access code the route asks for none, and its daily cap still holds."""
+    app = FastAPI()
+    guard = AccessCodeGuard(clock=clock, tokens_per_day=1)
+    app.include_router(access_code_router(None, minter, caller=lambda: CALLER, guard=guard))
+    body = b'{"consent": {"version": null, "record_audio": true}}'
+    headers = {"content-type": "application/json"}
+    first = client(app).post("/token", content=body, headers=headers)
+    assert first.status_code == 200 and "token" in first.json()
+    assert client(app).post("/token", content=body, headers=headers).status_code == 429
+    assert len(minter.minted) == 1

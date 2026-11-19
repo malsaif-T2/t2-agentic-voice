@@ -12,9 +12,9 @@ airline, kept in memory and reset to its seed at each start, its modes and today
 (for the lean agent, today as the server starts, the day its calendar is written for, kept; its
 flight source the one `FLIGHT_VOICE_FLIGHT_DATA` names, the mock behind the flight data port by
 default, flight_data/compose.py's `lean_deps`, closed as the app's lifespan ends, after the
-router's); each call's trip is kept in one trip book, dropped as the call ends
-(`CallEnded`). Every join token the token route mints names the demo
-traveler (traveler.py), whatever the request says. There is no echo: the mock airline needs no
+router's); each call's trip is kept in one trip book, dropped as the call ends (`CallEnded`), and
+every call in the call log's database (call_log/). Every join token names the demo traveler
+(traveler.py), whatever the request says. There is no echo: the mock airline needs no
 outside service, and the library's runtime needs the Groq key for its chat model and voices
 whatever the agent, so with none set it refuses to start, naming the key's setting. The app is
 built as the library's mount asks, as Ole5's is:
@@ -66,9 +66,11 @@ from flight_voice import LOGGERS
 from flight_voice.agent import declare
 from flight_voice.airline.bookings import BookingStore
 from flight_voice.airline.system import Airline
+from flight_voice.call_log.compose import call_log_of
 from flight_voice.flight_data.compose import lean_deps
 from flight_voice.lean.agent import OBSERVED, calendar_watch
 from flight_voice.lean.agent import declare as declare_lean
+from flight_voice.persona import Network
 from flight_voice.routes import api_router
 from flight_voice.settings import AppSettings, Settings, load
 from flight_voice.traveler import demo_caller
@@ -97,6 +99,7 @@ FILES: Final = {
     "/app.js": ("app.js", _JS),
     "/cards.js": ("cards.js", _JS),
     "/orb.js": ("orb.js", _JS),
+    "/microphone.js": ("microphone.js", _JS),
     "/bookings.js": ("bookings.js", _JS),
     "/texts.js": ("texts.js", _JS),
     "/mark.svg": ("mark.svg", "image/svg+xml"),
@@ -111,7 +114,7 @@ log = get_logger(__name__)
 
 
 class Closable(Protocol):
-    """What the app closes as its lifespan ends: the lean agent's flight source."""
+    """What the app closes as its lifespan ends: the lean agent's flight source, the call log."""
 
     async def aclose(self) -> None: ...
 
@@ -142,9 +145,8 @@ def build_app(
     closing: Sequence[Closable] = (),
 ) -> FastAPI:
     """The app: the page's files from `web`, the token route minting with `minter` (its guard
-    on `clock`) for the demo traveler, the page's routes over `airline`, and the library's
-    `router` under VOICE_PREFIX; each of `closing` closed as the app's lifespan ends, after the
-    router's."""
+    on `clock`), the page's routes over `airline`, the library's `router`
+    under VOICE_PREFIX; each of `closing` closed as the lifespan ends, after the router's."""
     app = FastAPI(telemetry=TELEMETRY_OFF, openapi_url=None)
     app.add_middleware(
         CORSMiddleware,
@@ -157,7 +159,9 @@ def build_app(
         access_code_router(settings.app.access_code, minter, caller=demo_caller, guard=guard)
     )
     real = settings.app.agent == "lean" and settings.app.flight_data != "mock"
-    app.include_router(api_router(airline, settings.app.names(), "real" if real else "mock"))
+    network: Network = "real" if real else "mock"
+    open_access = settings.app.access_code is None
+    app.include_router(api_router(airline, settings.app.names(), network, open_access=open_access))
     app.include_router(router, prefix=VOICE_PREFIX)
     if closing:  # the router's lifespan, merged into the app's as included, runs inside
         app.router.lifespan_context = _around(app.router.lifespan_context, closing)
@@ -169,11 +173,9 @@ def build_app(
 
 
 def make_app(settings: Settings) -> FastAPI:
-    """The app as it serves the flight agent's calls: the runtime's callers verified by the
-    signed join tokens the token route mints, with the key `join.current_kid` names; its agent
-    the one `app.agent` chooses over the mock airline the settings set, each call's trip
-    dropped as it ends, and for the lean agent its booking check observing each call's events
-    (lean/agent.py)."""
+    """The app as it serves the flight agent's calls: callers verified by the signed join tokens
+    the token route mints (the key `join.current_kid` names); the agent `app.agent` chooses,
+    each call's trip dropped as it ends, the lean agent's booking check observing its events."""
     voice = settings.voice
     tokens = SignedJoinTokens.from_settings(voice.join, prefix=voice.prefix)
     names = settings.app.names()
@@ -194,6 +196,9 @@ def make_app(settings: Settings) -> FastAPI:
         agent = declare(airline, trips, names)
         ended = trips.call_ended
     runtime = VoiceRuntime(agent, settings=voice, identity=tokens)
+    if (calls := call_log_of(settings.app, settings.app, voice, agent)) is not None:
+        runtime.on(Event)(calls.observe)  # every call kept in the call log's database
+        closing.append(calls)
     runtime.on(CallEnded)(ended)
     for kind, observer in observers:
         runtime.on(kind)(observer)

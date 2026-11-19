@@ -5,7 +5,9 @@
 //   location  the page's address;
 //   page      its elements in document order, each {tag, attrs, parent, text}, parent an index;
 //   steps     what to do, in order, each {do, ...}: "click" an element, "set" an element's
-//             value, "change" it (its change event), "start" a VoiceClient with listeners on every event, "open" the newest
+//             value, "check" a box (its checked to `value`), "change" it (its change event),
+//             "microphone" (each microphone track's enabled, oldest first), "start" a
+//             VoiceClient with listeners on every event, "open" the newest
 //             data channel, "receive" text on it, "snapshot" an element; an element is named
 //             by its `id`, or by `query`, [selector, n], the nth the selector finds;
 //   answers   optional: more routes' answers, by "METHOD last-segment", as ANSWERS holds them,
@@ -13,8 +15,9 @@
 //   storage   optional: the page's localStorage, as text by key (none given: no localStorage,
 //             as a browser that blocks it).
 // It writes one JSON object on stdout: each snapshot, the events the started client gave, the
-// messages the client sent, the requests it made, every console.error, and the localStorage
-// left, then exits, whatever timers the page left running.
+// messages the client sent, the requests it made (each its method, path, content type and JSON
+// body), the microphone steps' track states, every console.error, and the localStorage left,
+// then exits, whatever timers the page left running.
 // Writing markup (innerHTML, outerHTML, insertAdjacentHTML, document.write) throws, so a page
 // that tried would fail its test.
 
@@ -23,7 +26,7 @@ const NO_MARKUP = () => {
 };
 const EVENTS = ["hello", "state", "caption", "card", "duck", "unduck", "volume", "notice",
   "ended", "connection", "error"];
-const out = { snapshots: [], events: [], sent: [], requests: [], errors: [] };
+const out = { snapshots: [], events: [], sent: [], requests: [], errors: [], microphone: [] };
 
 class FakeNode extends EventTarget {
   parentNode = null;
@@ -199,6 +202,7 @@ class FakeChannel extends EventTarget {
 }
 
 const channels = [];
+const tracks = []; // every microphone track handed out, oldest first
 
 class FakePeer extends EventTarget {
   connectionState = "new";
@@ -233,7 +237,8 @@ const ANSWERS = {
 async function fetch(input, init = {}) {
   const url = new URL(String(input), globalThis.location.href);
   const method = init.method ?? "GET";
-  out.requests.push({ method, path: url.pathname, body: JSON.parse(init.body ?? "null") });
+  const type = Object.entries(init.headers ?? {}).find(([name]) => name.toLowerCase() === "content-type");
+  out.requests.push({ method, path: url.pathname, type: type?.[1] ?? null, body: JSON.parse(init.body ?? "null") });
   const given = ANSWERS[`${method} ${url.pathname.split("/").pop()}`] ?? [404, {}];
   const [status, body] = given.sequence ? (given.sequence.length > 1 ? given.sequence.shift() : given.sequence[0]) : given;
   return { ok: status < 400, status, json: async () => body, headers: { get: () => null } };
@@ -270,6 +275,7 @@ define("location", { href: input.location });
 define("navigator", {
   mediaDevices: { getUserMedia: async () => {
     const track = new FakeTrack();
+    tracks.push(track);
     return { getAudioTracks: () => [track], getTracks: () => [track] };
   } },
 });
@@ -294,6 +300,8 @@ for (const step of input.steps) {
   if (step.do === "click") element.dispatchEvent(new Event("click"));
   else if (step.do === "change") element.dispatchEvent(new Event("change"));
   else if (step.do === "set") element.value = step.value;
+  else if (step.do === "check") element.checked = step.value === true;
+  else if (step.do === "microphone") out.microphone.push(tracks.map((track) => track.enabled));
   else if (step.do === "start") {
     const on = Object.fromEntries(EVENTS.map((name) => [name, (value) => out.events.push([name, value])]));
     await module.VoiceClient.start({ base: "/voice", token: "made-up-token", escape: false, on });

@@ -20,7 +20,7 @@ from flight_voice.server import FILES, HOST, PORT, VOICE_PREFIX, WEB, airline_of
 from flight_voice.settings import load
 from flight_voice.traveler import TRAVELER_ID, demo_caller
 from t2_agentic_voice import Caller, VoiceSettings
-from t2_agentic_voice.events import CallEnded
+from t2_agentic_voice.events import CallEnded, Event
 from t2_agentic_voice.server import page_headers
 
 from tests.flight_voice.server_support import (
@@ -171,8 +171,8 @@ def test_make_app_serves_the_talker_and_drops_each_calls_trip_as_it_ends(
     assert runtime.agent.name == NAME
     assert "Fahad" in runtime.agent.languages[1].greeting
     assert runtime.settings is loaded.voice
-    ((kind, observer),) = runtime.observers
-    assert kind is CallEnded
+    (logged, _), (kind, observer) = runtime.observers  # the call log sees every event first
+    assert logged is Event and kind is CallEnded
     assert observer.__name__ == "call_ended"
 
 

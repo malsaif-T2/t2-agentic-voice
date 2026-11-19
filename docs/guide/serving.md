@@ -225,9 +225,11 @@ Under the prefix (`/voice` above), the runtime serves:
   show, and a reference the server logs. A `PATCH` that comes once the call has moved on gets a
   quiet 409 (`not_offered`, `ice_completed`, `call_ended`), which the client ignores.
 - Until the lifespan has run, every route answers 503 `not_started`.
-- `/join` answers `server.ice_servers` as they are set, with no credentials: TURN credentials
-  come with the deployment, not built yet, so a call needs a direct UDP path between the
-  browser and the backend, as on one machine or one network.
+- `/join` answers `server.ice_servers`, each TURN server with the call's own credentials when
+  `server.turn_secret` is set (coturn's `use-auth-secret`: the user name the expiry and the
+  call's ID, the password its HMAC-SHA1 under the secret; D-128), so a browser on any network
+  reaches the backend through the relay, over TLS on 443 with a `turns:` URL; with no TURN
+  server, a call needs a direct UDP path between the browser and the backend.
 
 ## Which agent a served app runs
 

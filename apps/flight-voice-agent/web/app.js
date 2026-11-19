@@ -4,15 +4,17 @@
 //
 // The caller picks the page's language, which is also the call's starting language (Arabic
 // first; mid-call the caller switches by voice), types the owner's access code once under
-// Options (kept in this page's memory alone, never in storage), may tick the box to keep the
-// call's audio (off by default; no consent screen, D-076) and starts the call with the one round
-// button, which then ends it. The orb and the state line follow the call's `state` (listening,
-// thinking, speaking, waiting for a yes), the orb also its sound (orb.js, decoration alone); the
-// cards mirror what the agent said, each in its segment of the trip, outbound, return and review
-// (cards.js); the captions sit in "Show conversation". The profile (`GET api/profile`) says
-// whether the line books (`bookings`): only then are the traveler's name and tier, "Your trips"
-// (bookings.js) and "Start over" shown, the review's status line waiting for the yes, then
-// booked; on a line that books nothing (real flights: anyone calls, with no profile) the heading
+// Options (kept in this page's memory alone, never in storage) unless the profile says the line
+// is open (`access` "open": no code asked, none sent), may untick the box that records the call
+// (ticked for the alpha, said by the notice under the call button; no consent screen, D-076) and
+// starts the call with the one round button, which then ends it; the mute button beside it and
+// push to talk are microphone.js's. The orb and the state line follow the call's `state`
+// (listening, thinking, speaking, waiting for a yes; "Muted" beside it while muted), the orb also
+// its sound (orb.js, decoration alone); the cards mirror what the agent said, each in its segment
+// of the trip, outbound, return and review (cards.js); the captions sit in "Show conversation".
+// The profile (`GET api/profile`) also says whether the line books (`bookings`): only then are
+// the traveler's name and tier, "Your trips" (bookings.js) and "Start over" shown, the review's
+// status line waiting for the yes, then booked; on a line that books nothing (real flights: anyone calls, with no profile) the heading
 // asks anyone where to fly, the brand is the assistant and its company, and no booking route is
 // ever asked. The lines the caller could say are text, never buttons: the client has no typed
 // text into a call. Every text, the captions, cards and notices included, is set with textContent.
@@ -20,6 +22,7 @@
 import { VoiceClient } from "./voice/client/1/t2v-client.js";
 import { Cards } from "./cards.js?v=2026-11-19";
 import { Booking } from "./bookings.js?v=2026-11-19";
+import { Microphone } from "./microphone.js?v=2026-11-19";
 import { Orb } from "./orb.js?v=2026-11-19";
 import { fill, wordsOf } from "./texts.js?v=2026-11-19";
 
@@ -34,6 +37,10 @@ const words = () => wordsOf(page.language);
 const cards = new Cards($("cards"), $("cards-section"), () => words().marks);
 const booking = new Booking($, cards, words, () => page.language);
 const orb = new Orb($("orb"));
+const redraw = () => ($("state").textContent = stateLine());
+const mic = new Microphone($, orb, words, () => page.call, redraw);
+// Whether the line asks no access code (the profile's `access`), else the caller types it.
+const open = () => page.profile?.access === "open";
 
 class TokenError extends Error {
   constructor(code, retryAfter = null) {
@@ -84,9 +91,11 @@ function render() {
       return line;
     }),
   );
-  $("state").textContent = saying(page.said);
+  $("state").textContent = stateLine();
+  $("code-field").hidden = open();
   booking.shown = books;
   cards.render();
+  mic.render();
 }
 
 async function profile() {
@@ -110,24 +119,7 @@ function running(on) {
   $("code").disabled = on;
   $("record").disabled = on;
   for (const button of document.querySelectorAll("button.language")) button.disabled = on;
-  talkable();
-}
-
-function talkable() {
-  $("talk").disabled = $("end").disabled || !page.call || !$("push-to-talk").checked;
-}
-
-function talk(held) {
-  $("talk").setAttribute("aria-pressed", String(held));
-  orb.hush = $("push-to-talk").checked && !held;
-  page.call?.talk(held);
-}
-
-function space(event) {
-  if (event.code !== "Space" || !page.call || !$("push-to-talk").checked) return;
-  event.preventDefault();
-  if (event.type === "keyup") talk(false);
-  else if (!event.repeat) talk(true);
+  mic.able();
 }
 
 // The text of `key` among the page's words ("states.listening" names a nested one).
@@ -136,10 +128,16 @@ function saying(key) {
   return typeof said === "string" ? said : "";
 }
 
+// The state line's text: the state's, and "Muted" beside it while the caller is muted.
+function stateLine() {
+  const said = saying(page.said);
+  return said && mic.muted ? `${said} · ${words().muted}` : said;
+}
+
 // The state line (its text by `key`) and the orb: the agent's state `now`, none once over.
 function state(key, now = "") {
   page.said = key;
-  $("state").textContent = saying(key);
+  $("state").textContent = stateLine();
   $("state").dataset.state = now;
   orb.state = now;
 }
@@ -155,7 +153,8 @@ function messageFor(error) {
   return typeof said === "string" ? said : words().failed;
 }
 
-// A join token from the app's token route, for the access code, carrying the box's choice.
+// A join token from the app's token route, for the access code (none on an open line),
+// carrying the box's choice.
 async function token() {
   let response;
   try {
@@ -163,7 +162,7 @@ async function token() {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        code: page.code,
+        ...(open() ? {} : { code: page.code }),
         consent: { version: CONSENT_VERSION, record_audio: $("record").checked },
       }),
       cache: "no-store",
@@ -206,7 +205,8 @@ function caption(c) {
 function ended(e) {
   page.call = null;
   orb.end();
-  talk(false);
+  mic.reset();
+  mic.talk(false);
   running(false);
   state("ended");
   if (e.reason === "transport") message(words().lost);
@@ -215,8 +215,8 @@ function ended(e) {
 
 async function start() {
   if (page.call) return;
-  page.code = $("code").value.trim() || page.code;
-  if (!page.code) {
+  page.code = open() ? "" : $("code").value.trim() || page.code;
+  if (!open() && !page.code) {
     $("options").setAttribute("open", "");
     message(words().needCode);
     return;
@@ -227,6 +227,7 @@ async function start() {
   page.captions.clear();
   $("captions").replaceChildren();
   cards.clear();
+  mic.reset();
   running(true);
   state("starting", "connecting");
   await booking.started();
@@ -254,7 +255,7 @@ async function start() {
     call.pushToTalk = $("push-to-talk").checked;
     page.call = call.closed ? null : call;
     if (page.call) orb.listen();
-    talkable();
+    mic.able();
   } catch (error) {
     orb.end();
     running(false);
@@ -271,21 +272,5 @@ for (const button of document.querySelectorAll("button.language")) {
 }
 $("start").addEventListener("click", start);
 $("end").addEventListener("click", () => page.call?.hangup());
-$("push-to-talk").addEventListener("change", () => {
-  if (page.call) page.call.pushToTalk = $("push-to-talk").checked;
-  talk(false);
-  talkable();
-});
-$("talk").addEventListener("pointerdown", (event) => {
-  if ($("talk").disabled) return;
-  $("talk").setPointerCapture?.(event.pointerId);
-  talk(true);
-});
-for (const name of ["pointerup", "pointercancel", "lostpointercapture"]) {
-  $("talk").addEventListener(name, () => talk(false));
-}
-document.addEventListener("keydown", space);
-document.addEventListener("keyup", space);
-globalThis.addEventListener("blur", () => talk(false));
 render();
 profile();

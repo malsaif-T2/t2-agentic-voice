@@ -62,8 +62,8 @@ belongs on storage that survives a restart.
 - **Media goes over UDP**, from the caller's browser to your backend, with no media server
   between. On one machine, or within one network, nothing else is needed.
 - **From other networks** the backend needs an open UDP path or a TURN relay, and a network that
-  passes only TCP 443 needs TURN over TLS on 443. The library mints no TURN credentials yet:
-  they come with the deployment, which has its own plan once a server is available.
+  passes only TCP 443 needs TURN over TLS on 443. With `server.turn_secret` set, the library
+  mints each call's TURN credentials, coturn's `use-auth-secret` scheme (D-128).
 - **HTTPS** serves the page that opens the microphone, anywhere but `localhost`.
 - **Outbound,** the library contacts Groq and your trace endpoint, and nothing else.
 

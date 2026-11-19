@@ -12,8 +12,8 @@ other getting the server's plain 404. With the dev page come the test console's 
   `privacy.consent_version` when that is set (a plain `Consent`, as `DevIdentity` gives, is not
   compared: D-029); fixes the call's language (`agent.call_language(request.language,
   locale=caller.locale)`, kept to the call's end); and mints the call's ID and offer secret
-  (api/offers.py). It answers `server.ice_servers` as they are set, with no user name or
-  credential: it mints no TURN credentials (the owner's ruling of 2026-11-03; TD-048).
+  (api/offers.py). It answers `server.ice_servers`, each TURN server with the call's own
+  short-lived credentials when `server.turn_secret` is set (api/turn_credentials.py, D-128).
 - **`POST /offer`** hands voice the call's caller, consent and language with the offer
   (`Calls.answer`). A call takes one offer: a second, or one after voice refused the first, gets
   409 `already_offered`. The offer secret, in the `X-T2V-Offer-Secret` header or the body, never
@@ -38,6 +38,7 @@ import asyncio
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final, Literal
 
@@ -53,7 +54,6 @@ from t2_agentic_voice.api.protocol import (
     BODIES,
     OFFER_SECRET_HEADER,
     CandidatesRequest,
-    IceServer,
     JoinRequest,
     JoinResponse,
     OfferAnswer,
@@ -62,6 +62,7 @@ from t2_agentic_voice.api.protocol import (
 )
 from t2_agentic_voice.api.protocol import refusal as refused_body
 from t2_agentic_voice.api.stt_calls import CallStts
+from t2_agentic_voice.api.turn_credentials import call_ice_servers
 from t2_agentic_voice.core.config import Environment, VoiceSettings
 from t2_agentic_voice.core.errors import InvalidRequestError, JoinRejected, NotFoundError
 from t2_agentic_voice.core.identity import Consent, SignedConsent
@@ -179,6 +180,7 @@ class _Routes:
     def __init__(self, served: Served) -> None:
         self._served = served
         self._settings = served.settings
+        self._turn = served.settings.server.resolved_turn_secret(served.settings.prefix)
 
     def _running(self) -> Running:
         running = self._served.running()
@@ -209,7 +211,8 @@ class _Routes:
             caller=caller, consent=consent, language=language, now=self._served.clock.now()
         )
         log.info("call_joined", call_id=record.call_id, language=language.tag)
-        servers = tuple(IceServer(urls=(url,)) for url in self._settings.server.ice_servers)
+        server = self._settings.server
+        servers = call_ice_servers(server, record.call_id, datetime.now(UTC), self._turn)
         answer = JoinResponse(
             call_id=record.call_id, offer_secret=record.secret, ice_servers=servers
         )

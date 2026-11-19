@@ -9,6 +9,9 @@ leave its counts alone.
 
 The body is JSON alone (415 otherwise, before a byte is read), at most `MAX_BODY_BYTES` (413),
 parsed strictly: `{"code": "<access code>", "consent": {"version": ..., "record_audio": ...}}`.
+An app may serve it open, with no code (`access_code` None; the flight app's alpha, D-129): then
+the body is `{"consent": ...}`, no code is compared, and the address's delay and the daily count
+still hold.
 The guard on the shared code, held in this process (a restart begins each count again):
 - the code is compared in constant time (`hmac.compare_digest`);
 - after each wrong code from an address, that address's next try is refused unread until a
@@ -79,7 +82,7 @@ class TokenRequest(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid", strict=True, hide_input_in_errors=True)
 
-    code: Annotated[SecretStr, Field(min_length=1, max_length=MAX_CODE_CHARS)]
+    code: Annotated[SecretStr, Field(min_length=1, max_length=MAX_CODE_CHARS)] | None = None
     consent: Consent
 
 
@@ -164,17 +167,18 @@ class AccessCodeGuard:
 
 
 def access_code_router(
-    access_code: SecretStr,
+    access_code: SecretStr | None,
     minter: TokenMinter,
     *,
     caller: Callable[[], Caller],
     guard: AccessCodeGuard | None = None,
 ) -> APIRouter:
     """The router with `POST /token`, which mints with `minter` for a caller who gives
-    `access_code`, each token naming the caller `caller()` builds (the app's, never the
-    request's), guarded by `guard` (a new one with the default numbers unless given)."""
+    `access_code` (or for any caller, with no code, when it is None), each token naming the
+    caller `caller()` builds (the app's, never the request's), guarded by `guard` (a new one
+    with the default numbers unless given)."""
     router = APIRouter()
-    expected = access_code.get_secret_value().encode()
+    expected = None if access_code is None else access_code.get_secret_value().encode()
     held = AccessCodeGuard() if guard is None else guard
 
     @router.post("/token")
@@ -192,7 +196,8 @@ def access_code_router(
             asked = TokenRequest.model_validate_json(body)
         except ValidationError:
             return _refused("invalid_request")  # its errors hold the code: not chained
-        if not hmac.compare_digest(asked.code.get_secret_value().encode(), expected):
+        given = b"" if asked.code is None else asked.code.get_secret_value().encode()
+        if expected is not None and not hmac.compare_digest(given, expected):
             held.wrong_code(address)
             return _refused("wrong_code")
         late = held.before_mint()

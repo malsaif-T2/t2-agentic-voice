@@ -61,14 +61,14 @@ AGENTS: Final[tuple[AgentKind, ...]] = ("scripted", "lean")
 def for_the_app(
     voice: VoiceSettings, *, agent: AgentKind = "scripted", bookable: bool = True
 ) -> VoiceSettings:
-    """`voice` as the app runs `agent`: its folder nested (`APP_FOLDER`), its bookings a caller
-    a day `ACTIONS_PER_DAY`, the guard's `GUARD_ON` on, its most requests a turn
+    """`voice` as the app runs `agent`: its folder nested (`APP_FOLDER`), its bookings a caller a
+    day `ACTIONS_PER_DAY`, the guard's `GUARD_ON` on, its most requests a turn
     `REQUESTS_PER_TURN`, for the scripted agent `YES_OVER_READ_BACK` on and for the lean one
-    (which has no read-back), when it can book, `YES_OVER_QUESTION`, with the booking's
+    (which has no read- back), when it can book, `YES_OVER_QUESTION`, with the booking's
     `SEND_WORDS` its `words.send`, `REGISTER_WORDS` for the caller's register, app_voice.py's
-    speech, turned_on.py's `TURNED_ON` (and its `READ_BACK_TURNS` for the scripted agent), each
-    unless set, and under `env` dev alone the demo traveler the console's dev caller; every
-    other setting as it was."""
+    speech, the calls' audio recorded where the caller consents, turned_on.py's `TURNED_ON` (and
+    its `READ_BACK_TURNS` for the scripted agent), each unless set, and under `env` dev alone
+    the demo traveler the console's dev caller; every other setting as it was."""
     storage = StorageSettings.model_validate(
         voice.storage.model_dump() | {"var_dir": voice.storage.var_dir / APP_FOLDER}
     )
@@ -93,6 +93,8 @@ def for_the_app(
             voice.llm.model_dump() | {"max_requests_per_turn": REQUESTS_PER_TURN}
         )
     update["tts"] = app_tts(voice.tts)
+    if "record_audio" not in voice.privacy.model_fields_set:  # the alpha keeps its calls' audio
+        update["privacy"] = voice.privacy.model_copy(update={"record_audio": True})
     update |= turned_on(voice, read_back=agent == "scripted")
     if voice.env == "dev":
         update["server"] = ServerSettings.model_validate(

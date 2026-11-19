@@ -131,7 +131,7 @@ apps/flight-voice-agent/
     settings.py                  FLIGHT_VOICE_* settings and the library's, one loader   <=280
     server.py                    the FastAPI app: page files, token route, API routes,
                                  the library's router under /voice, uvicorn on 7862      <=280
-    routes.py                    GET /api/profile, GET /api/bookings, POST /api/demo/reset <=220
+    routes.py                    GET /api/profile, GET /api/bookings, POST /api/demo/reset <=240
     traveler.py                  the caller as the demo traveler (Caller attributes)      <=80
     trip.py                      the trip draft, the call's state (TripBook)             <=260
     airline/__init__.py          what the package re-exports                              <=30
@@ -183,6 +183,7 @@ apps/flight-voice-agent/
     app.js                       the call: VoiceClient, state, captions, orb             <=300
     cards.js                     the three segments the cards fill, as text, and links  <=240
     orb.js                       the orb's live level from the voices, decorative       <=200
+    microphone.js                the mute button and push to talk, the client's switch  <=200
     bookings.js                  "Your trips", start over, the review's status (mock)    <=260
     texts.js                     every fixed text of the page, Arabic and English        <=200
     mark.svg                     our own airline mark (simple, ours)
@@ -1127,7 +1128,7 @@ conversation", "Explore flights", "Select flight", "Flexible dates", and the dem
 
 | Route | What | Guard |
 | --- | --- | --- |
-| `GET /`, `/app.js`, `/cards.js`, `/orb.js`, `/bookings.js`, `/texts.js`, `/app.css`, `/mark.svg` | the page's files | L1's page headers: CSP `default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors <website or 'none'>`, nosniff, no referrer, microphone for this origin |
+| `GET /`, `/app.js`, `/cards.js`, `/orb.js`, `/bookings.js`, `/microphone.js`, `/texts.js`, `/app.css`, `/mark.svg` | the page's files | L1's page headers: CSP `default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors <website or 'none'>`, nosniff, no referrer, microphone for this origin |
 | `POST /token` | a join token for the access code (L1's route), the caller the demo traveler | L1's guard (constant-time compare, slow-down, close after 20 wrong an hour, `FLIGHT_VOICE_TOKENS_PER_DAY` a day, 50 by default) |
 | `GET /api/profile` | first name, tier, chips in both languages | same origin; no secret; fictional data |
 | `GET /api/bookings` | the traveler's bookings | loopback clients only (404 else), as Ole5's `/tickets` |

@@ -5,7 +5,9 @@
      orb in the middle, one round button to start or end it, the lines the caller could say as
      text, never buttons, and the cards below only mirror what the agent said. What belongs to a
      traveler and their bookings (the trips, "Start over", the name and tier) starts hidden and is
-     shown only when the profile says the line books (app.js). -->
+     shown only when the profile says the line books (app.js). The alpha's notice sits under the
+     call button, the mute button beside it during a call; the box that records the call starts
+     ticked under Options, and the access code is hidden on a line the profile says is open. -->
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
@@ -52,7 +54,9 @@
       <p class="actions">
         <button type="button" id="start" class="call-button primary" data-text="start"></button>
         <button type="button" id="end" class="call-button end" data-text="end" disabled hidden></button>
+        <button type="button" id="mute" class="mute" aria-pressed="false" disabled hidden><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/><path class="mute-cross" d="M4 4l16 16"/></svg></button>
       </p>
+      <p id="alpha" class="alpha" data-text="alpha"></p>
       <p id="message" class="message" role="alert"></p>
       <section class="could-say" aria-labelledby="could-say-title">
         <h2 id="could-say-title" data-text="youCouldSay"></h2>
@@ -71,9 +75,9 @@
     </details>
     <details id="options" class="fold glass">
       <summary data-text="options"></summary>
-      <p><label class="field"><span data-text="code"></span>
+      <p id="code-field"><label class="field"><span data-text="code"></span>
         <input type="password" id="code" autocomplete="off" spellcheck="false" dir="ltr"></label></p>
-      <p><label class="box"><input type="checkbox" id="record"> <span data-text="record"></span></label></p>
+      <p><label class="box"><input type="checkbox" id="record" checked> <span data-text="record"></span></label></p>
       <p class="controls">
         <label class="box"><input type="checkbox" id="push-to-talk"> <span data-text="pushToTalk"></span></label>
         <button type="button" id="talk" data-text="talk" aria-pressed="false" disabled></button>
