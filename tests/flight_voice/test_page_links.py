@@ -74,3 +74,35 @@ def test_the_page_builds_no_link_from_text_and_drops_one_not_https(tmp_path: Pat
     (review,) = shown["snapshots"][0]["children"]
     assert _anchors(review) == []
     assert OUT_URL in [text(e) for e in descendants(review)]  # shown as text, never a link
+
+
+def test_a_flight_rows_own_link_is_a_small_link_button_at_its_end(tmp_path: Path) -> None:
+    # D-130: every flight row on the real network carries its flight's link.
+    rows = (
+        CardRow(
+            title="flynas · 06:00 to 07:45",
+            detail="1 h 45 min · nonstop · flight XY 17",
+            value="429 SAR",
+            mark="best",
+            link=CardLink(label="Book", url=OUT_URL),
+        ),
+        CardRow(
+            title="Saudia · 09:00 to 10:50",
+            value="610 SAR",
+            link=CardLink(label=MARKUP, url=BACK_URL),
+        ),
+        CardRow(title="flyadeal · 12:00 to 13:45", value="455 SAR"),
+    )
+    listing = ShowCard(title="Outbound: Riyadh to Jeddah", rows=rows, slot="outbound")
+    odd = wire(listing)
+    odd["rows"][2]["link"] = {"label": "Book", "url": "javascript:alert()"}
+    shown = page(tmp_path, [ENGLISH, *call(receive(odd), look("cards"))])
+    (segment,) = shown["snapshots"][0]["children"]
+    first, second, third = next(e for e in descendants(segment) if e["tag"] == "ul")["children"]
+    opens = {"class": "row-link", "dir": "auto", "target": "_blank", "rel": "noopener noreferrer"}
+    assert [(a["attrs"], text(a)) for a in _anchors(first)] == [(opens | {"href": OUT_URL}, "Book")]
+    assert [(a["attrs"], text(a)) for a in _anchors(second)] == [
+        (opens | {"href": BACK_URL}, MARKUP)
+    ]
+    assert _anchors(third) == []  # a link that is not https is dropped, the row kept
+    assert first["children"][-1]["tag"] == "a"  # at the row's end, after its mark

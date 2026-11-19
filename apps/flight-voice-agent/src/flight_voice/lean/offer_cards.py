@@ -9,18 +9,26 @@ the page: a leg's listing its leg's, the trip its review.
 Every number a card shows is in its result's data (the output guard's ID rule), and a word sits
 between two numbers. Arabic cards write times, lengths and prices in Arabic-Indic digits; a
 flight's code and its aircraft keep their Latin letters and digits.
+
+**Links** (D-126, D-130), on the real network alone, built in code from the offers (free): each
+option row carries its offer's link (`row_links`: flight_data/links.py's `leg_link`, labelled
+«احجز» / "Book", no digit), and the trip card one link per chosen leg (`trip_links`, labelled by
+the airline and, on a round trip, the leg), set as soon as a flight is chosen. The mock's cards
+carry none.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from datetime import date
 from typing import Final, Literal
 
-from t2_agentic_voice import Card, CardRow
+from t2_agentic_voice import Card, CardLink, CardRow
 
-from flight_voice.flight_data.model import Cabin, Place
+from flight_voice.flight_data.links import leg_link
+from flight_voice.flight_data.model import Cabin, Offer, Place
 from flight_voice.lean.draft import LEGS, LeanDraft, LegKind
-from flight_voice.lean.results import LeanOption, cheapest_id
+from flight_voice.lean.results import LeanOption, Network, cheapest_id
 from flight_voice.said import Tag, arabic, register, words
 from flight_voice.tools import cards
 
@@ -28,6 +36,24 @@ from flight_voice.tools import cards
 MAX_ROWS: Final = 8
 MAX_DETAIL: Final = 120  # the library's `CardRow.detail`
 _DOT: Final = " · "
+# A flight row's link, short beside the row's airline and times (no digit: the guard reads it).
+ROW_LABEL: Final = {"ar": "احجز", "en": "Book"}
+
+
+def row_links(offers: Iterable[Offer], tag: Tag, network: Network) -> dict[str, CardLink]:
+    """Each offer's link by its id, on the real network; none on the mock."""
+    if network != "real":
+        return {}
+    label = ROW_LABEL["ar" if arabic(tag) else "en"]
+    return {o.id: leg_link(o, tag, label=label) for o in offers}
+
+
+def trip_links(draft: LeanDraft, tag: Tag) -> tuple[CardLink, ...]:
+    """One link per chosen leg, from the trip's current legs, outbound first; each labelled by
+    its leg on a round trip."""
+    legs = (leg for leg in LEGS if leg == "outbound" or not draft.one_way)
+    chosen = [(leg, offer) for leg in legs if (offer := draft.chosen(leg)) is not None]
+    return tuple(leg_link(o, tag, None if draft.one_way else leg) for leg, o in chosen)
 
 
 def route_title(start: Place, end: Place, tag: Tag) -> str:
@@ -96,6 +122,7 @@ def offer_row(
     best: bool = False,
     title: str | None = None,
     detail: str | None = None,
+    link: CardLink | None = None,
 ) -> CardRow:
     """One offer as a card's row (the module's docstring)."""
     mark: Literal["best", "chosen", "unavailable"] | None = (
@@ -108,6 +135,7 @@ def offer_row(
         detail=flown(option, tag) if detail is None else detail,
         value=cards.money(option.price, tag),
         mark=mark,
+        link=link,
     )
 
 
@@ -130,25 +158,34 @@ def options_card(
     tag: Tag,
     *,
     kept: LeanOption | None = None,
+    links: Mapping[str, CardLink] | None = None,
 ) -> Card:
     """A leg's options on `day`, in its segment: its title, then a row per option (at most the
-    card's rows but one), and `kept`, the other leg's pick, beside them marked chosen."""
+    card's rows but one), and `kept`, the other leg's pick, beside them marked chosen; each row
+    with its offer's link in `links` (by id) when it has one."""
+    linked = {} if links is None else links
     shown = options[: MAX_ROWS - 1]
     best = cheapest_id(shown)
     rows = tuple(
-        offer_row(o, tag, best=o.id == best, title=t)
+        offer_row(o, tag, best=o.id == best, title=t, link=linked.get(o.id))
         for o, t in zip(shown, _titles(shown, tag), strict=True)
     )
     if kept is not None:
-        rows += (offer_row(kept, tag, chosen=True),)
+        rows += (offer_row(kept, tag, chosen=True, link=linked.get(kept.id)),)
     title = leg_title(leg, route, cards.day_title(day, tag), cabin, tag)
     return Card(title=title, rows=rows, slot=leg)
 
 
-def trip_card(draft: LeanDraft, chosen: dict[LegKind, LeanOption], tag: Tag) -> Card | None:
+def trip_card(
+    draft: LeanDraft,
+    chosen: dict[LegKind, LeanOption],
+    tag: Tag,
+    links: tuple[CardLink, ...] = (),
+) -> Card | None:
     """The trip planned so far, in the review segment: a row for each chosen leg (`chosen`, the
     offers as the model read them), the travelers and the cabin, then the total once every leg
-    is chosen; none while nothing is planned."""
+    is chosen, with `links` (`trip_links` on the real network); none while nothing is
+    planned."""
     if draft.destination is None:
         return None
     rows: list[CardRow] = []
@@ -171,4 +208,4 @@ def trip_card(draft: LeanDraft, chosen: dict[LegKind, LeanOption], tag: Tag) -> 
     kind = words.trip_kind(draft.one_way, r)
     mine = cards.TRIP_AR if arabic(tag) else cards.TRIP_EN
     title = f"{mine}: {route}{_DOT}{kind}{_DOT}{words.cabin(draft.cabin, r)}"
-    return Card(title=title, rows=tuple(rows), slot="review")
+    return Card(title=title, rows=tuple(rows), slot="review", links=links)

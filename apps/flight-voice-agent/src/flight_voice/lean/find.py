@@ -54,7 +54,7 @@ from flight_voice.lean.find_legs import (
     refused_answer,
     unknown_place,
 )
-from flight_voice.lean.offer_cards import options_card
+from flight_voice.lean.offer_cards import options_card, row_links
 from flight_voice.lean.picking import Lost
 from flight_voice.lean.results import (
     SEARCH_DOWN,
@@ -256,7 +256,10 @@ def find_flights(deps: LeanDeps) -> Tool:
             lost=_lost(latest, change.lost) or None,
             note=" ".join(n for n in notes if n) or None,
         )
-        card = options_card("outbound", went.data.options, (start, end), depart, kept, tag)
+        links = row_links(went.listed.offers, tag, deps.network)
+        card = options_card(
+            "outbound", went.data.options, (start, end), depart, kept, tag, links=links
+        )
         return lean_result(found, card)
 
     return find

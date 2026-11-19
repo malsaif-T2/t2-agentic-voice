@@ -34,9 +34,17 @@ from flight_voice.flight_data.model import Cabin, Place, has_seats
 from flight_voice.lean.deps import LeanDeps
 from flight_voice.lean.draft import LEGS, LegKind
 from flight_voice.lean.find import RETURN_UNKNOWN
-from flight_voice.lean.offer_cards import options_card, trip_card
+from flight_voice.lean.offer_cards import options_card, row_links, trip_card
 from flight_voice.lean.picking import Chosen, Picking
-from flight_voice.lean.results import LegList, _Data, full_note, lean_result, route_said, trip_said
+from flight_voice.lean.results import (
+    LegList,
+    Network,
+    _Data,
+    full_note,
+    lean_result,
+    route_said,
+    trip_said,
+)
 from flight_voice.said import Tag
 
 CHOOSE_FLIGHTS: Final = "choose_flights"
@@ -122,12 +130,12 @@ def choose_flights(deps: LeanDeps) -> Tool:
             return lean_result({"status": "unknown", "note": RETURN_UNKNOWN})
         deps.trips.put(ctx.call_id, made)
         deps.check.mark(ctx.call_id, made)
-        return _so_far(Picking(made, deps.places, tag), list_leg, to)
+        return _so_far(Picking(made, deps.places, tag), list_leg, to, deps.network)
 
     return choose
 
 
-def _so_far(picking: Picking, asked: LegKind | None, to: Place) -> ToolResult:
+def _so_far(picking: Picking, asked: LegKind | None, to: Place, network: Network) -> ToolResult:
     """The trip so far to `to`, the leg `asked` about listed, and its card (the module's
     docstring)."""
     draft, tag = picking.draft, picking.tag
@@ -159,10 +167,10 @@ def _so_far(picking: Picking, asked: LegKind | None, to: Place) -> ToolResult:
         listed=listed or None,
         note=" ".join(n for n in notes if n) or None,
     )
-    return lean_result(answer, _card(picking, missing))
+    return lean_result(answer, _card(picking, missing, network))
 
 
-def _card(picking: Picking, missing: tuple[LegKind, ...]) -> Card | None:
+def _card(picking: Picking, missing: tuple[LegKind, ...], network: Network) -> Card | None:
     """A leg still to choose in its segment, the other's pick kept beside it; else the review."""
     draft, tag = picking.draft, picking.tag
     if not missing:
@@ -176,4 +184,6 @@ def _card(picking: Picking, missing: tuple[LegKind, ...]) -> Card | None:
     way = (draft.origin, draft.destination)
     way = way if leg == "outbound" else (way[1], way[0])
     options = picking.options(held)
-    return options_card(leg, options, way, held.day, draft.cabin, tag, kept=kept)
+    offers = (*held.offers, *((draft.chosen(other),) if kept is not None else ()))
+    links = row_links((o for o in offers if o is not None), tag, network)
+    return options_card(leg, options, way, held.day, draft.cabin, tag, kept=kept, links=links)
