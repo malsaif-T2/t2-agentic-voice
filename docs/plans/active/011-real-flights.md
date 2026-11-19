@@ -142,6 +142,14 @@ the flight number to pick; an airline's own prefilled search replaces it where P
   `booking_link` replaces `book_trip` there (the mock keeps `book_trip`, run F unchanged); the
   real instructions offer the link after the trip's summary. Next: the review, the lead's
   browser check of the open points below, and Phase 4.
+- 2026-11-19, the internal alpha (the owner: host it on GitHub for a server, keep every call,
+  "It must work over the internet", no access code, a mute button, no feedback form): the call
+  log (flight_voice/call_log/, `var/flight/calls.sqlite3`, audio recorded by default with a
+  notice), TURN credentials minted per call (D-128, TD-048 closed), the open line and mute
+  (D-129), HOSTING.md and `python -m flight_voice.hosting`. Checked with a real call through a
+  rig on 127.0.0.1:7863 (no code, Scribe, a real SerpApi search of 22 flights, mute silencing a
+  turn, then the call's row, its 2 turns and times, its tool call and its recording in the
+  database), and a staging boot on 0.0.0.0 with the test console off. Gate green (10694).
 
 ## Decision log
 
