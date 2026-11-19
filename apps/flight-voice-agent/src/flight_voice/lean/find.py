@@ -275,7 +275,8 @@ def find_flights(deps: LeanDeps) -> Tool:
         )
         card = None
         if came is not None and isinstance(home_back, LegList):
-            card = return_card(made, came, (start, end), kept, deps.places, tag, deps.network)
+            route = (start, end)
+            card = return_card(made, went, came, route, kept, deps.places, tag, deps.network)
         if card is None:
             links = row_links(went.listed.offers, tag, deps.network)
             card = options_card(

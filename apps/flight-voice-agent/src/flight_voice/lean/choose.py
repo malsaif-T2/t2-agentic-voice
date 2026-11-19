@@ -207,5 +207,5 @@ def _card(picking: Picking, missing: tuple[LegKind, ...], network: Network) -> C
     way = way if leg == "outbound" else (way[1], way[0])
     options = picking.options(held)
     offers = (*held.offers, *((draft.chosen(other),) if kept is not None else ()))
-    links = row_links((o for o in offers if o is not None), tag, network)
-    return options_card(leg, options, way, held.day, draft.cabin, tag, kept=kept, links=links)
+    linked = row_links((o for o in offers if o is not None), tag, network)
+    return options_card(leg, options, way, held.day, draft.cabin, tag, kept=kept, links=linked)

@@ -8,6 +8,8 @@ carry no link. And a search's progress line waits about 1.5 s on the real networ
 
 from __future__ import annotations
 
+from typing import Any
+
 from flight_voice.flight_data.compose import real_places
 from flight_voice.flight_data.links import tfs
 from flight_voice.flight_data.recorded import recorded
@@ -67,7 +69,8 @@ def test_every_flight_row_of_a_real_listing_carries_its_flights_link() -> None:
     row = found.card.rows[options.index(cheapest)]
     assert row.link is not None and row.link.url == CHECKED  # flynas's, checked in a browser
     _no_address_read(found)
-    assert wire(ShowCard.of(found.card))["rows"][0]["link"]["label"] == "Book"
+    sent: dict[str, Any] = wire(ShowCard.of(found.card))
+    assert sent["rows"][0]["link"]["label"] == "Book"
 
 
 def test_the_return_listing_rows_and_the_kept_pick_carry_links_in_arabic() -> None:

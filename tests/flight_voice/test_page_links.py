@@ -94,7 +94,7 @@ def test_a_flight_rows_own_link_is_a_small_link_button_at_its_end(tmp_path: Path
         CardRow(title="flyadeal · 12:00 to 13:45", value="455 SAR"),
     )
     listing = ShowCard(title="Outbound: Riyadh to Jeddah", rows=rows, slot="outbound")
-    odd = wire(listing)
+    odd: dict[str, Any] = wire(listing)
     odd["rows"][2]["link"] = {"label": "Book", "url": "javascript:alert()"}
     shown = page(tmp_path, [ENGLISH, *call(receive(odd), look("cards"))])
     (segment,) = shown["snapshots"][0]["children"]

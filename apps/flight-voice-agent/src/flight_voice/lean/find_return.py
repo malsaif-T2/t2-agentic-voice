@@ -117,6 +117,7 @@ def way_back(
 
 def return_card(
     made: LeanDraft,
+    went: Built,
     home: Built,
     route: tuple[Place, Place],
     cabin: Cabin,
@@ -125,11 +126,13 @@ def return_card(
     network: Network,
 ) -> Card | None:
     """The return's flights in its segment, the outbound's pick kept beside them, as
-    `choose_flights` shows them; None when the outbound has no pick."""
+    `choose_flights` shows them, when the outbound's listing holds it (so every number the card
+    shows is in the result's data); None when the outbound has no pick."""
     out = made.chosen_outbound
     if out is None:
         return None
-    kept = option_of(out, tag, made.travelers, places.get)
+    held = any(o.id == out.id for o in went.data.options)
+    kept = option_of(out, tag, made.travelers, places.get) if held else None
     links = row_links((*home.listed.offers, out), tag, network)
     start, end = route
     day = home.listed.day
