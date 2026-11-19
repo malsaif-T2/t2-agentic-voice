@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from flight_voice.flight_data.compose import real_places
+from flight_voice.flight_data.links import tfs
 from flight_voice.flight_data.recorded import recorded
 from flight_voice.lean.agent import lean_tools
 from flight_voice.lean.book import LEAN_CLAIMS
@@ -118,9 +119,9 @@ def test_a_round_trip_gets_a_link_per_leg_in_the_callers_language() -> None:
         "احجز الذهاب على السعودية",
         "احجز العودة على السعودية",
     )
-    assert "q=Flights%20to%20London%20from%20RUH%20on%202026-12-03" in out_link.url
-    assert "q=Flights%20to%20RUH%20from%20London%20on%202026-12-10" in back_link.url
-    assert out_link.url.endswith("&hl=en&curr=SAR&gl=sa")  # an Arabic page is not understood
+    out_offer, back_offer = call.draft.legs()
+    assert f"tfs={tfs(out_offer)}&hl=ar&" in out_link.url
+    assert f"tfs={tfs(back_offer)}&hl=ar&" in back_link.url
     # A trip made one way after: one link, of the outbound alone, with the bare label.
     call.find(destination="London", depart=OUT.isoformat())
     call.choose(outbound_id=ids(listed)[0])

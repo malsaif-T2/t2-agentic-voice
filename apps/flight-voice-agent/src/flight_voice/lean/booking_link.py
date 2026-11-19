@@ -26,7 +26,7 @@ from pydantic import JsonValue
 from t2_agentic_voice import CallContext, CardLink, Tool, ToolResult, tool
 
 from flight_voice.flight_data.links import leg_link
-from flight_voice.flight_data.model import Offer, Place
+from flight_voice.flight_data.model import Offer
 from flight_voice.lean.book import LEAN_CLAIMS
 from flight_voice.lean.deps import LeanDeps
 from flight_voice.lean.draft import LEGS, LeanDraft, LegKind
@@ -50,14 +50,6 @@ READY_NOTE: Final = (
 )
 
 
-def _route(draft: LeanDraft, leg: LegKind) -> tuple[Place, Place] | None:
-    """The leg's start and end as the caller named them."""
-    if draft.destination is None:
-        return None
-    way = (draft.origin, draft.destination)
-    return way if leg == "outbound" else (way[1], way[0])
-
-
 def _chosen(draft: LeanDraft) -> list[tuple[LegKind, Offer]]:
     """The trip's chosen legs, outbound first: the return only on a round trip."""
     legs = (leg for leg in LEGS if leg == "outbound" or not draft.one_way)
@@ -69,10 +61,7 @@ def trip_links(draft: LeanDraft, tag: Tag) -> tuple[CardLink, ...]:
     round trip."""
     chosen = _chosen(draft)
     named = len(chosen) > 1
-    return tuple(
-        leg_link(offer, tag, _route(draft, leg), leg=leg if named else None)
-        for leg, offer in chosen
-    )
+    return tuple(leg_link(offer, tag, leg=leg if named else None) for leg, offer in chosen)
 
 
 def flight_said(offer: Offer, tag: Tag) -> str:

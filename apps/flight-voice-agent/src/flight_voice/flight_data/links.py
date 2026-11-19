@@ -1,27 +1,23 @@
-"""The booking link of one leg (`leg_link`, plan 011's Phase 3; D-126): a Google Flights search
-for that leg, one way, on its day, filtered to its marketing carrier(s), from which the caller
-books on the airline's site. No airline documents a link that opens its booking prefilled, and
-none takes a flight number (plan 011's research), so the agent says the flight to pick there.
+"""The booking link of one leg (`leg_link`, plan 011; D-126): a Google Flights search for that
+leg, one way, on its day, from its first airport to its last, filtered to its marketing
+carriers, in the call's cabin and for its travelers, from which the caller books on the
+airline's site. No airline documents a link that opens its booking prefilled, and none takes a
+flight number (plan 011's research), so the page lists that day's flights of the leg's
+airline(s), the one the caller chose among them.
 
-The link is Google Flights' readable `q=` form, checked in a browser on 2026-11-18 (Phase 0):
-`GOOGLE_FLIGHTS` with `q` "Flights to JED from RUH on 2026-11-26 one way on flynas" (spaces as
-`%20`) and `hl=en&curr=SAR&gl=sa` opened exactly flynas's five flights that day at the prices
-SerpApi gave. So:
+The link is Google Flights' `tfs=` form, checked in a browser on 2026-11-19 (round 2): the
+readable `q=` text lost the destination for some airports (Qassim to Al Bahah opened with
+none) and could carry no cabin. `GOOGLE_FLIGHTS` takes `tfs` (`search_message`, base64url with
+no padding), `hl` (`ar` for an Arabic reply, else `en`), `curr=SAR` and `gl=sa`. The message is
+protobuf's wire format, written here by hand (varints and length-delimited fields; no
+dependency), its fields in the order the checked links use:
 
-- `q` is "Flights to {to} from {from} on {YYYY-MM-DD} one way on {carrier}", URL-encoded. A place
-  is its IATA code when it has one airport, else its city's English name ("London", searched
-  over its airports as SerpApi was); with no route given, the offer's own airports.
-- The carrier is the leg's marketing carrier's English name. A connection of two marketing
-  carriers (Qatar Airways then British Airways) gets no airline: "on Qatar Airways and British
-  Airways" is not understood (Google's home page opens), and the first alone may filter out
-  the very itinerary the caller picked.
-- A party of two or more adds "for N adults", which Google reads (the page priced flynas for
-  two at 858, twice 429); the cabin is left out, since neither "in business" nor "Business
-  class flights" is understood, so the page opens in economy and the caller picks the cabin
-  there. A flight number is not understood either. The agent says the price is confirmed on
-  the airline's site.
-- `hl=en`, `curr=SAR` and `gl=sa`. The `q` text is English, and `hl=ar` with it is not
-  understood (checked 2026-11-18), so an Arabic call's link opens the English page too.
+- field 3, one leg: { 2: the day "YYYY-MM-DD"; 6: each marketing carrier's code, in the order
+  of the segments, once each; 13: { 2: the first segment's origin airport }; 14: { 2: the last
+  segment's destination airport } }: the exact airports the offer flew, never a city;
+- field 8: a `1` for each adult;
+- field 9: the cabin (economy 1, premium economy 2, business 3, first 4);
+- field 19: the trip, one way (2), since each leg is its own one-way search (D-127).
 
 The label says where the link goes: "Book on flynas", «احجز على طيران ناس», or for a round trip's
 leg "Book the way out on Saudia", «احجز الذهاب على السعودية». A label holds no digit and at most
@@ -31,19 +27,26 @@ shorter label without it.
 
 from __future__ import annotations
 
+import base64
 from typing import Final, Literal
-from urllib.parse import quote
 
 from t2_agentic_voice import CardLink
 
-from flight_voice.flight_data.model import Offer, Place
+from flight_voice.flight_data.model import Cabin, Offer
 from flight_voice.said import Tag, arabic
 
-__all__ = ["GOOGLE_FLIGHTS", "leg_link", "link_label", "search_text"]
+__all__ = ["GOOGLE_FLIGHTS", "leg_link", "link_label", "search_message", "tfs"]
 
-GOOGLE_FLIGHTS: Final = "https://www.google.com/travel/flights"
+GOOGLE_FLIGHTS: Final = "https://www.google.com/travel/flights/search"
 MAX_LABEL: Final = 40
 LinkLeg = Literal["outbound", "return"]
+# Google Flights' numbers for a cabin and a one-way trip (checked 2026-11-19).
+CABINS: Final[dict[Cabin, int]] = {"economy": 1, "business": 3, "first": 4}
+ONE_WAY: Final = 2
+# The message's fields (the module's docstring).
+_LEG, _ADULT, _CABIN, _TRIP = 3, 8, 9, 19
+_DAY, _AIRLINE, _FROM, _TO, _AIRPORT = 2, 6, 13, 14, 2
+_VARINT, _LENGTH = 0, 2
 # The labels, by language: on a carrier, then with no carrier (a name too long or with a digit).
 _ON: Final[dict[str, dict[LinkLeg | None, str]]] = {
     "en": {
@@ -63,21 +66,45 @@ _BARE: Final[dict[str, dict[LinkLeg | None, str]]] = {
 }
 
 
-def _place(place: Place | None, airport: str) -> str:
-    """A place as `q` names it: its code for one airport, else its city's English name."""
-    if place is None or len(place.airports) == 1 or not place.known:
-        return airport if place is None else place.code
-    return place.city_en
+def _varint(value: int) -> bytes:
+    """`value` (not negative) as a protobuf varint: seven bits a byte, the lowest first."""
+    out = bytearray()
+    while True:
+        low, value = value & 0x7F, value >> 7
+        if not value:
+            out.append(low)
+            return bytes(out)
+        out.append(low | 0x80)
 
 
-def search_text(offer: Offer, route: tuple[Place, Place] | None = None) -> str:
-    """The leg's search as `q` says it (the module's docstring)."""
-    start, end = route if route is not None else (None, None)
-    to, origin = _place(end, offer.destination), _place(start, offer.origin)
-    text = f"Flights to {to} from {origin} on {offer.day.isoformat()} one way"
-    if len(offer.carriers) == 1:
-        text += f" on {offer.carrier.name_en}"
-    return text + (f" for {offer.adults} adults" if offer.adults > 1 else "")
+def _number(field: int, value: int) -> bytes:
+    return _varint(field << 3 | _VARINT) + _varint(value)
+
+
+def _field(field: int, value: bytes | str) -> bytes:
+    held = value.encode() if isinstance(value, str) else value
+    return _varint(field << 3 | _LENGTH) + _varint(len(held)) + held
+
+
+def search_message(offer: Offer) -> bytes:
+    """The leg's search as the protobuf message `tfs` carries (the module's docstring)."""
+    leg = b"".join(
+        (
+            _field(_DAY, offer.day.isoformat()),
+            *(_field(_AIRLINE, c.code) for c in offer.carriers),
+            _field(_FROM, _field(_AIRPORT, offer.origin)),
+            _field(_TO, _field(_AIRPORT, offer.destination)),
+        )
+    )
+    adults = _number(_ADULT, 1) * offer.adults
+    return (
+        _field(_LEG, leg) + adults + _number(_CABIN, CABINS[offer.cabin]) + _number(_TRIP, ONE_WAY)
+    )
+
+
+def tfs(offer: Offer) -> str:
+    """The leg's `tfs` value: its message in base64url, with no padding."""
+    return base64.urlsafe_b64encode(search_message(offer)).rstrip(b"=").decode("ascii")
 
 
 def link_label(offer: Offer, tag: Tag, leg: LinkLeg | None = None) -> str:
@@ -91,9 +118,10 @@ def link_label(offer: Offer, tag: Tag, leg: LinkLeg | None = None) -> str:
 
 
 def leg_link(
-    offer: Offer, tag: Tag, route: tuple[Place, Place] | None = None, leg: LinkLeg | None = None
+    offer: Offer, tag: Tag, leg: LinkLeg | None = None, *, label: str | None = None
 ) -> CardLink:
-    """The booking link of `offer`'s leg, from `route`'s start to its end when given (the
-    module's docstring), labelled for `leg` of a round trip when given."""
-    url = f"{GOOGLE_FLIGHTS}?q={quote(search_text(offer, route), safe='')}&hl=en&curr=SAR&gl=sa"
-    return CardLink(label=link_label(offer, tag, leg), url=url)
+    """The booking link of `offer`'s leg (the module's docstring), labelled for `leg` of a round
+    trip when given, or `label` when given; the page in Arabic for an Arabic reply."""
+    hl = "ar" if arabic(tag) else "en"
+    url = f"{GOOGLE_FLIGHTS}?tfs={tfs(offer)}&hl={hl}&curr=SAR&gl=sa"
+    return CardLink(label=link_label(offer, tag, leg) if label is None else label, url=url)
