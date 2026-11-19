@@ -1779,6 +1779,24 @@ that day as its today; the library's "Today is" line follows the clock, so the s
 each day and `FLIGHT_VOICE_TODAY` pinned only to today, and each call on a calendar whose day is
 not Riyadh's today logs an error (`lean_calendar_stale`).
 
+**The real network's prompt** (`lean/instructions/real_en.md` and `real_ar-SA.md`, plan 011's
+round 2, after the owner's "The agent feels too structured and following a script"): files of
+their own, about two thirds of round 1's length, with no blocks (`lean/network_text.py` holds the
+mock's alone, so the mock renders byte for byte as before and run F is unchanged:
+`tests/flight_voice/lean/test_lean_prompt_real.py` pins it). They give the manner and the goals,
+never a reply's shape: Saad, T2's flight assistant for anyone at the company, every airline, no
+profile, booking nothing; a friendly, quick travel agent on the phone, in English plain and warm,
+in Arabic the register the last section names, Najdi held for the call in everyday words and
+natural Saudi phrasing, with no word list, and every city, airline and place name written as the
+tools wrote it; varied wording, the question asked answered with what matters for it, one
+question at most, `fares_are` once; after a pick a brief confirmation and the link to book it
+ready (it comes by itself once a flight is chosen; never read, never "booked"); the whole trip
+summed up only when it helps. Then the tools' facts: the calendar and its weekday arguments, one
+way or round trip, a way back added to a chosen one-way trip by searching it (read as the
+return), a span's cheapest day by day and `flights_per_day` for anything else over the days, the
+airline filter, picks worked out from the options, connections said briefly, failures never "no
+flights", and nothing no tool gave.
+
 **Run F's outcome mode** (`poe eval-flights --agent lean`; `evals/lean_call.py` and
 `lean_checks.py`): the same scenarios, the lean agent in each play, scored by outcomes. Kept:
 `failure`; `violations` (the call's own, each reply plain speech drops, and a booking claimed

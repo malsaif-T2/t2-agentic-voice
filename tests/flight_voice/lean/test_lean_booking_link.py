@@ -4,7 +4,7 @@ answer of RUH-JED on 2026-11-26 replayed and the fake London days: a trip still 
 a note, with the trip's review card carrying one link per leg (the link checked in a browser for
 the cheapest flynas flight), its url in no text the guard or the model reads; it is registered
 on the real network alone, in place of `book_trip`, and declares the booking's claims with no
-result that backs one; the real instructions offer the link after the summary."""
+result that backs one."""
 
 from __future__ import annotations
 
@@ -18,8 +18,6 @@ from flight_voice.lean.booking_check import BookingCheck
 from flight_voice.lean.booking_link import BOOKING_LINK, READY_NOTE, booking_link
 from flight_voice.lean.deps import LeanDeps
 from flight_voice.lean.draft import LeanBook
-from flight_voice.lean.prompt import instructions
-from flight_voice.persona import Names
 from flight_voice.said import Tag
 from t2_agentic_voice import ToolResult
 from t2_agentic_voice.voice.protocol import ShowCard, wire
@@ -28,7 +26,6 @@ from tests.flight_voice.flight_data.serpapi_support import FIXTURES
 from tests.flight_voice.flight_data.test_links import CHECKED
 from tests.flight_voice.lean.lean_support import LeanCall, ids
 from tests.flight_voice.lean.real_support import BACK, OUT, real_call
-from tests.flight_voice.scenario_dates import TODAY
 from tests.flight_voice.tools.tool_support import airline, data, run
 
 DAY = "2026-11-26"
@@ -134,15 +131,3 @@ def test_booking_link_is_the_real_networks_in_place_of_book_trip() -> None:
     mock = [t.name for t in lean_tools(LeanCall().deps)]
     assert mock == ["find_flights", "choose_flights", "book_trip", "traveler_profile"]
     assert booking_link(real_call().deps).claims is LEAN_CLAIMS  # no booking claim is backed
-
-
-def test_the_real_instructions_offer_the_link_after_the_summary() -> None:
-    last = TODAY.replace(year=TODAY.year + 1)
-    real = instructions(Names(), TODAY, last, network="real")
-    for tag, text in real.items():
-        assert 'offer the link to book it ("Want the link to book it?"' in text, tag
-        assert "Call booking_link when the caller agrees or asks for the link" in text
-        assert "the airline's own site books it" not in text
-    assert "«تبي رابط الحجز؟»" in real["ar-SA"] and "«هل تريد رابط الحجز؟»" in real["ar-SA"]
-    for text in instructions(Names(), TODAY, last).values():
-        assert "booking_link" not in text
