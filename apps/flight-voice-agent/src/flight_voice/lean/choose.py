@@ -42,7 +42,7 @@ from flight_voice.flight_data.model import Cabin, Place, has_seats
 from flight_voice.lean.book import LEAN_CLAIMS
 from flight_voice.lean.deps import LeanDeps
 from flight_voice.lean.draft import LEGS, LegKind
-from flight_voice.lean.find import RETURN_UNKNOWN
+from flight_voice.lean.find_return import RETURN_UNKNOWN
 from flight_voice.lean.offer_cards import options_card, row_links, trip_card, trip_links
 from flight_voice.lean.picking import Chosen, Picking
 from flight_voice.lean.results import (

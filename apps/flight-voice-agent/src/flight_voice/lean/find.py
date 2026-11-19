@@ -22,8 +22,13 @@ held over its date (weekday.py). Then:
   its id, and a pick it drops in `lost`; with the outbound chosen it gives the return's flights.
   The call's trip is read again after the search (another tool may have written it meanwhile),
   takes the search in one assignment, and is marked for the booking check. Its card is the
-  outbound segment. On the real network, a listing that leaves flights out (`more`), for every
-  airline, notes that one airline's flights come from another search (`MORE_REAL`).
+  outbound segment, or the return's with the outbound's pick kept beside it once that pick is
+  kept (find_return.py). On the real network, a listing that leaves flights out (`more`), for
+  every airline, notes that one airline's flights come from another search (`MORE_REAL`).
+- **The way back asked as a new search** (find_return.py's `as_return`): with the trip's
+  outbound chosen, A to B on day D, a one-way search B to A on a day on or after D is read as
+  the trip's return (the search of A to B on D with that return day, the pick kept), noted
+  `RETURN_ADDED`.
 - **A span** (span.py): nothing is written to the trip.
 
 A source that does not answer is a `ToolError` that says the search failed (`SEARCH_DOWN` when
@@ -42,10 +47,9 @@ from flight_voice.flight_data.model import Cabin
 from flight_voice.flight_data.port import FlightDataUnavailableError, trip_days
 from flight_voice.flight_data.queries import DayOffers, OfferQuery
 from flight_voice.lean.deps import LeanDeps
-from flight_voice.lean.draft import LEGS, LeanDraft, LegKind, searched
+from flight_voice.lean.draft import LegKind, searched
 from flight_voice.lean.find_dates import date_problem, refused
 from flight_voice.lean.find_legs import (
-    Built,
     both_legs,
     named,
     nearest,
@@ -54,14 +58,21 @@ from flight_voice.lean.find_legs import (
     refused_answer,
     unknown_place,
 )
+from flight_voice.lean.find_return import (
+    RETURN_ADDED,
+    ReturnDay,
+    as_return,
+    kept_ids,
+    lost_picks,
+    return_card,
+    way_back,
+)
 from flight_voice.lean.offer_cards import options_card, row_links
 from flight_voice.lean.picking import Lost
 from flight_voice.lean.results import (
     SEARCH_DOWN,
-    Day,
     LegList,
     _Data,
-    day_of,
     fares_are,
     full_note,
     lean_result,
@@ -92,15 +103,6 @@ _AIRLINE: Final = (
     "An airline the caller asked for, by its name in any language or its code; null for every "
     "airline."
 )
-RETURN_LISTED: Final = (
-    "Its flights come with choose_flights once the outbound is chosen, or with its list_leg "
-    "when the caller asks about the way back first."
-)
-RETURN_KEPT: Final = "The return flight chosen before is kept; its id is in chosen."
-RETURN_UNKNOWN: Final = (
-    "The way back could not be checked just now; once the way out is chosen, call find_flights "
-    "again with the same days to check it."
-)
 LOST: Final = "A flight chosen before is no longer offered with seats for everyone: choose again."
 # On the real network, a day's options are some of its flights (plan 011: asked for flyadeal
 # after a listing of 6 of 15, the model once answered from the 2 it was given, of 4).
@@ -110,15 +112,6 @@ MORE_REAL: Final = (
 )
 # A search waits for the slower of its legs; the library's default limit is 5 s.
 TIMEOUT_S: Final = 25.0
-
-
-class ReturnDay(_Data):
-    """A round trip's return as a search gives it before the outbound is chosen: its day alone,
-    or that it could not be checked (the module's docstring)."""
-
-    status: Literal["unknown"] | None = None
-    day: Day
-    note: str = RETURN_LISTED
 
 
 class Found(_Data):
@@ -181,6 +174,9 @@ def find_flights(deps: LeanDeps) -> Tool:
                 return not_served(deps.places, tag)
             return unknown_place("destination" if end is None else "origin")
         back = None if isinstance(depart, DaySpan) else return_date
+        turned = None if isinstance(depart, DaySpan) else as_return(draft, start, end, depart, back)
+        if turned is not None:  # the way back, asked as a new search
+            start, end, depart, back = turned.start, turned.end, turned.depart, turned.back
         if (problem := refused(depart, back, today, last)) is not None:
             return date_problem(problem, today, last, deps.network)
         kept: Cabin = draft.cabin if cabin is None else cabin
@@ -235,13 +231,14 @@ def find_flights(deps: LeanDeps) -> Tool:
         basis, basis_msa = fares_are(
             tag, round_trip=back is not None, travelers=party, network=deps.network
         )
-        way_back = _return(made, back, came, tag)
-        listed = (went.data, *([way_back] if isinstance(way_back, LegList) else []))
+        home_back = way_back(made, back, came, tag)
+        listed = (went.data, *([home_back] if isinstance(home_back, LegList) else []))
         some = deps.network == "real" and airline is None and any(leg.more for leg in listed)
         notes = [
             full_note(listed, party, kept),
             LOST if change.lost else None,
             MORE_REAL if some else None,
+            RETURN_ADDED if turned is not None and made.chosen_outbound is not None else None,
         ]
         found = Found(
             route=said,
@@ -251,43 +248,19 @@ def find_flights(deps: LeanDeps) -> Tool:
             cabin=kept,
             travelers=party,
             outbound=went.data,
-            return_=way_back,
-            chosen=_kept(made),
-            lost=_lost(latest, change.lost) or None,
+            return_=home_back,
+            chosen=kept_ids(made),
+            lost=lost_picks(latest, change.lost) or None,
             note=" ".join(n for n in notes if n) or None,
         )
-        links = row_links(went.listed.offers, tag, deps.network)
-        card = options_card(
-            "outbound", went.data.options, (start, end), depart, kept, tag, links=links
-        )
+        card = None
+        if came is not None and isinstance(home_back, LegList):
+            card = return_card(made, came, (start, end), kept, deps.places, tag, deps.network)
+        if card is None:
+            links = row_links(went.listed.offers, tag, deps.network)
+            card = options_card(
+                "outbound", went.data.options, (start, end), depart, kept, tag, links=links
+            )
         return lean_result(found, card)
 
     return find
-
-
-def _return(
-    made: LeanDraft, back: date | None, home: Built | None, tag: Tag
-) -> LegList | ReturnDay | None:
-    """A round trip's return as the search gives it: its flights when the outbound's pick is
-    kept, else its day alone, saying so when the return's pick is kept or it could not be
-    checked (the module's docstring)."""
-    if back is None:
-        return None
-    if home is None:
-        return ReturnDay(status="unknown", day=day_of(back, tag), note=RETURN_UNKNOWN)
-    if made.chosen_outbound is not None:
-        return home.data
-    note = RETURN_LISTED if made.chosen_return is None else RETURN_KEPT
-    return ReturnDay(day=day_of(back, tag), note=note)
-
-
-def _kept(made: LeanDraft) -> dict[LegKind, str] | None:
-    """The legs whose pick the search kept, by their ids; None when it kept none."""
-    kept = {leg: pick.id for leg in LEGS if (pick := made.chosen(leg)) is not None}
-    return kept or None
-
-
-def _lost(before: LeanDraft, legs: tuple[LegKind, ...]) -> tuple[Lost, ...]:
-    """The picks a search dropped, by their departure times."""
-    found = ((leg, before.chosen(leg)) for leg in legs)
-    return tuple(Lost(leg=leg, departs=o.departs.strftime("%H:%M")) for leg, o in found if o)

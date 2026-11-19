@@ -21,9 +21,10 @@ from flight_voice.flight_data.port import Failure, FlightDataUnavailableError
 from flight_voice.flight_data.queries import DayFare, DayFares, SpanQuery
 from flight_voice.lean.agent import lean_tools
 from flight_voice.lean.book import NOT_BOOKABLE, book_trip
-from flight_voice.lean.find import LOST, RETURN_UNKNOWN
+from flight_voice.lean.find import LOST
 from flight_voice.lean.find_dates import TOO_FAR_REAL
 from flight_voice.lean.find_legs import NOT_CHECKED, UNKNOWN_PLACE
+from flight_voice.lean.find_return import RETURN_UNKNOWN
 from flight_voice.lean.results import SEARCH_DOWN
 from flight_voice.lean.span import CHECKED_LAST
 from flight_voice.tools.results import SEARCH_FAILED

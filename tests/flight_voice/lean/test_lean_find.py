@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from flight_voice.lean.find import RETURN_KEPT, RETURN_LISTED
+from flight_voice.lean.find_return import RETURN_KEPT, RETURN_LISTED
 from flight_voice.lean.results import EACH_WAY, PER_PERSON
 
 from tests.flight_voice.lean.lean_support import BACK, OUT, LeanCall, chosen_trip, ids
