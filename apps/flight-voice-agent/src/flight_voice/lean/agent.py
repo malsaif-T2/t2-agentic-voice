@@ -5,9 +5,10 @@ It speaks as today's agent does (the same languages, greetings, progress lines, 
 the airline's code and vocabulary, agent.py's and persona.py's; on the real network the greeting
 is the real network's, Saad as T2's flight assistant), in Riyadh's time zone, with its
 own short instructions and calendar (prompt.py) and its tools over its sources (deps.py):
-`find_flights`, `choose_flights`, `book_trip` (only where the line books: the mock), on the
-real network `booking_link` in its place (the link to book the trip on the airline's site,
-D-126), and today's `traveler_profile`. On the real network the vocabulary's terms are the
+`find_flights`, `choose_flights`, `book_trip` (only where the line books: the mock; on the real
+network the links to book on the airline's site are on the cards the moment a flight is chosen,
+D-126, D-130, with no tool, and `choose_flights` declares the booking's claims), and today's
+`traveler_profile` (the mock's alone). On the real network the vocabulary's terms are the
 network's own (they replace persona.py's, so the speech-to-text prompt keeps its stop words)
 and its pronunciations are added to the airline code's. It declares no action, so the
 library adds no action rules to its prompt and reads back nothing; `book_trip` books once the
@@ -39,7 +40,6 @@ from flight_voice.airline.system import live_today
 from flight_voice.lean import prompt
 from flight_voice.lean.book import book_trip
 from flight_voice.lean.booking_check import OBSERVED
-from flight_voice.lean.booking_link import booking_link
 from flight_voice.lean.choose import choose_flights
 from flight_voice.lean.deps import LeanDeps
 from flight_voice.lean.find import find_flights
@@ -69,13 +69,12 @@ def calendar_watch(
 
 
 def lean_tools(deps: LeanDeps) -> tuple[Tool, ...]:
-    """The tools over `deps`: `book_trip` only where the line books, `booking_link` only on the
-    real network, `traveler_profile` only on the mock."""
+    """The tools over `deps`: `book_trip` only where the line books, `traveler_profile` only on
+    the mock."""
     booking = (book_trip(deps),) if deps.bookable else ()
-    linking = (booking_link(deps),) if deps.network == "real" else ()
     # The real network has no profile: anyone at the company calls (the owner, 2026-11-18).
     profile = (traveler_profile(deps.airline),) if deps.network == "mock" else ()
-    return (find_flights(deps), choose_flights(deps), *booking, *linking, *profile)
+    return (find_flights(deps), choose_flights(deps), *booking, *profile)
 
 
 def declare(deps: LeanDeps, names: Names | None = None) -> VoiceAgent:

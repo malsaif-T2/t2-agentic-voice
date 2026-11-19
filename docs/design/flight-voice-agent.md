@@ -1105,11 +1105,13 @@ panel:   Your trips: each booking (route, dates, travelers, cabin, fare, referen
   once "Your trips", loaded at the call's start and again at each state after that card or a
   read-back, holds a booking it did not (`bookings.js`'s `Made`; none when the list did not
   load at the start). A leg's card after it forgets that booking, so a later trip of the call
-  never shows it. On the real network the review card `booking_link` sends carries the trip's
-  booking links (D-126, plan 011): each is shown below the card's rows as a link styled as a
-  button, its label as text, opening its url in a new tab with no opener, and that review waits
-  for no yes (the trip is booked on the airline's site). A link comes only from a card's link,
-  never from its text.
+  never shows it. On the real network the review card `choose_flights` sends carries the
+  trip's booking links (D-126, plan 011), one per chosen leg the moment a flight is chosen:
+  each is shown below the card's rows as a link styled as a button, its label as text, opening
+  its url in a new tab with no opener, and that review waits for no yes (the trip is booked on
+  the airline's site). Every flight row there carries its own link too (D-130), a small, quiet
+  link-button at the row's end («احجز» / "Book"). A link comes only from a card's or a row's
+  link, never from its text.
 - **The language toggle** sets the call's starting language (`VoiceClient.start({language})`)
   and the page's texts and direction. Mid-call, the caller switches by voice (plan 010's 2.5).
 - **"Your trips"** refreshes when a call starts and ends, after a read-back until the booking
@@ -1728,17 +1730,16 @@ would mislead: a full flight, a route not served, a date outside the window):
   `incomplete`, `refused` (the store's reason), `unknown` (a write that did not answer and was
   not found by its request ID) or `already_booked` (the booking and the trip as it was booked,
   never the call's trip changed since, but for its reference).
-- `booking_link` (`lean/booking_link.py`, plan 011, D-126) is the real network's in place of
-  `book_trip`, registered there alone: it takes nothing and books nothing. A trip still lacking
-  something is `incomplete` with what is `missing`; a complete one (a one-way trip its outbound,
-  a round trip both legs) is `ready`, each leg's airline, flight (`flight_said`, with the
-  airline's name), day, time and price, and a note: say the link to book it is ready and the
-  flight to pick, the price confirmed on the airline's site, never the link read out, never
-  booked. Its card is the trip's review card with one link per leg (`flight_data/links.py`'s
-  `leg_link`: the Google Flights search for that leg, one way, filtered to its airline(s)).
-  It declares `LEAN_CLAIMS` and no result of it is done, so the guard holds every booking claim.
-  The real instructions offer the link after the trip's summary ("Want the link to book it?",
-  «تبي رابط الحجز؟») and call it on any yes.
+- **The links on the real network** (plan 011, D-126, D-130) need no tool (round 2, the
+  owner's "show it for every flight on screen ... without the need for the agent to invoke it
+  as a tool"; `booking_link` went): every option row of a listing carries its flight's link
+  (`lean/offer_cards.py`'s `row_links`), and `choose_flights`' trip card one per chosen leg
+  (`trip_links`) the moment a flight is chosen, each chosen leg saying `"link": "ready"` to the
+  model. A link is `flight_data/links.py`'s `leg_link`: the Google Flights `tfs=` search for that
+  leg, one way, on its day, from its first airport to its last, filtered to its marketing
+  carriers, in the call's cabin and for its adults, the page in Arabic for an Arabic reply
+  (checked in a browser on 2026-11-19). On the real network `choose_flights` declares
+  `LEAN_CLAIMS` and no result of it is done, so the guard holds every booking claim.
 - `traveler_profile` is today's tool.
 
 **The prompt** (`lean/instructions/en.md` and `ar-SA.md`, about 30 lines each, filled by

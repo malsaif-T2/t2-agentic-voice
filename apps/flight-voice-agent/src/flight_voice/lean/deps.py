@@ -5,9 +5,9 @@ its booking check, and the network they are on.
 On the mock network (`mock_deps`) the source is the mock airline behind the port, its places
 the mock's ten airports, its flights carrying the airline's code and names, and `book_trip` is
 registered. On the real network (plan 011's block B) the source is a flight data provider and
-`bookable` is false: `book_trip` is not registered, `booking_link` is in its place (the link to
-book the trip on the airline's own site, D-126), and the vocabulary and pronunciation are the
-real network's (`terms` replacing persona.py's, `pronounce` added to the airline's code).
+`bookable` is false: `book_trip` is not registered, the cards carry the links to book on the
+airline's own site (D-126, D-130), and the vocabulary and pronunciation are the real network's
+(`terms` replacing persona.py's, `pronounce` added to the airline's code).
 """
 
 from __future__ import annotations

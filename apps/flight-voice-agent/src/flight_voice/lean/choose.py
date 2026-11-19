@@ -21,6 +21,14 @@ one total the agent says. It books nothing, and its description says so: told on
 لك» before `book_trip` (f-dev-lean-4). The call's trip is written once, its last step, and
 marked for the booking check. Its card: a leg still to choose in its segment, the other leg's
 pick kept beside it; the whole trip and its total in the review segment once complete.
+
+**On the real network** nothing books (D-127): the links are built in code the moment a flight
+is chosen, with no tool to call (the owner, 2026-11-19). Each flight row carries its link
+(offer_cards.py's `row_links`, so a pick kept beside the next leg's flights has its own), the
+trip card one per chosen leg (`trip_links`), and each chosen leg says `"link": "ready"`, so the
+model knows the link to book it is there. The tool declares the booking's claims (book.py's
+`LEAN_CLAIMS`) and backs none (no result is `done`), so the output guard holds every booking
+claim on this line.
 """
 
 from __future__ import annotations
@@ -31,10 +39,11 @@ from pydantic import Field, JsonValue
 from t2_agentic_voice import CallContext, Card, Tool, ToolResult, tool
 
 from flight_voice.flight_data.model import Cabin, Place, has_seats
+from flight_voice.lean.book import LEAN_CLAIMS
 from flight_voice.lean.deps import LeanDeps
 from flight_voice.lean.draft import LEGS, LegKind
 from flight_voice.lean.find import RETURN_UNKNOWN
-from flight_voice.lean.offer_cards import options_card, row_links, trip_card
+from flight_voice.lean.offer_cards import options_card, row_links, trip_card, trip_links
 from flight_voice.lean.picking import Chosen, Picking
 from flight_voice.lean.results import (
     LegList,
@@ -56,8 +65,11 @@ DESCRIPTION: Final = (
 )
 DESCRIPTION_REAL: Final = DESCRIPTION.replace(
     " It books nothing: book_trip books.",
-    " It books nothing: booking_link gives the link to book it.",
+    " It books nothing: the caller books on the airline's site, and each chosen flight's link "
+    "to book it there is ready as soon as it is chosen (link: ready).",
 )
+# A chosen leg's link on the real network: on the page, ready to book it on the airline's site.
+LINK_READY: Final[Literal["ready"]] = "ready"
 _OUT: Final = "The id of the outbound flight the caller chose."
 _BACK: Final = "The id of the return flight the caller chose."
 _LIST: Final = (
@@ -100,6 +112,7 @@ def choose_flights(deps: LeanDeps) -> Tool:
     @tool(
         name=CHOOSE_FLIGHTS,
         description=DESCRIPTION if deps.bookable else DESCRIPTION_REAL,
+        claims=None if deps.network == "mock" else LEAN_CLAIMS,
     )
     async def choose(
         ctx: CallContext,
@@ -158,8 +171,8 @@ def _so_far(picking: Picking, asked: LegKind | None, to: Place, network: Network
         route_msa=msa,
         trip=kind,
         trip_msa=kind_msa,
-        outbound=picking.chosen("outbound"),
-        return_=picking.chosen("return"),
+        outbound=_linked(picking.chosen("outbound"), network),
+        return_=_linked(picking.chosen("return"), network),
         travelers=draft.travelers,
         cabin=draft.cabin,
         missing=missing,
@@ -170,11 +183,20 @@ def _so_far(picking: Picking, asked: LegKind | None, to: Place, network: Network
     return lean_result(answer, _card(picking, missing, network))
 
 
+def _linked(chosen: Chosen | None, network: Network) -> Chosen | None:
+    """A chosen leg, its link said ready on the real network."""
+    if chosen is None or network == "mock":
+        return chosen
+    return chosen.model_copy(update={"link": LINK_READY})
+
+
 def _card(picking: Picking, missing: tuple[LegKind, ...], network: Network) -> Card | None:
-    """A leg still to choose in its segment, the other's pick kept beside it; else the review."""
+    """A leg still to choose in its segment, the other's pick kept beside it; else the review,
+    with a link per chosen leg on the real network."""
     draft, tag = picking.draft, picking.tag
     if not missing:
-        return trip_card(draft, picking.chosen_options(), tag)
+        links = () if network == "mock" else trip_links(draft, tag)
+        return trip_card(draft, picking.chosen_options(), tag, links)
     leg = missing[0]
     held = draft.listed(leg)
     if held is None or draft.destination is None:

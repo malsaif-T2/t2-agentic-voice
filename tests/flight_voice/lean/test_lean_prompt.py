@@ -301,7 +301,7 @@ def test_the_real_network_declares_its_own_terms_and_no_booking() -> None:
     )
     agent = declare(deps)
     names = [t.name for t in agent.tools]
-    assert names == ["find_flights", "choose_flights", "booking_link"]
+    assert names == ["find_flights", "choose_flights"]
     assert agent.vocabulary is not None and agent.vocabulary.terms == ("Riyadh", "Saudia", "T2 Air")
     assert dict(agent.pronounce)["SV"] == {"en": "ess vee", "ar": "إس في"}
     assert "T2" in dict(agent.pronounce)
