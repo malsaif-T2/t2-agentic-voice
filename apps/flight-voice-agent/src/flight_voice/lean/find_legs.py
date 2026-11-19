@@ -192,16 +192,25 @@ def both_legs(
     tag: Tag,
     travelers: int,
     places: Places,
+    *,
+    back_only: bool = False,
 ) -> tuple[Built, Built | None] | dict[str, JsonValue]:
     """Both legs built, narrowed to `airline`; the way back unnarrowed when the airline does
-    not fly it; the outbound's refusal as data; the way back None when it was not checked."""
+    not fly it; the outbound's refusal as data; the way back None when it was not checked.
+    With `back_only` (a search for the way back read as the trip's return, find_return.py) the
+    airline was asked of the way back alone: the outbound is left whole, and the way back's
+    refusal is the answer, as that search alone would have given."""
     out, home = answers
-    went = built(out, airline=airline, tag=tag, travelers=travelers, places=places)
+    went = built(
+        out, airline=None if back_only else airline, tag=tag, travelers=travelers, places=places
+    )
     if isinstance(went, dict):
         return went
     if not isinstance(home, DayOffers):
         return went, None
     came = built(home, airline=airline, tag=tag, travelers=travelers, places=places)
+    if isinstance(came, dict) and back_only:
+        return came
     if isinstance(came, dict):
         came = built(home, airline=None, tag=tag, travelers=travelers, places=places)
     return went, None if isinstance(came, dict) else came

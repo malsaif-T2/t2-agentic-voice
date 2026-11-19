@@ -159,6 +159,13 @@ the flight number to pick; an airline's own prefilled search replaces it where P
   call); `flights_per_day` searches each day of a span for the priciest, a time or an airline,
   and a day's listing keeps its priciest; the progress line waits 1.5 s on real flights. The
   real instructions' new facts are block H's to write.
+- 2026-11-19, block G's review fixes: the real lines no longer tell the model to call the gone
+  `booking_link` (an interim edit until block H's files replace them; a test now holds that the
+  instructions name only tools the agent declares); an airline asked of a way back read as the
+  trip's return narrows the way back alone, the outbound left whole; a listing keeps the
+  priciest right after the cheapest, so a day of four or more airlines keeps it too; and the
+  mock's `find_flights` is as run F read it before round 2 (no `flights_per_day` in its
+  schema, no way back read as the return, the outbound's card), so run F needs no new baseline.
 
 ## Decision log
 

@@ -4,16 +4,19 @@ only each day's lowest price): every day is searched, and each gives its flights
 and highest prices, its first and last departures and its airlines, over the flights its own
 search lists from, with a note that a day's flights come at once from find_flights for that
 day; the priciest is then listed to choose. Without the flag a span stays the one-search
-calendar. The mock gives the same from its exact timetable; a span longer than two weeks is
-cut, the days after offered."""
+calendar. The flag is the real network's: the mock's search has none, as run F reads it; its
+timetable still gives the same day by day to the real network's search. A span longer than two
+weeks is cut, the days after offered."""
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date, datetime, timedelta
 from typing import Any, Final
 
 from flight_voice.flight_data.model import Money, Offer
 from flight_voice.flight_data.queries import DayFare, DayFares, SpanQuery
+from flight_voice.lean.find import find_flights
 from flight_voice.lean.span import CHECKED_LAST, TO_PICK
 
 from tests.flight_voice.flight_data.fake import (
@@ -27,7 +30,7 @@ from tests.flight_voice.flight_data.fake import (
     nonstop,
     query,
 )
-from tests.flight_voice.lean.lean_support import LeanCall
+from tests.flight_voice.lean.lean_support import LeanCall, lean_deps
 from tests.flight_voice.lean.real_support import real_call
 from tests.flight_voice.tools.tool_support import card_passes, data
 
@@ -106,8 +109,25 @@ def test_without_the_flag_a_span_stays_the_one_search_calendar() -> None:
     assert "highest_price" not in answer["days"][0] and answer["note"] != TO_PICK
 
 
+def _over_the_mock() -> LeanCall:
+    """The real network's search over the mock's timetable (its exact days)."""
+    return LeanCall(deps=replace(lean_deps(), bookable=False, network="real"))
+
+
+def test_the_mocks_search_has_no_flag_as_run_f_reads_it() -> None:
+    mock_schema = dict(find_flights(lean_deps()).tool_schema().parameters)
+    real_schema = dict(find_flights(_over_the_mock().deps).tool_schema().parameters)
+    mock, real = mock_schema.pop("properties"), real_schema.pop("properties")
+    assert isinstance(mock, dict) and isinstance(real, dict)
+    assert "flights_per_day" not in mock and "flights_per_day" in real
+    assert mock == {name: held for name, held in real.items() if name != "flights_per_day"}
+    assert mock_schema == real_schema  # the same required fields and definitions
+    refused = LeanCall().find(destination="Jeddah", depart=_span(), flights_per_day=True)
+    assert not refused.ok and refused.failure == "bad_arguments"
+
+
 def test_the_mock_gives_each_days_flights_from_its_timetable() -> None:
-    call = LeanCall()
+    call = _over_the_mock()
     span = {"first": "2026-11-16", "last": "2026-11-22"}
     answer = data(call.find(destination="Singapore", depart=span, flights_per_day=True))
     for day in answer["days"]:
@@ -124,7 +144,7 @@ def test_the_mock_gives_each_days_flights_from_its_timetable() -> None:
 
 def test_a_span_longer_than_two_weeks_is_cut_and_the_days_after_offered() -> None:
     answer = data(
-        LeanCall().find(
+        _over_the_mock().find(
             destination="Singapore",
             depart={"first": "2026-11-16", "last": "2026-12-15"},
             flights_per_day=True,

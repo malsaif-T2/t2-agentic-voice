@@ -1,8 +1,8 @@
 """Which offers a leg lists (flight_voice/lean/listing.py): the pool keeps every nonstop and a
 connection only on a day with no nonstop, or when it is at least 100 SAR cheaper and at most
-twice the fastest nonstop's time; a listing holds at most six, keeping the cheapest, each
-airline's cheapest, the earliest, the latest and each part of the day; always in departure
-order, ties by id; and each airline's count and cheapest when two or more fly."""
+twice the fastest nonstop's time; a listing holds at most six, keeping the cheapest and the
+priciest, each airline's cheapest, the earliest, the latest and each part of the day; always in
+departure order, ties by id; and each airline's count and cheapest when two or more fly."""
 
 from __future__ import annotations
 
@@ -103,3 +103,25 @@ def test_the_priciest_is_always_listed() -> None:
     dear = nonstop(SAUDIA, "1100", ("RUH", "JED"), _at(16, 30), 110, 2400)
     kept = listed([*day, dear, nonstop(SAUDIA, "1102", ("RUH", "JED"), _at(17), 110, 560)])
     assert len(kept) == 6 and dear in kept
+
+
+def test_the_priciest_is_listed_however_many_airlines_fly_the_day() -> None:
+    # Five airlines' cheapest and the earliest would fill the six places before the priciest,
+    # which is neither an end of the day nor an airline's cheapest (Dubai, London, Cairo).
+    route = ("RUH", "DXB")
+    dear = nonstop(SAUDIA, "550", route, _at(14), 180, 2500)
+    day = [
+        nonstop(SAUDIA, "540", route, _at(6), 180, 900),  # the earliest
+        nonstop(SAUDIA, "544", route, _at(8), 180, 700),  # Saudia's cheapest
+        nonstop(FLYNAS, "301", route, _at(9), 180, 600),  # the cheapest
+        nonstop(FLYADEAL, "1501", route, _at(11), 180, 650),
+        dear,
+        nonstop(EMIRATES, "820", route, _at(16), 180, 1100),
+        nonstop(FLYNAS, "305", route, _at(18), 180, 800),
+        nonstop(QATAR, "1171", route, _at(21), 180, 1200),  # the latest
+    ]
+    kept = listed(day)
+    assert len(kept) == 6 and dear in kept
+    assert min(day, key=lambda o: o.price.amount) in kept
+    counted = by_airline(day, "en")
+    assert counted is not None and len(counted) == 5  # every airline still named

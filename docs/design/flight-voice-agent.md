@@ -1701,18 +1701,23 @@ would mislead: a full flight, a route not served, a date outside the window):
   departure times and the two cheapest days with their fares; up to 14 days each day's weekday,
   flight count and lowest fare and the days with no flight, for longer week by week (the Saudi
   week, each week's days with a flight and its cheapest day), so the result stays short; it
-  writes nothing, and its card is the outbound segment's calendar. With `flights_per_day`
-  (plan 011's round 2: asked for the priciest flight of a span, the model had only each day's
-  lowest price) every day is searched, the span cut to 14 days, and each day gives its flights,
-  lowest and highest prices, first and last departures and airlines, a day's own search then
-  answering at once (on the real network each day is cached); a day's listing keeps its
-  priciest flight, so "the most expensive" is always one to choose. A search for the way back
-  (B to A on a day on or after the chosen outbound's, with no return, `lean/find_return.py`) is
-  read as the trip's return, the outbound's pick kept and the trip made a round trip, its card
-  the return's with the pick beside it (the owner's call of 2026-11-19, where the pick was
-  lost). Its refusals are data: `not_served` with the cities, `date_problem` naming the window,
-  `cabin_not_offered`, `no_flights` with the nearest days. On the real network its progress
-  line is due after about 1.5 s, so a cached answer never opens with one.
+  writes nothing, and its card is the outbound segment's calendar. On the real network, with
+  `flights_per_day` (plan 011's round 2: asked for the priciest flight of a span, the model had
+  only each day's lowest price) every day is searched, the span cut to 14 days, and each day
+  gives its flights, lowest and highest prices, first and last departures and airlines, a day's
+  own search then answering at once (each day cached). A day's listing keeps its cheapest and
+  its priciest flight first, before each airline's cheapest, so "the most expensive" is always
+  one to choose, however many airlines fly the day. On the real network too, a search for the
+  way back (B to A on a day on or after the chosen outbound's, with no return,
+  `lean/find_return.py`) is read as the trip's return, the outbound's pick kept and the trip
+  made a round trip, its card the return's with the pick beside it (the owner's call of
+  2026-11-19, where the pick was lost); an airline asked then narrows the way back alone, the
+  outbound left whole, and one that does not fly it is that search's `no_flights_for_airline`.
+  The mock's search stays as run F reads it: no `flights_per_day` in its schema, no way back
+  read as the return, the outbound's card. Its refusals are data: `not_served` with the cities,
+  `date_problem` naming the window, `cabin_not_offered`, `no_flights` with the nearest days. On
+  the real network its progress line is due after about 1.5 s, so a cached answer never opens
+  with one.
 - `choose_flights` (`lean/choose.py`) takes `outbound_id`, `return_id`, `cabin`, `travelers`
   and `list_leg` (a leg's flights the caller asks to hear, listed without choosing: the way
   back's before the way out is chosen too, leg by leg being the default, never a rule), each

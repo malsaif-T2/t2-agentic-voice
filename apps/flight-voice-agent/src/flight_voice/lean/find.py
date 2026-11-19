@@ -22,19 +22,21 @@ held over its date (weekday.py). Then:
   its id, and a pick it drops in `lost`; with the outbound chosen it gives the return's flights.
   The call's trip is read again after the search (another tool may have written it meanwhile),
   takes the search in one assignment, and is marked for the booking check. Its card is the
-  outbound segment, or the return's with the outbound's pick kept beside it once that pick is
-  kept (find_return.py). On the real network, a listing that leaves flights out (`more`), for
+  outbound segment; on the real network, the return's with the outbound's pick kept beside it
+  once that pick is kept (find_return.py), and a listing that leaves flights out (`more`), for
   every airline, notes that one airline's flights come from another search (`MORE_REAL`).
-- **The way back asked as a new search** (find_return.py's `as_return`): with the trip's
-  outbound chosen, A to B on day D, a one-way search B to A on a day on or after D is read as
-  the trip's return (the search of A to B on D with that return day, the pick kept), noted
-  `RETURN_ADDED`.
-- **A span** (span.py): nothing is written to the trip; with `flights_per_day` each day is
-  searched and summed up (its flights, lowest and highest prices, first and last departures,
-  airlines), for a question beyond each day's cheapest price.
+- **The way back asked as a new search** (find_return.py's `as_return`, the real network's):
+  with the trip's outbound chosen, A to B on day D, a one-way search B to A on a day on or
+  after D is read as the trip's return (the search of A to B on D with that return day, the
+  pick kept), noted `RETURN_ADDED`; an airline asked then narrows the way back alone.
+- **A span** (span.py): nothing is written to the trip; on the real network, with
+  `flights_per_day` each day is searched and summed up (its flights, lowest and highest
+  prices, first and last departures, airlines), for a question beyond each day's cheapest.
 
-Its progress line is due at once on the mock (run F's timing) and after about 1.5 s on the
-real network (`PROGRESS_LIVE_AT_S`), so a fast or cached answer never opens with it.
+On the mock, the search is as run F reads it, before plan 011's round 2: no `flights_per_day`
+in its schema, no way back read as the return, the outbound's card. Its progress line is due
+at once there (run F's timing) and after about 1.5 s on the real network
+(`PROGRESS_LIVE_AT_S`), so a fast or cached answer never opens with it.
 
 A source that does not answer is a `ToolError` that says the search failed (`SEARCH_DOWN` when
 it will not answer again soon), never "no flights".
@@ -43,9 +45,9 @@ it will not answer again soon), never "no flights".
 from __future__ import annotations
 
 from datetime import date
-from typing import Annotated, Final, Literal
+from typing import Annotated, Any, Final, Literal
 
-from pydantic import Field
+from pydantic import Field, create_model
 from t2_agentic_voice import CallContext, Tool, ToolError, ToolResult, tool
 
 from flight_voice.flight_data.model import Cabin
@@ -66,6 +68,7 @@ from flight_voice.lean.find_legs import (
 from flight_voice.lean.find_return import (
     RETURN_ADDED,
     ReturnDay,
+    Turned,
     as_return,
     kept_ids,
     lost_picks,
@@ -144,13 +147,13 @@ class Found(_Data):
 def find_flights(deps: LeanDeps) -> Tool:
     """The search over `deps`' source, writing each call's trip and marking it for the booking
     check (the module's docstring)."""
-    progress = "searching" if deps.network == "mock" else "searching_live"
+    real = deps.network == "real"
 
     @tool(
         name=FIND_FLIGHTS,
         description=DESCRIPTION,
-        progress=progress,
-        progress_after_s=PROGRESS_AT_S if deps.network == "mock" else PROGRESS_LIVE_AT_S,
+        progress="searching_live" if real else "searching",
+        progress_after_s=PROGRESS_LIVE_AT_S if real else PROGRESS_AT_S,
         timeout_s=TIMEOUT_S,
     )
     async def find(
@@ -185,7 +188,9 @@ def find_flights(deps: LeanDeps) -> Tool:
                 return not_served(deps.places, tag)
             return unknown_place("destination" if end is None else "origin")
         back = None if isinstance(depart, DaySpan) else return_date
-        turned = None if isinstance(depart, DaySpan) else as_return(draft, start, end, depart, back)
+        turned: Turned | None = None
+        if real and not isinstance(depart, DaySpan):
+            turned = as_return(draft, start, end, depart, back)
         if turned is not None:  # the way back, asked as a new search
             start, end, depart, back = turned.start, turned.end, turned.depart, turned.back
         if (problem := refused(depart, back, today, last)) is not None:
@@ -195,14 +200,7 @@ def find_flights(deps: LeanDeps) -> Tool:
         try:
             if isinstance(depart, DaySpan):
                 asked = SpanAsked(
-                    deps.data,
-                    (start, end),
-                    kept,
-                    party,
-                    today,
-                    deps.network,
-                    tag,
-                    each_day=flights_per_day,
+                    deps.data, (start, end), kept, party, today, deps.network, tag, flights_per_day
                 )
                 spanned = await span_search(asked, depart)
                 if isinstance(spanned, ToolResult):
@@ -228,7 +226,7 @@ def find_flights(deps: LeanDeps) -> Tool:
         for day, answer in ((depart, out), (back, home)):
             if day is not None and isinstance(answer, DayOffers) and answer.status == "no_flights":
                 return no_flights(day, await nearest(deps.data, answer.query, today), tag)
-        legs = both_legs((out, home), airline, tag, party, deps.places)
+        legs = both_legs((out, home), airline, tag, party, deps.places, back_only=bool(turned))
         if isinstance(legs, dict):
             return lean_result(legs)
         went, came = legs
@@ -253,7 +251,7 @@ def find_flights(deps: LeanDeps) -> Tool:
         )
         home_back = way_back(made, back, came, tag)
         listed = (went.data, *([home_back] if isinstance(home_back, LegList) else []))
-        some = deps.network == "real" and airline is None and any(leg.more for leg in listed)
+        some = real and airline is None and any(leg.more for leg in listed)
         notes = [
             full_note(listed, party, kept),
             LOST if change.lost else None,
@@ -274,7 +272,7 @@ def find_flights(deps: LeanDeps) -> Tool:
             note=" ".join(n for n in notes if n) or None,
         )
         card = None
-        if came is not None and isinstance(home_back, LegList):
+        if real and came is not None and isinstance(home_back, LegList):
             route = (start, end)
             card = return_card(made, went, came, route, kept, deps.places, tag, deps.network)
         if card is None:
@@ -284,4 +282,16 @@ def find_flights(deps: LeanDeps) -> Tool:
             )
         return lean_result(found, card)
 
-    return find
+    return find if real else _as_run_f(find)
+
+
+def _as_run_f(made: Tool) -> Tool:
+    """The mock's search as run F reads it, before plan 011's round 2: no `flights_per_day`
+    in its schema (the function's default, false, holds)."""
+    fields = made.parameters.model_fields
+    kept: dict[str, Any] = {
+        n: (f.annotation, f) for n, f in fields.items() if n != "flights_per_day"
+    }
+    config = made.parameters.model_config
+    narrowed = create_model("Arguments", __config__=config, **kept)
+    return made.model_copy(update={"parameters": narrowed})
