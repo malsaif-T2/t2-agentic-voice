@@ -21,9 +21,10 @@ from flight_voice.flight_data.port import Failure, FlightDataUnavailableError
 from flight_voice.flight_data.queries import DayFare, DayFares, SpanQuery
 from flight_voice.lean.agent import lean_tools
 from flight_voice.lean.book import NOT_BOOKABLE, book_trip
-from flight_voice.lean.find import LOST, RETURN_UNKNOWN
+from flight_voice.lean.find import LOST
 from flight_voice.lean.find_dates import TOO_FAR_REAL
 from flight_voice.lean.find_legs import NOT_CHECKED, UNKNOWN_PLACE
+from flight_voice.lean.find_return import RETURN_UNKNOWN
 from flight_voice.lean.results import SEARCH_DOWN
 from flight_voice.lean.span import CHECKED_LAST
 from flight_voice.tools.results import SEARCH_FAILED
@@ -254,11 +255,9 @@ def test_a_pick_keeps_the_price_heard_however_the_source_moves_after() -> None:
 
 def test_the_real_line_does_not_book() -> None:
     call = real_call()
-    assert [t.name for t in lean_tools(call.deps)] == [
-        "find_flights",
-        "choose_flights",
-        "booking_link",  # the link to book it on the airline's site, in place of book_trip
-    ]  # and no traveler_profile: anyone at the company calls, with no profile (2026-11-18)
+    # The links to book on the airline's site come on the cards, with no tool (D-130); and no
+    # traveler_profile: anyone at the company calls, with no profile (2026-11-18).
+    assert [t.name for t in lean_tools(call.deps)] == ["find_flights", "choose_flights"]
     assert data(run(book_trip(call.deps), "en")) == NOT_BOOKABLE
     (choose,) = (t for t in lean_tools(call.deps) if t.name == "choose_flights")
     assert "book_trip" not in choose.description

@@ -20,7 +20,7 @@ from flight_voice.airline.system import Airline
 from flight_voice.evals.scenarios import CALLS
 from flight_voice.lean.agent import NAME, declare
 from flight_voice.lean.prompt import calendar, instructions
-from flight_voice.lean.results import fares_are
+from flight_voice.lean.results import Network, fares_are
 from flight_voice.persona import PROGRESS, TAGS, Names, Tag, breaking, held_words
 from t2_agentic_voice import Action, Tool, render_prompt
 from t2_agentic_voice.languages import speak_number
@@ -242,7 +242,8 @@ def test_the_real_lines_name_every_airline_and_book_nothing(tag: Tag) -> None:
     for held in (
         "and others, nonstop or with one stop",
         "Want the link to book it?",
-        "Call booking_link when the caller agrees or asks for the link; any yes is a yes.",
+        "There is no tool to call for the link: each chosen flight's link to book it on the "
+        "airline's site is ready as soon as it is chosen (link: ready)",
         "the caller books on the airline's own site from the link",
         "never say a trip is booked",
         '"Saudia 1020"',
@@ -260,6 +261,22 @@ def test_the_real_lines_name_every_airline_and_book_nothing(tag: Tag) -> None:
         # The register's examples close on the link's offer, which books nothing (D-126).
         assert "أحجز" not in text
         assert "«تبي رابط الحجز؟»" in text and "«هل تريد رابط الحجز؟»" in text
+
+
+@pytest.mark.parametrize("network", ["mock", "real"])
+def test_the_instructions_name_only_tools_the_agent_declares(network: Network) -> None:
+    # Plan 011's round 2: the real lines told the model to call booking_link after that tool
+    # went, and a call of a tool the request does not hold is refused by the provider.
+    real = replace(lean_deps(), bookable=False, network="real")
+    tools = {
+        "mock": {t.name for t in declare(lean_deps()).tools},
+        "real": {t.name for t in declare(real).tools},
+    }
+    every = {*tools["mock"], *tools["real"], "booking_link"}
+    for tag in TAGS:
+        text = instructions(Names(), TODAY, LAST, network=network)[tag]
+        named = {name for name in every if re.search(rf"\b{name}\b", text)}
+        assert named <= tools[network], (tag, named - tools[network])
 
 
 def test_no_basis_of_a_price_holds_a_digit_word() -> None:
@@ -301,7 +318,7 @@ def test_the_real_network_declares_its_own_terms_and_no_booking() -> None:
     )
     agent = declare(deps)
     names = [t.name for t in agent.tools]
-    assert names == ["find_flights", "choose_flights", "booking_link"]
+    assert names == ["find_flights", "choose_flights"]
     assert agent.vocabulary is not None and agent.vocabulary.terms == ("Riyadh", "Saudia", "T2 Air")
     assert dict(agent.pronounce)["SV"] == {"en": "ess vee", "ar": "إس في"}
     assert "T2" in dict(agent.pronounce)

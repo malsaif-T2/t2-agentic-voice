@@ -150,6 +150,22 @@ the flight number to pick; an airline's own prefilled search replaces it where P
   rig on 127.0.0.1:7863 (no code, Scribe, a real SerpApi search of 22 flights, mute silencing a
   turn, then the call's row, its 2 turns and times, its tool call and its recording in the
   database), and a staging boot on 0.0.0.0 with the test console off. Gate green (10694).
+- 2026-11-19, round 2's block G (links and tools, branch plan-011-block-g): a leg's link is the
+  `tfs=` search (its day, exact airports, airlines, cabin and adults, `hl=ar` for Arabic; the
+  four links checked in a browser are the test vectors); every flight row on the real network
+  carries its link (`CardRow.link`, D-130) and the trip card one per chosen leg the moment a
+  flight is chosen, `booking_link` gone (`choose_flights` declares the booking's claims there);
+  a way-back search after a one-way pick is read as the trip's return (the owner's RUH-DMM
+  call); `flights_per_day` searches each day of a span for the priciest, a time or an airline,
+  and a day's listing keeps its priciest; the progress line waits 1.5 s on real flights. The
+  real instructions' new facts are block H's to write.
+- 2026-11-19, block G's review fixes: the real lines no longer tell the model to call the gone
+  `booking_link` (an interim edit until block H's files replace them; a test now holds that the
+  instructions name only tools the agent declares); an airline asked of a way back read as the
+  trip's return narrows the way back alone, the outbound left whole; a listing keeps the
+  priciest right after the cheapest, so a day of four or more airlines keeps it too; and the
+  mock's `find_flights` is as run F read it before round 2 (no `flights_per_day` in its
+  schema, no way back read as the return, the outbound's card), so run F needs no new baseline.
 
 ## Decision log
 

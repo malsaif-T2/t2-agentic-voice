@@ -6,12 +6,12 @@ fetch already running for that key is shared, awaited through `asyncio.shield`, 
 barges in never cancels another caller's fetch (nor its own, which still fills the cache).
 Answers are stored, `no_flights` included, at most `max_entries` (the least recently used
 dropped first); a failure never is: its fetch is forgotten, so the next ask tries again, and a
-done-callback retrieves its error. `days(q)` asks the inner source's fare calendar first, kept
-the same way under the span's key (`SpanQuery.key()`, the same `ttl_s`; a calendar that priced
-no day is kept too, as that answer), and when it gives none, reads the span through the cache's
-own `day`, with the inner source's cut, concurrency and deadline, so a span fills each day's
-entry. `name`, `span_days`, `last_day` and `nearest` are the inner source's; `aclose` cancels
-the fetches still running and closes it.
+done-callback retrieves its error. `days(q)` asks the inner source's fare calendar first (not
+for a span asked `each_day`), kept the same way under the span's key (`SpanQuery.key()`, the
+same `ttl_s`; a calendar that priced no day is kept too, as that answer), and when it gives
+none, reads the span through the cache's own `day`, with the inner source's cut, concurrency
+and deadline, so a span fills each day's entry. `name`, `span_days`, `last_day` and `nearest`
+are the inner source's; `aclose` cancels the fetches still running and closes it.
 """
 
 from __future__ import annotations
@@ -114,8 +114,9 @@ class CachedFlightData:
         return await self._calendars.get(q.key(), lambda: self._inner.calendar(q))
 
     async def days(self, q: SpanQuery) -> DayFares:
-        """The span: the calendar's, else each day through the cache."""
-        found = await self.calendar(q)
+        """The span: the calendar's, else each day through the cache; each day at once when
+        it asks `each_day`."""
+        found = None if q.each_day else await self.calendar(q)
         return found if found is not None else await self._inner.span(self.day, q)
 
     async def aclose(self) -> None:

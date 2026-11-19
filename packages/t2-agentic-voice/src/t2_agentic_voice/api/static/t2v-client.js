@@ -39,7 +39,8 @@
 //
 // A reply says its answer short aloud and sends the whole to the screen as a `card`: a title,
 // its steps in order, its option rows in order (each a title, a detail and a value, text or
-// null, and a mark of CARD_MARKS or null, which a page maps to a style, never to markup) and
+// null, a mark of CARD_MARKS or null, which a page maps to a style, never to markup, and a
+// link or null, D-130) and
 // the source they come from (null when there is none), and its links (each a label and an https
 // url, D-126), handed to the page as one `card` event, a card that is not one dropped, a row or
 // a link that is not one dropped from its card. A page shows it beside the captions,
@@ -574,11 +575,10 @@ function cardOf(message) {
 const MAX_LINKS = 2;
 const MAX_URL = 2048;
 
-// A card's links, each kept only when it is one as `CardLink` holds it: a label of 1 to 40
-// characters with no digit, and an https url with a host, of at most MAX_URL characters of
-// printable ASCII and no space; at most MAX_LINKS of them, in order. A page opens a link only
-// from its url, never from text.
-function linksOf(links) {
+// A link as `CardLink` holds it (a label of 1 to 40 characters with no digit, and an https url
+// with a host, of at most MAX_URL characters of printable ASCII and no space), its label and
+// url alone; null for anything else. A page opens a link only from its url, never from text.
+function linkOf(l) {
   const label = (value) =>
     typeof value === "string" &&
     value.trim() !== "" &&
@@ -595,11 +595,16 @@ function linksOf(links) {
       return false;
     }
   };
+  if (l === null || typeof l !== "object" || Array.isArray(l)) return null;
+  return label(l.label) && https(l.url) ? { label: l.label, url: l.url } : null;
+}
+
+// A card's links, each kept only when it is one (`linkOf`); at most MAX_LINKS of them, in order.
+function linksOf(links) {
   return links
-    .filter((l) => l !== null && typeof l === "object" && !Array.isArray(l))
-    .filter((l) => label(l.label) && https(l.url))
-    .slice(0, MAX_LINKS)
-    .map((l) => ({ label: l.label, url: l.url }));
+    .map(linkOf)
+    .filter((l) => l !== null)
+    .slice(0, MAX_LINKS);
 }
 
 // The slot a card may name on the page (domain/cards.py's `CardSlot`, D-110): lowercase letters
@@ -613,7 +618,8 @@ const MAX_ROWS = 8;
 
 // A card's rows, each kept only when it is one as `CardRow` holds it: a title of 1 to 80
 // characters, a detail of up to 120 and a value of up to 40, each text or null, and a mark of
-// CARD_MARKS or null; at most MAX_ROWS of them, in order.
+// CARD_MARKS or null; at most MAX_ROWS of them, in order. A row's link (D-130) is kept when it
+// is one (`linkOf`), else null, the row kept.
 function rowsOf(rows) {
   const fits = (value, most) =>
     typeof value === "string" && value.trim() !== "" && [...value].length <= most;
@@ -634,6 +640,7 @@ function rowsOf(rows) {
       detail: r.detail ?? null,
       value: r.value ?? null,
       mark: r.mark ?? null,
+      link: linkOf(r.link ?? null),
     }));
 }
 
@@ -783,9 +790,9 @@ function devPage(page) {
     shown.item.textContent = `${c.speaker}: ${shown.parts.filter(Boolean).join(" ")}`;
   };
   // The newest card in place of the last: its title, its steps numbered, its rows (each its
-  // texts on one line, its mark as the line's data-mark), its source and its links (each a link
-  // of its label to its url, opened in a new tab), each line in the direction of its own first
-  // strong character (dir="auto").
+  // texts on one line, its mark as the line's data-mark, its link after them), its source and
+  // its links (each a link of its label to its url, opened in a new tab), each line in the
+  // direction of its own first strong character (dir="auto").
   const card = (c) => {
     const text = (tag, value) => {
       const node = page.createElement(tag);
@@ -793,22 +800,26 @@ function devPage(page) {
       node.textContent = value;
       return node;
     };
+    const anchor = (l) => {
+      const link = text("a", l.label);
+      link.setAttribute("href", l.url);
+      link.setAttribute("target", "_blank");
+      link.setAttribute("rel", "noopener noreferrer");
+      return link;
+    };
     const steps = page.createElement("ol");
     steps.append(...c.steps.map((step) => text("li", step)));
     const rows = c.rows.length ? [page.createElement("ul")] : [];
     for (const r of c.rows) {
       const item = text("li", [r.title, r.detail, r.value].filter(Boolean).join(" · "));
       if (r.mark) item.dataset.mark = r.mark;
+      if (r.link) item.append(" ", anchor(r.link));
       rows[0].append(item);
     }
     const source = c.source === null ? [] : [text("p", `Source: ${c.source}`)];
     const links = c.links.map((l) => {
-      const link = text("a", l.label);
-      link.setAttribute("href", l.url);
-      link.setAttribute("target", "_blank");
-      link.setAttribute("rel", "noopener noreferrer");
       const line = page.createElement("p");
-      line.append(link);
+      line.append(anchor(l));
       return line;
     });
     $("card").replaceChildren(text("h3", c.title), steps, ...rows, ...source, ...links);

@@ -1,81 +1,98 @@
-"""A leg's booking link (flight_data/links.py, D-126): the Google Flights search for the leg, one
-way, on its day, filtered to its marketing carrier(s), exactly the form checked in a browser on
-2026-11-18; a place is its code with one airport, else its city's English name; a party of two
-or more is named; a connection of two carriers gets no airline; the page is English (an Arabic
-page is not understood with the English text); the label names the carrier, with no digit and at
-most 40 characters, and falls back to a bare label."""
+"""A leg's booking link (flight_data/links.py, D-126): the Google Flights `tfs=` search for the
+leg, one way, on its day, from its first airport to its last (never a city), filtered to its
+marketing carriers in order, in its cabin and for its adults, exactly as the four links checked
+in a browser on 2026-11-19 (round 2's brief, byte for byte); the page in Arabic for an Arabic
+reply; the label names the carrier, with no digit and at most 40 characters, and falls back to
+a bare label."""
 
 from __future__ import annotations
 
+import base64
 from datetime import datetime
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
-from flight_voice.flight_data.links import leg_link, link_label, search_text
+from flight_voice.flight_data.links import GOOGLE_FLIGHTS, leg_link, link_label, tfs
 from flight_voice.flight_data.model import Carrier, Layover
 
 from tests.flight_voice.flight_data.fake import (
     BRITISH,
-    DUBAI,
     FLYNAS,
-    JEDDAH,
-    LONDON,
     QATAR,
-    RIYADH,
     SAUDIA,
     nonstop,
     offer,
     segment,
 )
 
-# The link checked in a browser on 2026-11-18 (plan 011's Phase 0): flynas's five flights that day.
-CHECKED = (
-    "https://www.google.com/travel/flights?q=Flights%20to%20JED%20from%20RUH%20on%202026-11-26"
-    "%20one%20way%20on%20flynas&hl=en&curr=SAR&gl=sa"
-)
 DAY = datetime(2026, 11, 26, 6, 0)
+# The four links checked in a browser on 2026-11-19 (round 2's brief): their `tfs` values.
+RUH_JED_SV_BUSINESS = "Gh4SCjIwMjYtMTEtMjYyAlNWagUSA1JVSHIFEgNKRURAAUgDmAEC"
+ELQ_ABT_SV_BUSINESS_TWO = "Gh4SCjIwMjYtMTEtMjYyAlNWagUSA0VMUXIFEgNBQlRAAUABSAOYAQI"
+RUH_JED_XY_ECONOMY = "Gh4SCjIwMjYtMTEtMjYyAlhZagUSA1JVSHIFEgNKRURAAUgBmAEC"
+RUH_LHR_QR_BA_ECONOMY = "GiISCjIwMjYtMTEtMjYyAlFSMgJCQWoFEgNSVUhyBRIDTEhSQAFIAZgBAg"
+# The cheapest flynas flight from Riyadh to Jeddah that day, its link in English.
+CHECKED = f"{GOOGLE_FLIGHTS}?tfs={RUH_JED_XY_ECONOMY}&hl=en&curr=SAR&gl=sa"
 
 
-def test_a_nonstop_legs_link_is_the_form_checked_in_a_browser() -> None:
-    flight = nonstop(FLYNAS, "17", ("RUH", "JED"), DAY, 105, 429)
-    link = leg_link(flight, "en", (RIYADH, JEDDAH))
-    assert link.url == CHECKED
-    assert link.label == "Book on flynas"
-    assert leg_link(flight, "en").url == CHECKED  # no route: the offer's own airports
+def _query(url: str) -> dict[str, list[str]]:
+    return parse_qs(urlsplit(url).query)
 
 
-def test_a_place_of_several_airports_is_its_city_and_the_page_stays_english() -> None:
-    flight = nonstop(SAUDIA, "111", ("RUH", "LGW"), DAY, 445, 3519)
-    assert search_text(flight, (RIYADH, LONDON)) == (
-        "Flights to London from RUH on 2026-11-26 one way on Saudia"
-    )
-    assert search_text(flight) == "Flights to LGW from RUH on 2026-11-26 one way on Saudia"
-    link = leg_link(flight, "ar-SA", (RIYADH, LONDON), leg="outbound")
-    asked = parse_qs(urlsplit(link.url).query)
-    assert asked == {
-        "q": ["Flights to London from RUH on 2026-11-26 one way on Saudia"],
-        "hl": ["en"],
-        "curr": ["SAR"],
-        "gl": ["sa"],
-    }
-    assert link.label == "احجز الذهاب على السعودية"
-    back = nonstop(SAUDIA, "120", ("DXB", "RUH"), DAY, 100, 900)
-    assert search_text(back, (DUBAI, RIYADH)).startswith("Flights to RUH from Dubai on ")
-    assert leg_link(back, "ar", (DUBAI, RIYADH), leg="return").label == "احجز العودة على السعودية"
-
-
-def test_a_connection_of_two_carriers_names_none_and_its_label_the_first() -> None:
+def test_the_four_links_checked_in_a_browser_are_written_byte_for_byte() -> None:
+    saudia = nonstop(SAUDIA, "1020", ("RUH", "JED"), DAY, 110, 2913, cabin="business")
+    qassim = nonstop(SAUDIA, "1531", ("ELQ", "ABT"), DAY, 95, 5100, cabin="business", adults=2)
+    flynas = nonstop(FLYNAS, "17", ("RUH", "JED"), DAY, 105, 429)
     by_doha = offer(
         segment(QATAR, "1163", ("RUH", "DOH"), DAY, 90),
         segment(BRITISH, "122", ("DOH", "LHR"), datetime(2026, 11, 26, 9, 0), 420),
         layovers=(Layover(airport="DOH", minutes=90),),
         price=2610,
     )
-    # "on Qatar Airways and British Airways" opened Google's home page (checked 2026-11-18).
-    assert search_text(by_doha, (RIYADH, LONDON)) == (
-        "Flights to London from RUH on 2026-11-26 one way"
+    assert tfs(saudia) == RUH_JED_SV_BUSINESS
+    assert tfs(qassim) == ELQ_ABT_SV_BUSINESS_TWO  # Qassim to Al Bahah: its destination kept
+    assert tfs(flynas) == RUH_JED_XY_ECONOMY
+    assert tfs(by_doha) == RUH_LHR_QR_BA_ECONOMY  # both airlines, in order
+    assert leg_link(flynas, "en").url == CHECKED
+    assert _query(leg_link(saudia, "en").url) == {
+        "tfs": [RUH_JED_SV_BUSINESS],
+        "hl": ["en"],
+        "curr": ["SAR"],
+        "gl": ["sa"],
+    }
+
+
+def test_an_arabic_reply_opens_the_arabic_page() -> None:
+    flynas = nonstop(FLYNAS, "17", ("RUH", "JED"), DAY, 105, 429)
+    for tag in ("ar-SA", "ar"):
+        link = leg_link(flynas, tag, leg="outbound")
+        assert _query(link.url)["hl"] == ["ar"]
+        assert link.label == "احجز الذهاب على طيران ناس"
+    assert leg_link(flynas, "en").url.startswith("https://www.google.com/travel/flights/search?")
+
+
+def test_the_airports_are_the_ones_the_offer_flew_and_each_airline_once() -> None:
+    # A connection by one airline names it once; its airports are its first and its last.
+    gatwick = offer(
+        segment(SAUDIA, "111", ("RUH", "JED"), DAY, 100),
+        segment(SAUDIA, "115", ("JED", "LGW"), datetime(2026, 11, 26, 9, 0), 400),
+        layovers=(Layover(airport="JED", minutes=80),),
+        price=3519,
     )
-    assert leg_link(by_doha, "en", (RIYADH, LONDON)).label == "Book on Qatar Airways"
+    message = base64.urlsafe_b64decode(tfs(gatwick) + "==")
+    assert message.count(b"SV") == 1
+    assert b"\x12\x03RUH" in message and b"\x12\x03LGW" in message and b"JED" not in message
+
+
+def test_a_connection_of_two_carriers_is_labelled_by_the_first() -> None:
+    by_doha = offer(
+        segment(QATAR, "1163", ("RUH", "DOH"), DAY, 90),
+        segment(BRITISH, "122", ("DOH", "LHR"), datetime(2026, 11, 26, 9, 0), 420),
+        layovers=(Layover(airport="DOH", minutes=90),),
+        price=2610,
+    )
+    assert leg_link(by_doha, "en").label == "Book on Qatar Airways"
+    assert leg_link(by_doha, "en", label="Book").label == "Book"
 
 
 @pytest.mark.parametrize(
@@ -92,11 +109,3 @@ def test_a_label_that_would_not_fit_falls_back_to_a_bare_one(name: str, label: s
     assert link_label(flight, "en", "return") == label
     assert len(label) <= 40 and not any(c.isdigit() for c in label)
     assert leg_link(flight, "en", leg="return").label == label
-
-
-def test_a_party_is_named_as_google_reads_it() -> None:
-    # "...one way on flynas for 2 adults" priced flynas for two at 858, twice 429 (2026-11-18).
-    pair = nonstop(FLYNAS, "17", ("RUH", "JED"), DAY, 105, 858, adults=2)
-    assert search_text(pair, (RIYADH, JEDDAH)) == (
-        "Flights to JED from RUH on 2026-11-26 one way on flynas for 2 adults"
-    )

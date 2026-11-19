@@ -6,10 +6,13 @@ when it is at least `CHEAPER_BY` riyals cheaper than the cheapest nonstop and at
 beside flyadeal's 899 nonstop).
 
 **The listing** (`listed`): the whole pool when it holds at most `MAX_LISTED`; else, kept in
-this order until there are `MAX_LISTED`: the cheapest; each airline's cheapest, the airlines in
-the order of their first departure; the earliest and the latest; one for each part of the day
-not yet covered (its cheapest); then the cheapest of the rest. Always in departure order, ties
-by id. The mock (at most four a day, one airline, all nonstop) lists exactly its day's flights.
+this order until there are `MAX_LISTED`: the cheapest and the priciest, the two ends of the
+price range (so "the most expensive", asked of a day or of a span's day, is always one to
+choose, however many airlines fly it: plan 011's round 2); each airline's cheapest, the
+airlines in the order of their first departure; the earliest and the latest; one for each part
+of the day not yet covered (its cheapest); then the cheapest of the rest.
+Always in departure order, ties by id. The mock (at most four a day, one airline, all nonstop)
+lists exactly its day's flights.
 
 `by_airline` gives each airline's flights and cheapest over the pool, in the order of their
 first departure, when two or more fly the day.
@@ -36,6 +39,10 @@ def _order(offer: Offer) -> tuple[object, ...]:
 
 def _cost(offer: Offer) -> tuple[object, ...]:
     return (offer.price.amount, offer.departs, offer.id)
+
+
+def _dear(offer: Offer) -> tuple[object, ...]:
+    return (-offer.price.amount, offer.departs, offer.id)
 
 
 def pool(offers: Sequence[Offer]) -> tuple[Offer, ...]:
@@ -67,6 +74,7 @@ def listed(offers: Sequence[Offer], limit: int = MAX_LISTED) -> tuple[Offer, ...
             kept.setdefault(offer.id, offer)
 
     keep(min(ordered, key=_cost))
+    keep(min(ordered, key=_dear))
     for code in dict.fromkeys(o.carrier.code for o in ordered):
         keep(min((o for o in ordered if o.carrier.code == code), key=_cost))
     keep(ordered[0])

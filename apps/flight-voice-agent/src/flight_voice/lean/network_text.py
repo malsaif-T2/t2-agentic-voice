@@ -1,8 +1,8 @@
 """The lines of the lean instructions that differ by network (prompt.py fills them in
 lean/instructions/<tag>.md): the mock's, today's T2 Air between Riyadh and nine cities, which
 books; and the real network's, every airline on routes within, to and from Saudi Arabia, which
-does not book: the trip's summary offers the link to book it on the airline's own site, which
-`booking_link` gives (D-126).
+does not book: the trip's summary offers the link to book it on the airline's own site, ready
+on the card the moment a flight is chosen, with no tool to call (D-126, D-130).
 
 Each block is a `string.Template`, filled with the persona's names as the file is: `intro` (the
 first line), `listing` (added to the line on how a leg's day is said), `span`, `booking` (the
@@ -151,9 +151,10 @@ _BOOKING: Final = (
     "- When the trip is complete, say it in one sentence: the route, each leg's airline, day and "
     "time, the cabin, the travelers and the total choose_flights gives, as of now, never a sum of "
     'your own; then offer the link to book it ("Want the link to book it?"{ar_ask}).\n'
-    "- Call booking_link when the caller agrees or asks for the link; any yes is a yes. Then "
-    "say what its note says, in a few words. When they pick or change something, make it with "
-    "choose_flights or find_flights first, then call booking_link again for the trip as it is.\n"
+    "- There is no tool to call for the link: each chosen flight's link to book it on the "
+    "airline's site is ready as soon as it is chosen (link: ready), so when the caller agrees "
+    "or asks for it, say it is ready, in a few words. When they pick or change something, make "
+    "it with choose_flights or find_flights; the links follow the trip as it is.\n"
     "- You cannot book on this line: the caller books on the airline's own site from the link, "
     "and never say a trip is booked{ar}."
 )

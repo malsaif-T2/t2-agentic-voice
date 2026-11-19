@@ -47,7 +47,8 @@ def _card() -> dict[str, Any]:
 
 
 def _row(**given: Any) -> dict[str, Any]:
-    return {"title": "09:10 to 16:15", "detail": None, "value": None, "mark": None} | given
+    row = {"title": "09:10 to 16:15", "detail": None, "value": None, "mark": None, "link": None}
+    return row | given
 
 
 def test_the_client_hands_the_page_each_row_as_the_session_sent_it(tmp_path: Path) -> None:

@@ -9,6 +9,7 @@ from collections.abc import Awaitable, Callable, Iterable
 from datetime import UTC, date, datetime, timedelta
 from typing import Any, Final
 
+from flight_voice.flight_data.fanout import span_of
 from flight_voice.flight_data.model import Carrier, Layover, Money, Offer, Place, Segment, offer_id
 from flight_voice.flight_data.port import FlightDataUnavailableError
 from flight_voice.flight_data.queries import DayFares, DayOffers, OfferQuery, SpanQuery
@@ -143,6 +144,8 @@ class FakeFlightData:
 
     async def days(self, q: SpanQuery) -> DayFares:
         self.calls["days"] += 1
+        if q.each_day:  # day by day, as the live source reads such a span
+            return await span_of(self.day, q, span_days=self.span_days, concurrency=4, deadline_s=5)
         found = self.spans.get(f"{q.origin.code}-{q.destination.code}")
         if isinstance(found, FlightDataUnavailableError):
             raise found

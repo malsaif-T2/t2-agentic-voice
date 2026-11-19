@@ -5,7 +5,7 @@ every one of them, and its docstring says what `load` does with them.
 
 `for_the_app` adds the booking's send words and `answer_yes_over_question` for the lean agent
 only when it can book (`bookable`: the mock airline; on the real network the caller books on the
-airline's own site, from the link `booking_link` gives, D-126).
+airline's own site, from the links on the cards, D-126, D-130).
 """
 
 from __future__ import annotations

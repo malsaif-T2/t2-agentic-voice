@@ -323,8 +323,14 @@ def test_a_card_goes_out_with_its_rows_as_the_tool_gave_them() -> None:
         "title": "Riyadh to London",
         "steps": ["Nonstop"],
         "rows": [
-            {"title": "09:10 to 16:15", "detail": None, "value": "2,450 SAR", "mark": "best"},
-            {"title": "b", "detail": None, "value": None, "mark": None},
+            {
+                "title": "09:10 to 16:15",
+                "detail": None,
+                "value": "2,450 SAR",
+                "mark": "best",
+                "link": None,
+            },
+            {"title": "b", "detail": None, "value": None, "mark": None, "link": None},
         ],
         "source": "timetable",
         "slot": None,

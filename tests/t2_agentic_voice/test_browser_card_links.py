@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from t2_agentic_voice import Card, CardLink
+from t2_agentic_voice import Card, CardLink, CardRow
 from t2_agentic_voice.voice.protocol import ShowCard, wire
 
 from tests.browser import browse, descendants, receive, text
@@ -89,3 +89,44 @@ def test_the_dev_page_and_the_console_show_each_link_by_its_label(tmp_path: Path
         assert link["attrs"] == {"dir": "auto", "href": URL} | OPENS
         assert text(link) == MARKUP
         assert _links(without) == []
+
+
+def test_the_client_hands_on_each_rows_link_and_drops_one_that_is_not(tmp_path: Path) -> None:
+    # D-130: a row's own link, checked as a card's are; one that is not one is null, the row kept.
+    good = {"label": "Book", "url": URL}
+    row = {"title": "06:00 to 07:45", "detail": None, "value": "429 SAR", "mark": None}
+    odd = [good | {"url": "javascript:alert(1)"}, good | {"label": "Book 17"}, "Book", [good]]
+    rows = [row | {"link": good}, row, *(row | {"link": link} for link in odd)]
+    shown = _client(tmp_path, [receive(_card(rows=rows))])
+    [[name, value]] = shown["events"]
+    assert name == "card"
+    assert [r["link"] for r in value["rows"]] == [good, None, None, None, None, None]
+    assert all({k: v for k, v in r.items() if k != "link"} == row for r in value["rows"])
+
+
+def test_the_dev_page_and_the_console_show_a_rows_link_after_its_texts(tmp_path: Path) -> None:
+    rows = (
+        CardRow(title="06:00 to 07:45", value="429 SAR", link=CardLink(label=MARKUP, url=URL)),
+        CardRow(title="Total", value="429 SAR"),
+    )
+    card = wire(ShowCard.of(Card(title="Riyadh to Jeddah", rows=rows)))
+    look = {"do": "snapshot", "id": "card"}
+    start = [{"do": "click", "id": "start"}, {"do": "open"}]
+    dev = browse(
+        tmp_path / "dev",
+        {"t2v-client.js": CLIENT},
+        entry="t2v-client.js",
+        page=DEV_PAGE,
+        location="http://127.0.0.1:7860/voice/dev",
+        steps=[*start, receive(card), look],
+    )
+    console = _console(tmp_path / "console", [*start, receive(card), look])
+    for shown in (dev, console):
+        (snapshot,) = shown["snapshots"]
+        listed = next(e for e in descendants(snapshot) if e["tag"] == "ul")
+        first, second = listed["children"]
+        [link] = _links(first)
+        assert link["attrs"] == {"dir": "auto", "href": URL} | OPENS
+        assert text(link) == MARKUP
+        assert text(first) == f"06:00 to 07:45 · 429 SAR {MARKUP}"
+        assert _links(second) == []

@@ -23,8 +23,9 @@
 //
 // A card's links (D-126: the trip's booking links, one a leg) are shown below its rows, each a
 // link styled as a button, its label as text, opening its url in a new tab with no opener. A
-// link is only ever built from a link's url as the library's client checked it (an https
-// address), never from a card's text; one that is not https is dropped.
+// flight row's own link (D-130: that flight's) is a small, quiet link-button at the row's end,
+// the same way. A link is only ever built from a link's url as the library's client checked it
+// (an https address), never from a card's text; one that is not https is dropped.
 
 export const SLOTS = ["outbound", "return", "review"];
 export const MARKS = ["best", "chosen", "unavailable"];
@@ -37,8 +38,14 @@ function text(value) {
   return typeof value === "string" ? value : "";
 }
 
-// A card's rows, each its texts and its mark (null when it has none, or one not in MARKS); a row
-// with no title is left out.
+// A link, its label and url; null when its label is no text or its url not an https address.
+function linkOf(link) {
+  if (!link || typeof link !== "object" || !text(link.label)) return null;
+  return text(link.url).startsWith("https://") ? { label: link.label, url: link.url } : null;
+}
+
+// A card's rows, each its texts, its mark (null when it has none, or one not in MARKS) and its
+// link (null when it has none, or one that is not one); a row with no title is left out.
 export function rowsOf(card) {
   if (!Array.isArray(card?.rows)) return [];
   return card.rows
@@ -46,17 +53,14 @@ export function rowsOf(card) {
     .map((row) => ({
       ...Object.fromEntries(PARTS.map((part) => [part, text(row[part])])),
       mark: MARKS.includes(row.mark) ? row.mark : null,
+      link: linkOf(row.link),
     }));
 }
 
-// A card's links, each its label and url: one whose label is no text or whose url is not an
-// https address is left out.
+// A card's links, each its label and url: one that is not one (`linkOf`) is left out.
 export function linksOf(card) {
   if (!Array.isArray(card?.links)) return [];
-  return card.links
-    .filter((link) => link && typeof link === "object" && text(link.label))
-    .filter((link) => text(link.url).startsWith("https://"))
-    .map((link) => ({ label: link.label, url: link.url }));
+  return card.links.map(linkOf).filter(Boolean);
 }
 
 // A card's steps, the texts among them.
@@ -178,6 +182,7 @@ export class Cards {
     );
     const word = mark ? text(this.marks()?.[mark]) : "";
     if (word) line.append(part("span", "row-mark", word));
+    if (row.link) line.append(this.link(row.link, "row-link"));
     return line;
   }
 
@@ -188,8 +193,8 @@ export class Cards {
     return line;
   }
 
-  link(link) {
-    const node = part("a", "card-link", link.label);
+  link(link, className = "card-link") {
+    const node = part("a", className, link.label);
     node.setAttribute("href", link.url);
     node.setAttribute("target", "_blank");
     node.setAttribute("rel", "noopener noreferrer");

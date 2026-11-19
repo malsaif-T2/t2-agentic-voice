@@ -62,7 +62,7 @@ that throws is logged to the console and the others still run.
 | `hello` | `{call_id, languages}`, once the data channel opens: the call's languages, its own first |
 | `state` | `{state}`: `listening`; `thinking`, while a reply asked for has no audio yet (the talker or one of its tools at work) or a turn's transcript is awaited; `speaking` (below, "The agent thinking"); or `confirming`, while an action's read-back waits for the caller's answer and nothing plays ([tools-and-actions.md](tools-and-actions.md)) |
 | `caption` | `{speaker, text, final, turn_id, reply_id, clause, cut}`: the caller's turn once heard (`speaker` `caller`, named by `turn_id`), or the agent's reply clause by clause as each starts playing (`agent`, named by `reply_id` and `clause`); `cut` is true for an agent's clause a stop cut while it played, sent again with the mark (below) |
-| `card` | `{title, steps, rows, source, slot, links}`: an extra a tool of your own returned, for a client with a screen, its steps a list of text in order (empty when its source lists none), its `rows` the options it lists, each `{title, detail, value, mark}` (empty when it lists none), `source` the document it comes from, `null` when there is none, `slot` the page segment it names (D-110), `null` when it names none, and `links` its links, each `{label, url}` (empty when it has none, D-126) (below, "Cards") |
+| `card` | `{title, steps, rows, source, slot, links}`: an extra a tool of your own returned, for a client with a screen, its steps a list of text in order (empty when its source lists none), its `rows` the options it lists, each `{title, detail, value, mark, link}` (empty when it lists none; `link` a row's own `{label, url}`, `null` when it has none, D-130), `source` the document it comes from, `null` when there is none, `slot` the page segment it names (D-110), `null` when it names none, and `links` its links, each `{label, url}` (empty when it has none, D-126) (below, "Cards") |
 | `duck` | `{level}`: the caller is speaking over the agent, whose voice now plays at `level` (0 to 1) of its volume until the session decides |
 | `unduck` | `{}`: the session has decided, and the agent's voice is back to full volume |
 | `volume` | `{level}`: the client changed the agent's volume, 1 at full; the client's own event, sent on each change, whatever caused it |
@@ -118,9 +118,9 @@ read its text, as it reads a clause's.
 
 The client hands the page each card as one `card` event, and drops a message that is not one
 (no title, steps that are not text). A card's option `rows` (a tool's `CardRow`s: the flights or
-plans a reply listed, at most 8) come each as `{title, detail, value, mark}`: a title of up to 80
-characters, a detail of up to 120 and a value of up to 40, each text or `null`, and a `mark` of
-`best`, `chosen` or `unavailable`, or `null`. The client drops a row that is not one and keeps
+plans a reply listed, at most 8) come each as `{title, detail, value, mark, link}`: a title of up
+to 80 characters, a detail of up to 120 and a value of up to 40, each text or `null`, a `mark` of
+`best`, `chosen` or `unavailable`, or `null`, and the row's own `link` (D-130) or `null`. The client drops a row that is not one and keeps
 the rest; a card from a session that sends no rows has an empty list. A card may name its
 `slot` on the page (D-110): lowercase letters and `_`, at most 20 of them (`outbound`, say), or
 `null`, `null` too from a session that sends none, and the client drops a card whose slot is of
@@ -131,7 +131,9 @@ card's `links` (a tool's `CardLink`s, at most 2, D-126) come each as `{label, ur
 printable ASCII; the client drops a link that is not one, and a card from a session that sends
 none has an empty list. Show each as a link of its label (as text) to its url, opened in a new
 tab (`target="_blank"`, `rel="noopener noreferrer"`), and never build a link from a card's
-text; the dev page and the dev console do so below the card. Map a mark to a style
+text; the dev page and the dev console do so below the card. A row's own `link` (D-130), when it
+has one, is checked the same way (`null` when it is not one, the row kept); the dev page and the
+dev console show it after the row's texts. Map a mark to a style
 (Ole5's widget and the dev page set it as the line's `data-mark`), never to markup, and show a
 row's texts as text, as every other text of the card. Show it beside the captions, a new card in place of the
 last, and every text as text (`textContent`): a passage's steps are the knowledge base's words,

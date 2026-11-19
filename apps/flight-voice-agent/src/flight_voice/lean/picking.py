@@ -5,6 +5,8 @@ the pool it was listed from. Nothing here asks the source again."""
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import JsonValue
 
 from flight_voice.flight_data.model import Offer
@@ -19,9 +21,11 @@ __all__ = ["Chosen", "Lost", "Picking", "chosen_legs"]
 
 class Chosen(LeanOption):
     """A chosen leg: its option, and its day, so its length and stops are said from the data
-    once the search that listed it is out of the model's sight."""
+    once the search that listed it is out of the model's sight; on the real network, that its
+    link to book it is ready (`link`, choose.py)."""
 
     day: Day
+    link: Literal["ready"] | None = None
 
 
 class Lost(_Data):
