@@ -7,8 +7,9 @@ mock does not fly and a cabin it does not sell are refused before any day is rea
 (`Spanned`, status `days`) holds the span's first and last days, the route's daily departure
 times when the source has fixed ones (the mock), the two cheapest days with their prices
 (`cheapest`, the earlier first of two as cheap; `cheapest_days` their dates), the days that
-could not be checked (`unknown_days`), and, when the source cut the span to its own most days,
-the last day it checked (`checked_last`) with a note. Then, by the span's length:
+could not be checked (`unknown_days`, with a note: never said to have no flights), and, when
+the source cut the span to its own most days, the last day it checked (`checked_last`) with a
+note. Then, by the span's length:
 
 - **Up to `DAILY_DAYS` days:** each day that has a flight with its weekday, its flight count in
   the cabin (left out when the source counted none: SerpApi's fare calendar prices each day but
@@ -74,6 +75,12 @@ TO_HEAR: Final = (
     "its flight."
 )
 CHECKED_LAST: Final = "Only the days up to checked_last were checked; offer the days after."
+# The real network's instructions name no field of a span (plan 011's round 2), so a day the
+# source could not check is said in the result itself.
+UNKNOWN_DAYS: Final = (
+    "The days in unknown_days could not be checked just now, never that they have no flights: "
+    "offer to check them."
+)
 TO_PICK: Final = (
     "To choose a flight, call find_flights with its day as depart: an instant answer, since "
     "each day was just searched."
@@ -174,6 +181,7 @@ async def span_search(asked: SpanAsked, span: DaySpan) -> ToolResult | dict[str,
     )
     note = TO_PICK if asked.each_day else (TO_BOOK if asked.network == "mock" else TO_HEAR)
     checked_last = found.checked_last or cut_at
+    notes = (note, CHECKED_LAST if checked_last else "", UNKNOWN_DAYS if unknown else "")
     answer = Spanned(
         route=said,
         route_msa=msa,
@@ -191,7 +199,7 @@ async def span_search(asked: SpanAsked, span: DaySpan) -> ToolResult | dict[str,
         checked_last=None if checked_last is None else checked_last.isoformat(),
         cheapest=tuple(cheapest),
         cheapest_days=tuple(d.date for d in cheapest),
-        note=note if checked_last is None else f"{note} {CHECKED_LAST}",
+        note=" ".join(n for n in notes if n),
     )
     shown = (
         days

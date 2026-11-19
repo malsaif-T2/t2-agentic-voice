@@ -1705,7 +1705,9 @@ would mislead: a full flight, a route not served, a date outside the window):
   departure times and the two cheapest days with their fares; up to 14 days each day's weekday,
   flight count and lowest fare and the days with no flight, for longer week by week (the Saudi
   week, each week's days with a flight and its cheapest day), so the result stays short; it
-  writes nothing, and its card is the outbound segment's calendar. On the real network, with
+  writes nothing, and its card is the outbound segment's calendar; days the source could not
+  check are `unknown_days`, with a note that they are never said to have no flights (the
+  real instructions name no span field). On the real network, with
   `flights_per_day` (plan 011's round 2: asked for the priciest flight of a span, the model had
   only each day's lowest price) every day is searched, the span cut to 14 days, and each day
   gives its flights, lowest and highest prices, first and last departures and airlines, a day's
@@ -1813,8 +1815,9 @@ ready (it comes by itself once a flight is chosen; never read, never "booked"); 
 summed up only when it helps. Then the tools' facts: the calendar and its weekday arguments, one
 way or round trip, a way back added to a chosen one-way trip by searching it (read as the
 return), a span's cheapest day by day and `flights_per_day` for anything else over the days, the
-airline filter, picks worked out from the options, connections said briefly, failures never "no
-flights", and nothing no tool gave.
+airline filter, picks worked out from the options, connections said briefly (overnight or
+partly by bus when an option says so), failures never "no flights", and nothing no tool
+gave.
 
 **Run F's outcome mode** (`poe eval-flights --agent lean`; `evals/lean_call.py` and
 `lean_checks.py`): the same scenarios, the lean agent in each play, scored by outcomes. Kept:

@@ -26,7 +26,7 @@ from flight_voice.lean.find_dates import TOO_FAR_REAL
 from flight_voice.lean.find_legs import NOT_CHECKED, UNKNOWN_PLACE
 from flight_voice.lean.find_return import RETURN_UNKNOWN
 from flight_voice.lean.results import SEARCH_DOWN
-from flight_voice.lean.span import CHECKED_LAST
+from flight_voice.lean.span import CHECKED_LAST, UNKNOWN_DAYS
 from flight_voice.tools.results import SEARCH_FAILED
 
 from tests.flight_voice.flight_data.fake import (
@@ -300,6 +300,7 @@ def test_a_span_gives_the_days_checked_and_those_that_could_not_be() -> None:
     assert answer["cheapest_days"] == [(first + timedelta(days=2)).isoformat(), first.isoformat()]
     assert answer["checked_last"] == (first + timedelta(days=3)).isoformat()
     assert CHECKED_LAST in answer["note"] and "To book" not in answer["note"]
+    assert UNKNOWN_DAYS in answer["note"]  # never said as no flights
     assert found.card is not None and card_passes(found)
     failed = FakeFlightData(spans={"RUH-LHR": FlightDataUnavailableError("days", "timeout")})
     down = real_call(failed).find(

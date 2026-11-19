@@ -49,7 +49,7 @@ FACTS = (
     "the link to book it is ready for the caller by itself",
     "say the link to book it is ready",
     "Sum the whole trip up only when it helps: once it is complete, briefly",
-    "Say a connection briefly",
+    "Say a connection briefly: where, how long the wait, and overnight or partly by bus",
     "Say only what a tool gave in this call",
     "never divide or multiply one",
     "never that there are no flights",

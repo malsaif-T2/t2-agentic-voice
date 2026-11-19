@@ -178,6 +178,17 @@ the flight number to pick; an airline's own prefilled search replaces it where P
   (the malformed tool call Groq refused) is sent once more (`llm.retry_rejected`, D-132, off in
   the library, on in the flight app). The lean VERSION is in `lean/agent.py`, block G's file: it
   is bumped at the merge.
+- 2026-11-19, round 2 merged into plan-011-integration (G, then H; the gate green after each,
+  10726 and 10780): the conflicts kept both blocks (network_text.py the mock's alone, G's test
+  that the instructions name only declared tools, both decisions); the lean VERSION is
+  `lean-2026-11-19.1`. Read against the merged tools, the real files lacked two facts round 1
+  had: a connection overnight or partly by bus (now in the connection line), and a span's
+  days the source could not check, now said by the result's own note (`UNKNOWN_DAYS`), never
+  as no flights. Hand check over the recorded set: RUH-JED on the 26th lists 6 of 22 flights,
+  each row with its `tfs=` link (flynas's the browser-checked vector); the flynas pick's trip
+  card carries its link at once; JED-RUH on the 29th after that one-way pick is read as the
+  return (the pick kept, the trip round, the return's 6 options), and the way back's pick
+  completes it with a link per leg and the total of both.
 
 ## Decision log
 
