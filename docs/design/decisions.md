@@ -4449,3 +4449,22 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   can call, so the hosting guide sets a daily cap for the alpha.
 - **Mute.** The page's mute button sends silence while held muted, with the reference client's
   own switch (push-to-talk on, released), so the call goes on and nothing reaches the server.
+
+## D-130 · A card's row may carry its own link (`CardRow.link`), extending D-126 · 2026-11-19 · Accepted (the owner: "If showing the link is free and easy, I think we should show it for every flight on screen", 2026-11-19, plan 011's round 2; a new optional field, which changes nothing for a team that sets none, GP-18)
+
+- **Context:** a card carried at most two links (D-126), one a leg of the trip; the owner asked
+  for the link on every flight shown, which is free (built in code), so each option row needs
+  its own.
+- **Decision:** `CardRow.link: CardLink | None`, none by default, the same `CardLink` as a
+  card's (a label of 1 to 40 characters with no digit, an https url of at most 2048). Its label
+  is among the row's texts (`CardRow.texts`), which the output guard reads with the card's; its
+  url never is. `t2v/1`'s `card` carries it in each row (`null` when none), and the reference
+  client hands it on checked as a card's links are, `null` when it is not one, the row kept;
+  the dev page and the dev console show it after the row's texts, a link of its label to its
+  url in a new tab with no opener.
+- **Consequences:** a row with no link is as it was, its texts the same and its payload but a
+  null `link`. The flight app's real network puts each flight's Google Flights link on its row
+  (a small «احجز» / "Book"), and the trip card keeps its links per leg (D-126), set as soon as a
+  flight is chosen, with no tool (the `booking_link` tool went).
+- **Evidence:** tests/t2_agentic_voice/domain/test_card_row_links.py,
+  tests/t2_agentic_voice/test_browser_card_links.py.

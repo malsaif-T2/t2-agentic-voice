@@ -24,7 +24,9 @@ A card may carry links (`CardLink`, D-126), at most `MAX_LINKS`, each a `label` 
 it opens, https only and at most `MAX_URL` characters, of any host. The label is one of the
 card's texts, read by the guard; the url never is (the guard reads what is said or shown, and
 an address is neither: a voice agent never reads one aloud). A page opens a link only from its
-`url`, never from text. A card with no links is as it was.
+`url`, never from text. A card with no links is as it was. A row may carry one link of its own
+(`CardRow.link`, D-130), the same `CardLink`: its label is among the row's texts, its url
+never; a row with none is as it was.
 """
 
 from __future__ import annotations
@@ -85,7 +87,8 @@ class CardLink(BaseModel):
 
 class CardRow(BaseModel):
     """One option a card lists: its `title` (up to 80 characters), a `detail` (up to 120) and a
-    `value` (up to 40, a price, say), each when it has one, and its `mark`, when it has one."""
+    `value` (up to 40, a price, say), each when it has one, its `mark`, when it has one, and
+    its `link` (a `CardLink`, D-130), when it has one: that option's own link."""
 
     model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
 
@@ -93,10 +96,13 @@ class CardRow(BaseModel):
     detail: Annotated[_Text, Field(max_length=120)] | None = None
     value: Annotated[_Text, Field(max_length=40)] | None = None
     mark: CardMark | None = None
+    link: CardLink | None = None
 
     def texts(self) -> tuple[str, ...]:
-        """The row's texts: its title, then its detail and its value, each when it has one."""
-        return tuple(text for text in (self.title, self.detail, self.value) if text)
+        """The row's texts: its title, then its detail, its value and its link's label (never
+        its url), each when it has one."""
+        label = self.link.label if self.link is not None else None
+        return tuple(text for text in (self.title, self.detail, self.value, label) if text)
 
 
 class Card(BaseModel):

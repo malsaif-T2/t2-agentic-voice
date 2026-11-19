@@ -643,19 +643,26 @@ function caption(c) {
 }
 
 // A card's option row on one line, its texts joined, its mark (one of the client's closed set)
-// as the line's data-mark, never as markup.
+// as the line's data-mark, never as markup, and its link (D-130) after them.
 function row(r) {
   const text = [r.title, r.detail, r.value].filter(Boolean).join(" · ");
-  return el("li", { dir: "auto", text, "data-mark": r.mark ?? undefined });
+  const line = el("li", { dir: "auto", text, "data-mark": r.mark ?? undefined });
+  if (r.link) line.append(" ", anchor(r.link));
+  return line;
 }
 
-// A card's link (D-126): its label, opening its url in a new tab; never built from text.
-function link(l) {
+// A link (D-126): its label, opening its url in a new tab; never built from text.
+function anchor(l) {
   const node = el("a", { dir: "auto", text: l.label });
   node.setAttribute("href", l.url);
   node.setAttribute("target", "_blank");
   node.setAttribute("rel", "noopener noreferrer");
-  return el("p", {}, node);
+  return node;
+}
+
+// A card's link (D-126), on its own line.
+function link(l) {
+  return el("p", {}, anchor(l));
 }
 
 function card(c) {
