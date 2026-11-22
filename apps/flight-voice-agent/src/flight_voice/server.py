@@ -9,7 +9,7 @@ setting `FLIGHT_VOICE_AGENT` chooses, today's scripted talker (agent.py) by defa
 beside it (lean/agent.py, D-113, its booking check observing each call's `AgentSpeechEnded`,
 `UserTurnEnded` and `CallEnded`, and its calendar's day each `CallStarted`), over the mock
 airline, kept in memory and reset to its seed at each start, its modes and today the settings'
-(for the lean agent, today as the server starts, the day its calendar is written for, kept; its
+(for the lean agent too: its calendar is written for the airline's today, each day, D-135; its
 flight source the one `FLIGHT_VOICE_FLIGHT_DATA` names, the mock behind the flight data port by
 default, flight_data/compose.py's `lean_deps`, closed as the app's lifespan ends, after the
 router's); each call's trip is kept in one trip book, dropped as the call ends (`CallEnded`), and
@@ -182,13 +182,12 @@ def make_app(settings: Settings) -> FastAPI:
     observers: list[tuple[type[Event], Callable[[Event], Awaitable[None]]]] = []
     closing: list[Closable] = []
     if settings.app.agent == "lean":
-        day = settings.app.today_source()()  # the calendar's, kept as the airline's today
-        airline = airline_of(settings.app, today=lambda: day)
-        deps = lean_deps(settings.app, airline, names, today=lambda: day)
+        airline = airline_of(settings.app)  # Riyadh's today at each read, or the day pinned
+        deps = lean_deps(settings.app, airline, names, today=airline.today)
         agent = declare_lean(deps, names)
         ended: Callable[[CallEnded], Awaitable[None]] = deps.trips.call_ended
         observers += [(kind, deps.check.observed) for kind in OBSERVED]
-        observers.append((CallStarted, calendar_watch(day)))
+        observers.append((CallStarted, calendar_watch(deps.today)))
         closing.append(deps.data)
     else:
         airline = airline_of(settings.app)

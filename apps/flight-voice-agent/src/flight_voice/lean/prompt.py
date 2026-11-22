@@ -14,10 +14,10 @@ past the listed ones is searched, never taken for one that cannot be booked (f-d
 refused a day past them as not among its days). Each date is written whole and as `YYYY-MM-DD`,
 the form the tools take.
 
-The instructions are built once, when the agent is declared, from the airline's today: a server
-serves the calendar of the day it started, its airline kept on that day (restarted each day, its
-`FLIGHT_VOICE_TODAY` pinned only to today; lean/agent.py's `calendar_watch`), and run F declares
-the agent for each play, on the scenario's today.
+The instructions are written for the airline's today, once a day, and kept: the library asks
+for them on each request (lean/agent.py's `dated`, D-135), so a server left running past
+midnight prompts with the new day's calendar; run F declares the agent for each play, on the
+scenario's today.
 """
 
 from __future__ import annotations

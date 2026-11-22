@@ -39,7 +39,12 @@ A larger agent writes them as a short page: Ole5's are one file a language, in
 [instructions/](../../apps/ole5-voice-agent/src/ole5_voice/instructions/), with a section for
 how it answers, one for searching, and one for what it cannot do. Write them in English, which
 models follow most reliably whatever language the call is in; one text serves every language,
-or give one a language (`instructions={"ar-SA": ..., "en": ...}`).
+or give one a language (`instructions={"ar-SA": ..., "en": ...}`). Instructions that name
+the day (a calendar of the coming week) are a function of the prompt's date and the reply's
+language tag instead, `instructions=written`, `written(day, tag)` returning the text: the
+library calls it on every request, so a server left running past midnight speaks of the new
+day; keep what it writes for a day (`functools.lru_cache` on the day), so a request costs a
+lookup, not a build (D-135).
 
 An agent that declares an action gets more rules after those: calling an action never does it,
 since the library reads it back and does it only after the caller's yes, then says how it ended;

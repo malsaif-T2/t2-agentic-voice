@@ -1,5 +1,8 @@
 """The parts of a declaration the talker reads (the design's 4.3; plan 006), beside the echo's
-(domain/declaration.py): the team's `instructions`, one text or one per language tag; its
+(domain/declaration.py): the team's `instructions`, one text or one per language tag, or a
+function writing the text for the prompt's date and the reply's language tag (`Dated`,
+D-135), called on each request, so a server left running past midnight prompts with the
+new day (a team keeps what it writes for a day: the call costs a lookup, not a build); its
 `tools`; and its `vocabulary`, the product terms that become the Whisper prompt. All optional on
 `VoiceAgent`, so an agent declared before the talker loads unchanged; an agent that declares
 instructions runs the talker (`session.mode`, core/settings/session.py).
@@ -17,7 +20,8 @@ domain/action_declaration.py); and a tool's `reports_on` must name one of them. 
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from datetime import date
 from typing import Annotated, Protocol, runtime_checkable
 
 from pydantic import AfterValidator, Field, field_validator
@@ -85,8 +89,11 @@ def _term(value: str) -> str:
 
 
 _Instruction = Annotated[str, AfterValidator(_instruction)]
-# The team's instructions: one text for every language, or one per language tag, read-only.
-Instructions = _Instruction | Annotated[Mapping[LanguageTag, _Instruction], FROZEN, PLAIN]
+# Instructions written for a day: the prompt's date and the reply's tag in, the text out.
+Dated = Callable[[date, LanguageTag], str]
+# The team's instructions: one text for every language, one per language tag, read-only, or
+# `Dated`.
+Instructions = _Instruction | Annotated[Mapping[LanguageTag, _Instruction], FROZEN, PLAIN] | Dated
 _Term = Annotated[str, Field(max_length=64), AfterValidator(_term)]
 
 
@@ -106,9 +113,10 @@ class Vocabulary(Declared):
 def instructions_for(
     value: Instructions | None, tags: Sequence[LanguageTag]
 ) -> Instructions | None:
-    """`value`, checked against the agent's language `tags`: one text, or a text for each of
-    them and for no other tag. ValueError, in fixed words, otherwise."""
-    if value is None or isinstance(value, str):
+    """`value`, checked against the agent's language `tags`: one text, a text for each of them
+    and for no other tag, or a `Dated` function (its texts read as each prompt is composed).
+    ValueError, in fixed words, otherwise."""
+    if value is None or isinstance(value, str) or callable(value):
         return value
     if set(value) - set(tags):
         raise ValueError("it gives instructions for a language the agent does not speak")

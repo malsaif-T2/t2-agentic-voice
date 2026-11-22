@@ -4505,3 +4505,24 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
 - **Consequences:** a four-digit ID written as a valid day and month with one hyphen ("12-10")
   passes unchecked under the setting; the flight app has no such IDs (its ids are flight codes,
   read whole).
+
+## D-135 · Instructions written for the day (`Dated`), so a long-running server's prompt follows the date · 2026-11-22 · Accepted (the owner: "the time related context to the agent seems frozen in the time it first initiated", 2026-11-22; "Make sure the fix doesn't affect latency"; a new kind of an optional field, which changes nothing for a team that gives a text, GP-18)
+
+- **Context:** the flight app's lean agent writes a calendar into its instructions (today with
+  its weekday, the next three weeks, this and next weekend, the last day sold), and
+  `VoiceAgent.instructions` held only a text or a text per tag, so the calendar was written once,
+  as the server started, and the airline's today was kept on that day to match. The server
+  started on 2026-11-19 served the owner's calls of 2026-11-22 on 19 November's calendar
+  (`lean_calendar_stale` logged on each), while the library's own "Today is" line said the 22nd.
+- **Decision:** `instructions` may also be a function of the prompt's date and the reply's
+  language tag (`Dated`, domain/talker_declaration.py), which `compose_prompt` calls on every
+  request with the date it writes as "Today is". The flight app's lean agent gives one
+  (lean/agent.py's `dated`): written for the airline's today, Riyadh's at each read, once a day
+  for both languages and kept (an `lru_cache` of two days), so a request pays a dictionary
+  lookup, not a build, and the prompt's text is the same all day; its airline and tools read
+  Riyadh's today live (server.py), no longer the start day. `calendar_watch` still logs a call
+  whose airline's day is not Riyadh's: a day pinned by `FLIGHT_VOICE_TODAY`.
+- **Consequences:** no added latency: the build (two small files and the calendar, well under a
+  millisecond) runs once a day, the first at the declaration, so a file fault still stops the
+  start. A call that runs across midnight hears the new day's calendar from its first request
+  after it, as its tools do. A text or a text per tag reads exactly as before.

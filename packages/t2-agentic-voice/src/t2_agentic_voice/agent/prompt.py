@@ -14,7 +14,8 @@ in order, and nothing else:
    back and done only after the caller's yes, nothing written after the call, never a claim the
    system did not make, and a declined read-back answered in its own words.
 2. **The team's instructions** for the reply language (`VoiceAgent.instructions`: its one text,
-   or the text of that language's tag).
+   the text of that language's tag, or the text its `Dated` function writes for the prompt's
+   date and that tag, D-135).
 3. **The language section**: reply in the language of the caller's turn, which the talker reads
    from it (agent/language.py); an `ar-SA` reply in the register the caller's Arabic is in
    (`language_section`): Modern Standard Arabic when their words hold no Saudi or Gulf dialect
@@ -51,6 +52,7 @@ from __future__ import annotations
 
 import itertools
 import secrets
+from collections.abc import Mapping
 from datetime import date
 
 from t2_agentic_voice.actions.action import Action
@@ -166,7 +168,12 @@ def compose_prompt(
     instructions = agent.instructions
     if instructions is None:
         raise ValueError("the agent declares no instructions, so it runs no talker")
-    team = instructions if isinstance(instructions, str) else instructions[language]
+    if isinstance(instructions, str):
+        team = instructions
+    elif isinstance(instructions, Mapping):
+        team = instructions[language]
+    else:  # written for the day (D-135)
+        team = instructions(today, language)
     section = language_section(language, register, held=held)
     acts = any(isinstance(tool, Action) for tool in agent.tools)
     rules = f"{RULES}\n{ACTION_RULES}" if acts else RULES

@@ -5,8 +5,9 @@ a read-back it has none of, a bare yes over its closing question answered once t
 D-116, unless the environment sets it), and its booking check observing each call's events
 beside the trip book's end of call, its flight source closed as the app ends, the recorded
 source served offline with no `book_trip` when `FLIGHT_VOICE_FLIGHT_DATA` says so; its airline
-keeping the day its calendar was written for, and a call on a stale calendar logged. The
-runtime is a fake that keeps what it was given."""
+and its calendar following Riyadh's day on a server left running past midnight (D-135), and a
+call on a calendar pinned to another day logged. The runtime is a fake that keeps what it was
+given."""
 
 from __future__ import annotations
 
@@ -88,7 +89,7 @@ def test_the_lean_agent_is_served_with_its_check_observing_each_call(
     assert len(checks) == 1  # one booking check for every call
 
 
-def test_the_lean_airline_keeps_the_day_its_calendar_was_written_for(
+def test_the_lean_airline_and_calendar_follow_riyadhs_day(
     environment: pytest.MonkeyPatch,
 ) -> None:
     environment.setenv("FLIGHT_VOICE_AGENT", "lean")
@@ -105,13 +106,16 @@ def test_the_lean_airline_keeps_the_day_its_calendar_was_written_for(
     runtime = _served(environment)
     riyadh["today"] = date(2026, 11, 18)  # the server left running past midnight
     (airline,) = airlines
-    assert airline.today() == date(2026, 11, 17)
-    assert "Today is Tuesday 17 November 2026 (2026-11-17)." in runtime.agent.instructions["en"]
+    assert airline.today() == date(2026, 11, 18)
+    written = runtime.agent.instructions(date(2026, 11, 18), "en")
+    assert "Today is Wednesday 18 November 2026 (2026-11-18)." in written
 
 
-def test_a_call_on_a_stale_calendar_logs_it(caplog: pytest.LogCaptureFixture) -> None:
+def test_a_call_on_a_calendar_pinned_to_another_day_logs_it(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     riyadh = {"today": date(2026, 11, 17)}
-    watch = calendar_watch(date(2026, 11, 17), now=lambda: riyadh["today"])
+    watch = calendar_watch(lambda: date(2026, 11, 17), now=lambda: riyadh["today"])
     started = CallStarted(call_id="c-1", at=datetime(2026, 11, 17, 21, tzinfo=UTC))
     caplog.set_level("ERROR")
 

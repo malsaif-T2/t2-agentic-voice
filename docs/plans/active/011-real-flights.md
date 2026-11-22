@@ -204,6 +204,11 @@ the flight number to pick; an airline's own prefilled search replaces it where P
   its priciest flight and each airline's first and cheapest by id, choose_flights takes any
   flight of the day's pool, and a day and a month with a hyphen no longer block a clause
   (D-134).
+- 2026-11-22, the owner's calls on a server started on the 19th heard 19 November's calendar
+  (`lean_calendar_stale` on each): the lean instructions are now written for Riyadh's day on
+  each request, built once a day and kept, so no latency is added, and the airline's today is
+  read live (D-135). The owner keeps gpt-oss-120b for now; other models (Google's, Anthropic's)
+  may be tried later.
 
 ## Decision log
 

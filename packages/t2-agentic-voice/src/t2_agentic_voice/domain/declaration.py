@@ -204,8 +204,8 @@ class VoiceAgent(Declared):
     as `pronounce={"LT-": {"ar": ..., "en": "L T"}}`, which the `languages` facade's
     `pronounce` applies; and `phrases`, the words its interruption rule reads
     (domain/words.py), the presets' unless the team extends them. The talker's parts, each
-    optional (domain/talker_declaration.py): `instructions`, one text, or one per language tag
-    for every language it speaks; `tools`, each name once, each progress line in every
+    optional (domain/talker_declaration.py): `instructions`, one text, one per language tag for
+    each language, or written per day (D-135); `tools`, each name once, each progress line in every
     language, an action's texts in every language too; `vocabulary`, the product terms for the
     Whisper prompt; `version`, stamped on its traces; `ask_on_uncertain_overlaps`, whether a
     chat model decides the short overlaps of two or more words the rule would let go on (D-069;

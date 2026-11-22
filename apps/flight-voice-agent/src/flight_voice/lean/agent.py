@@ -18,17 +18,21 @@ booking check holds. A chat model still decides a short overlap the rule would l
 The booking check reads the call's events: the app registers `check.observed` for each kind of
 `OBSERVED` (server.py), and run F's lean play reads the call's own (`read_from`).
 
-**The calendar's day.** The calendar is written once, as the agent is declared, while the
-library writes "Today is …" from the clock on every turn; so a server keeps the calendar's day as
-its airline's today (server.py), and each call it takes logs an error (`calendar_watch`:
-`lean_calendar_stale`) when that day is not Riyadh's today, left running past midnight or pinned
-to another day: two todays in the prompt, until it is restarted.
+**The calendar's day.** The instructions are the library's `Dated` kind (D-135): the library
+asks for them on each request, and they are written for the airline's today, the day the tools
+read (Riyadh's, or the day pinned), once a day for both languages and kept (`dated`), so a
+request pays a lookup, not a build, and the prompt's text is the same all day. A server left
+running past midnight prompts with the new day's calendar (the owner's calls of 2026-11-22 ran
+on 19 November's, on a server started on the 19th). Each call logs an error
+(`calendar_watch`: `lean_calendar_stale`) when the airline's today is not Riyadh's, pinned to
+another day: the library's "Today is …" reads the clock, so the prompt holds two todays.
 """
 
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from datetime import date
+from functools import lru_cache
 from typing import Final
 
 from t2_agentic_voice import Tool, Vocabulary, VoiceAgent, get_logger
@@ -43,27 +47,28 @@ from flight_voice.lean.booking_check import OBSERVED
 from flight_voice.lean.choose import choose_flights
 from flight_voice.lean.deps import LeanDeps
 from flight_voice.lean.find import find_flights
-from flight_voice.persona import Names
+from flight_voice.persona import TAGS, Names
+from flight_voice.said import Tag
 from flight_voice.tools.profile import traveler_profile
 
 NAME: Final = "flight-lean"
-VERSION: Final = "lean-2026-11-19.1"
+VERSION: Final = "lean-2026-11-22.1"
 
-__all__ = ["NAME", "OBSERVED", "VERSION", "calendar_watch", "declare", "lean_tools"]
+__all__ = ["NAME", "OBSERVED", "VERSION", "calendar_watch", "dated", "declare", "lean_tools"]
 
 log = get_logger(__name__)
 
 
 def calendar_watch(
-    day: date, now: Callable[[], date] = live_today
+    day: Callable[[], date], now: Callable[[], date] = live_today
 ) -> Callable[[Event], Awaitable[None]]:
-    """An observer of each `CallStarted`: an error logged when the calendar's `day` is not
-    Riyadh's today as `now` reads it (the module's docstring)."""
+    """An observer of each `CallStarted`: an error logged when the calendar's day, as `day`
+    reads it, is not Riyadh's today as `now` reads it (the module's docstring)."""
 
     async def watch(event: Event) -> None:
-        today = now()
-        if today != day:
-            log.error("lean_calendar_stale", calendar=day.isoformat(), riyadh=today.isoformat())
+        written, today = day(), now()
+        if today != written:
+            log.error("lean_calendar_stale", calendar=written.isoformat(), riyadh=today.isoformat())
 
     return watch
 
@@ -77,11 +82,29 @@ def lean_tools(deps: LeanDeps) -> tuple[Tool, ...]:
     return (find_flights(deps), choose_flights(deps), *booking, *profile)
 
 
+def dated(deps: LeanDeps, names: Names) -> Callable[[date, Tag], str]:
+    """The lean instructions as the library asks for them on each request (the module's
+    docstring): written for the airline's today, once a day, and kept."""
+
+    @lru_cache(maxsize=2)  # today's and, past midnight, yesterday's for a call still on it
+    def written(day: date) -> dict[Tag, str]:
+        last = deps.data.last_day(day)
+        return prompt.instructions(names, day, last, network=deps.network)
+
+    def instructions(_today: date, tag: Tag) -> str:
+        return written(deps.today())[tag]
+
+    return instructions
+
+
 def declare(deps: LeanDeps, names: Names | None = None) -> VoiceAgent:
     """The lean talker over `deps`, named by `names` (the owner's picks unless given): the
     module's docstring."""
     named = Names() if names is None else names
+    instructions = dated(deps, named)
     today = deps.today()
+    for tag in TAGS:  # written now: a file or calendar fault stops the start, as before
+        instructions(today, tag)
     pronounce = persona.pronounce(named) | {k: dict(v) for k, v in deps.pronounce.items()}
     terms = persona.TERMS if deps.terms is None else deps.terms
     return VoiceAgent(
@@ -89,9 +112,7 @@ def declare(deps: LeanDeps, names: Names | None = None) -> VoiceAgent:
         version=VERSION,
         languages=languages(named, deps.network),
         pronounce=pronounce,
-        instructions=prompt.instructions(
-            named, today, deps.data.last_day(today), network=deps.network
-        ),
+        instructions=instructions,
         tools=lean_tools(deps),
         vocabulary=Vocabulary(terms=(*terms, named.airline_name_en)),
         ask_on_uncertain_overlaps=True,
