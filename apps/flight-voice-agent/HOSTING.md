@@ -25,7 +25,8 @@ says how the library serves calls in general.
 - **Python 3.12 and [uv](https://docs.astral.sh/uv/)**, and git (the call log stamps each call
   with the commit it ran).
 - **Outbound HTTPS** to Groq (the talker's model and the voice), ElevenLabs (speech-to-text) and
-  SerpApi (flights).
+  SerpApi (flights); and, for the Options menus' other choices, OpenAI (its models) and Telnyx
+  (the Bayan voice) when their keys are given.
 - **Disk** for the call log: a call's recording is about 4 to 6 MB a minute (the caller's and
   the agent's audio as WAV), plus a few kilobytes of database rows.
 
@@ -51,7 +52,10 @@ uv run --offline python -m flight_voice.hosting --env-file .env --out alpha.env
 `T2V_JOIN__KEYS`) as a blank line under a note. The owner gives the secrets to the manager the
 company's way for secrets; the manager writes them into the server's own `.env` beside the rest
 (`.env` is never committed). A key may also be a new one made for the server (a new Groq,
-ElevenLabs or SerpApi key on the same account), so the laptop's stay the laptop's.
+ElevenLabs or SerpApi key on the same account), so the laptop's stay the laptop's. The OpenAI
+and Telnyx keys (`T2V_OPENAI__API_KEY`, `T2V_TELNYX__API_KEY`) are listed there only when this
+laptop sets them; they are needed only for the Options menus' OpenAI models and Telnyx voice
+(below), and a server without them simply does not offer those.
 
 Then set, or change, these for the server:
 
@@ -73,6 +77,32 @@ Leave the rest as `alpha.env` gives them, so the server speaks, hears and search
 laptop does: the talker (`openai/gpt-oss-120b` on Groq), speech-to-text (ElevenLabs Scribe),
 the voice (Groq's Orpheus, set by the app), Najdi Arabic held for the whole call, and the call
 log and recording on (both the app's defaults).
+
+**The call's speech-to-text, model and voice under Options.** The page offers three menus there
+(the owner's request of 2026-11-22, D-140; `T2V_SERVER__CALL_CHOICES`, on by the app's default),
+set before a call and applying to that call alone:
+
+| Menu | Choices | Key it needs |
+| --- | --- | --- |
+| Speech-to-text | Whisper (`whisper-large-v3` on Groq) · ElevenLabs Scribe (`scribe_v3`, the alpha's own) | Groq's · ElevenLabs' |
+| Model | `openai/gpt-oss-120b` on Groq (the alpha's own, effort medium) · OpenAI's GPT-5.5, GPT-6 Luna, GPT-5.4 mini (effort none) | Groq's · `T2V_OPENAI__API_KEY` |
+| Voice | Canopy Labs Orpheus on Groq (the alpha's own: abdullah, troy for English) · ElevenLabs v4 Turbo · ElevenLabs v4 (both in the owner's voice) · Telnyx Bayan (Jasem; Michael for English) | Groq's · `T2V_ELEVENLABS__API_KEY` · `T2V_TELNYX__API_KEY` |
+
+Each key may also be given as its `_FILE` form. A menu lists only what the server holds a key
+for (never the key), starts on the server's own settings, and changes nothing unless a caller
+changes it; anyone who can open the page may switch (the owner accepted it). The menus are
+locked during a call. The first call on a voice waits a few seconds while its fixed phrases are
+made, once per server; a voice that cannot be opened stops that call's start with "The call
+could not start with these options" (reload the page, or choose another). A page left open across
+a restart that lost a key offers a choice the server no longer has: reload it.
+`T2V_SERVER__CALL_CHOICES=false` hides the menus, and every call runs on the settings.
+
+Which one a call ran on is in the call log: its `calls.setup` names the chosen speech-to-text,
+model and voice in place of the settings', with `setup.choice` holding the menus' ids (none for
+a call that chose nothing), and `report.usage` names each model the call really used (its
+speech-to-text, its chat models and its voices), each with its requests. The library's own
+short checks (the yes rule's, an uncertain overlap's) stay on Groq's gpt-oss-120b whatever model
+is chosen, so a call on an OpenAI model may list both.
 
 ## Run
 

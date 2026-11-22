@@ -153,7 +153,9 @@ export class VoiceClient {
   // tag); `on`, listeners by event name; `audio`, an audio element to play the agent in;
   // `escape: false` to leave Esc unbound; `pushToTalk: true` to start with push-to-talk on;
   // `sttChoice`, the dev console's `{ provider, model, live_language }` for the call's
-  // speech-to-text, sent before the offer (refused unless the dev page serves it).
+  // speech-to-text, sent before the offer (refused unless the dev page serves it); `choice`, an
+  // app's `{ stt, model, voice }` (its offers' ids, each optional) for the call, sent before the
+  // offer (refused unless the server turned server.call_choices on).
   static async start(options) {
     const call = new VoiceClient(options);
     try {
@@ -258,6 +260,19 @@ export class VoiceClient {
       const { provider, model, live_language } = this.#options.sttChoice;
       await this.#request("POST", "dev/stt", { call_id: this.callId, offer_secret: this.#secret, provider, model, live_language });
       this.#alive();
+    }
+    if (this.#options.choice) {
+      // An app's choice of the call's speech-to-text, model and voice, before its offer: served
+      // where the server turned server.call_choices on (api/choices_route.py).
+      const body = { call_id: this.callId, offer_secret: this.#secret };
+      for (const key of ["stt", "model", "voice"]) {
+        const id = this.#options.choice[key];
+        if (typeof id === "string" && id !== "") body[key] = id;
+      }
+      if (Object.keys(body).length > 2) {
+        await this.#request("POST", "choices", body);
+        this.#alive();
+      }
     }
     this.#startedAt = performance.now();
     const pc = new RTCPeerConnection({

@@ -4,9 +4,12 @@ can gather from each call ... so we can learn and improve it later, or debug any
 
 It observes every event the runtime emits (`observe`, registered for `Event`):
 
-- `CallStarted` makes the call's row, with the setup the server runs (`setup`: the agent and its
+- `CallStarted` makes the call's row, with the setup the call ran on (`setup`: the agent and its
   version, the flight data's source, the models, the speech-to-text, the voice, the register held,
-  the release), so a call is read with what answered it.
+  the release; with the speech-to-text, model or voice the page chose for it under Options in
+  place of the settings', and the choice, setup.py's `chosen_setup`), so a call is read with
+  what answered it. The runtime keeps a call's choice from its offer (`chosen`, the runtime's
+  `call_choice`, for its last 200 calls), so its start and its end read the same.
 - Every event is kept whole in `events`; a finished tool call in `tool_calls` too.
 - `CallEnded` closes the row: its end, why, the consent version, the turns, the whole report,
   each turn in `turns`, and the recording's folder when the library kept the call's audio
@@ -21,12 +24,15 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Final
 
 from pydantic import JsonValue
 from t2_agentic_voice.events import CallEnded, CallStarted, Event, ToolFinished
+from t2_agentic_voice.server import CallChoice, CallOptions
 
+from flight_voice.call_log.setup import chosen_setup
 from flight_voice.call_log.store import CallStore, Row
 
 __all__ = ["RECORDINGS", "CallLog"]
@@ -36,11 +42,27 @@ RECORDINGS: Final = "recordings"
 
 
 class CallLog:
-    """The log of the server's calls into `store`, each with `setup`, its recordings looked for
-    under `var_dir` (the module's docstring)."""
+    """The log of the server's calls into `store`, each with `setup` (as `chosen` names its
+    choice among `options`, when given), its recordings looked for under `var_dir` (the
+    module's docstring)."""
 
-    def __init__(self, store: CallStore, setup: dict[str, JsonValue], var_dir: Path) -> None:
+    def __init__(
+        self,
+        store: CallStore,
+        setup: dict[str, JsonValue],
+        var_dir: Path,
+        *,
+        chosen: Callable[[str], CallChoice | None] = lambda call_id: None,
+        options: CallOptions | None = None,
+    ) -> None:
         self.store, self.setup, self.var_dir = store, setup, var_dir
+        self._chosen, self._options = chosen, options
+
+    def _setup(self, call_id: str) -> str:
+        """The setup the call ran on, as JSON (the module's docstring)."""
+        if self._options is None:
+            return json.dumps(self.setup)
+        return json.dumps(chosen_setup(self.setup, self._options, self._chosen(call_id)))
 
     async def observe(self, event: Event) -> None:
         """Keep `event` (the module's docstring); never raises into the call."""
@@ -49,7 +71,7 @@ class CallLog:
             rows.append(
                 (
                     "INSERT OR IGNORE INTO calls (call_id, started_at, setup) VALUES (?, ?, ?)",
-                    (event.call_id, event.at.isoformat(), json.dumps(self.setup)),
+                    (event.call_id, event.at.isoformat(), self._setup(event.call_id)),
                 )
             )
         rows.append(
@@ -77,7 +99,7 @@ class CallLog:
         rows: list[Row] = [
             (
                 "INSERT OR IGNORE INTO calls (call_id, started_at, setup) VALUES (?, ?, ?)",
-                (event.call_id, report.started_at.isoformat(), json.dumps(self.setup)),
+                (event.call_id, report.started_at.isoformat(), self._setup(event.call_id)),
             ),
             (
                 "UPDATE calls SET ended_at = ?, ended_by = ?, agent = ?, consent_version = ?, "

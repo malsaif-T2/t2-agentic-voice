@@ -44,8 +44,11 @@ class _Runtime:
 
     built: ClassVar[list[_Runtime]] = []
 
-    def __init__(self, agent: Any, *, settings: VoiceSettings, identity: Any) -> None:
+    def __init__(
+        self, agent: Any, *, settings: VoiceSettings, identity: Any, call_options: Any = None
+    ) -> None:
         self.agent, self.settings = agent, settings
+        self.call_options = call_options
         self.observers: list[tuple[type, Any]] = []
         _Runtime.built.append(self)
 
@@ -55,6 +58,9 @@ class _Runtime:
             return observer
 
         return register
+
+    def call_choice(self, call_id: str) -> None:
+        return None
 
     def router(self) -> APIRouter:
         return APIRouter()

@@ -67,7 +67,7 @@ from t2_agentic_voice.voice.entry import CallPhase as CallPhase
 from t2_agentic_voice.voice.entry import Calls as Calls
 from t2_agentic_voice.voice.entry import CallsFactory as CallsFactory
 from t2_agentic_voice.voice.entry import Candidate as Candidate
-from t2_agentic_voice.voice.entry import ChosenStt as ChosenStt
+from t2_agentic_voice.voice.entry import ChosenCall as ChosenCall
 from t2_agentic_voice.voice.join_warmth import JoinWarmth
 from t2_agentic_voice.voice.session.call import CallSession
 from t2_agentic_voice.voice.session.io import (
@@ -105,9 +105,12 @@ class VoiceCalls:
     lists leave unplaced (D-082). `action_jobs` carries out each call's confirmed actions, one
     for every call, which it tells apart by the call's ID; with none, a call's confirmed yes is
     told as the `error` notice and nothing is sent. `classifier`, loaded by the runtime, hears
-    each turn's language under `stt.live_language = "classified"`. `chosen` gives a call the
-    dev console chose a speech-to-text for its `ChosenStt` (entry.py), taken once, at its
-    offer. Built cheaply, with no IO; `start` imports onnxruntime and warms one pair of models."""
+    each turn's language under `stt.live_language = "classified"`. `stt_model` names the model
+    `stt` hears with in each call's usage (None: `stt.model`). `chosen` gives a call whose
+    providers were chosen for it (the dev console's speech-to-text, an app's page's choice) its
+    `ChosenCall` (entry.py), taken once, at its offer: each provider it names in place of the
+    runtime's. Built cheaply, with no IO; `start` imports onnxruntime and warms one pair of
+    models."""
 
     def __init__(
         self,
@@ -124,7 +127,8 @@ class VoiceCalls:
         chat: ChatModel | None = None,
         action_jobs: ActionJobs | None = None,
         classifier: LanguageClassifier | None = None,
-        chosen: Callable[[CallId], ChosenStt | None] = lambda call_id: None,
+        chosen: Callable[[CallId], ChosenCall | None] = lambda call_id: None,
+        stt_model: str | None = None,
         speech_detector: Callable[[], VADAnalyzer] | None = None,
         turn_analyzer: Callable[[], BaseTurnAnalyzer] | None = None,
     ) -> None:
@@ -133,7 +137,7 @@ class VoiceCalls:
         self._agent, self._settings, self._stt, self._tts = agent, settings, stt, tts
         self._phrases, self._tracing, self._emit, self._clock = phrases, tracing, emit, clock
         self._speech_detector, self._turn_analyzer = speech_detector, turn_analyzer
-        self._chosen = chosen
+        self._chosen, self._stt_model = chosen, stt_model
         self._calls: dict[CallId, WebRTCCall] = {}
         self._answering: set[CallId] = set()
         # The next call's detectors, made ahead under `warmup.at_start` (voice/calls_start.py).
@@ -182,7 +186,8 @@ class VoiceCalls:
                 )
                 call = WebRTCCall(pipeline, peer, began=began)
                 await call.start(transport, self._session(pipeline))
-                self._warmth.joined(call_id, pipeline.stt, language.tag)
+                tts, chat = pipeline.tts, pipeline.setup.overlap_model
+                self._warmth.joined(call_id, pipeline.stt, language.tag, tts=tts, chat=chat)
             except BaseException:
                 await peer.close()
                 raise
@@ -251,33 +256,41 @@ class VoiceCalls:
         record: bool = False,
     ) -> CallPipeline:
         """One call's pipeline, with this runtime's agent, settings, providers and phrases, or
-        the call's `ChosenStt`'s settings and speech-to-text (the file-fed transport's too)."""
+        each one the call's `ChosenCall` names in their place (the file-fed transport's too)."""
         from t2_agentic_voice.voice.pipeline import CallPipeline
 
         chosen = self._chosen(call_id)
+        settings = self._settings if chosen is None else chosen.settings
+        tts = chosen.tts if chosen and chosen.tts else self._tts
+        phrases = chosen.phrases if chosen and chosen.phrases else self._phrases
+        factory = self._talker
+        if factory is not None and chosen and chosen.talker:
+            factory = chosen.talker
+        chat = chosen.chat if chosen and chosen.chat else self._chat
         setup = CallSetup(
             call_id=call_id,
             caller=caller,
             consent=consent,
             agent=self._agent,
             language=language,
-            settings=self._settings if chosen is None else chosen.settings,
-            phrases=self._phrases,
-            max_chars=self._tts.max_chars,
+            settings=settings,
+            phrases=phrases,
+            max_chars=tts.max_chars,
             tracing=self._tracing,
             emit=self._emit,
             clock=self._clock,
             talker=talker_for(
-                self._talker, call_id=call_id, caller=caller, language=language, clock=self._clock
+                factory, call_id=call_id, caller=caller, language=language, clock=self._clock
             ),
-            overlap_model=self._chat if self._talker is not None else None,
+            overlap_model=chat if self._talker is not None else None,
             action_jobs=self._action_jobs,
+            stt_model=chosen.stt_model if chosen and chosen.stt_model else self._stt_model,
         )
         detector, analyzer = detectors
         return CallPipeline(
             setup=setup,
             stt=self._stt if chosen is None else chosen.stt,
-            tts=self._tts,
+            tts=tts,
             detector=detector,
             analyzer=analyzer,
             output=output,

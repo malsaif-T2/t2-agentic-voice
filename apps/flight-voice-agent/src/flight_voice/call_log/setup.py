@@ -1,7 +1,9 @@
 """What a call ran on (`call_setup`), kept in each call's row of the call log: the agent's name
 and version, the flight data's source, the talker's model, the speech-to-text, the voice, the
-register held, and the release (the git commit the server runs, when it runs from a checkout).
-No key, no access code, no URL: only names a setting chooses."""
+register held, and the release (the git commit the server runs, when it runs from a checkout);
+and, for a call the page chose its speech-to-text, model or voice for under Options
+(`chosen_setup`, choices.py), each chosen one in place of the settings' and the choice itself.
+No key, no access code, no URL: only names a setting or an offer chooses."""
 
 from __future__ import annotations
 
@@ -10,10 +12,11 @@ from pathlib import Path
 
 from pydantic import JsonValue
 from t2_agentic_voice import VoiceAgent, VoiceSettings
+from t2_agentic_voice.server import CallChoice, CallOptions
 
 from flight_voice.flight_data.settings import FlightDataFields
 
-__all__ = ["call_setup", "release"]
+__all__ = ["call_setup", "chosen_setup", "release"]
 
 
 def release(folder: Path | None = None) -> str | None:
@@ -62,3 +65,36 @@ def call_setup(
         "record_audio": voice.privacy.record_audio,
         "release": commit,
     }
+
+
+def chosen_setup(
+    setup: dict[str, JsonValue], options: CallOptions, choice: CallChoice | None
+) -> dict[str, JsonValue]:
+    """The setup a call ran on: `setup`, the settings', for a call with no `choice`; else a copy
+    with each group the choice names replaced from its offer in `options` (the speech-to-text
+    keeping the settings' live language and streaming) and the choice itself under `choice`."""
+    if choice is None:
+        return setup
+    chosen = dict(setup)
+    if (stt := next((o for o in options.stt if o.id == choice.stt), None)) is not None:
+        base = setup.get("stt")
+        kept = base if isinstance(base, dict) else {}
+        chosen["stt"] = {
+            "provider": stt.provider,
+            "model": stt.model,
+            "live_language": kept.get("live_language"),
+            "streaming": kept.get("streaming"),
+        }
+    if (model := next((o for o in options.models if o.id == choice.model), None)) is not None:
+        chosen["llm"] = {
+            "provider": model.provider,
+            "model": model.model,
+            "reasoning_effort": model.reasoning_effort,
+        }
+    if (voice := next((o for o in options.voices if o.id == choice.voice), None)) is not None:
+        chosen["tts"] = {
+            "provider": voice.provider,
+            "voices": {tag: v.model_dump() for tag, v in voice.languages.items()},
+        }
+    chosen["choice"] = choice.model_dump()
+    return chosen

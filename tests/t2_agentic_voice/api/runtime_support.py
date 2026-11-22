@@ -22,6 +22,8 @@ import httpx
 import pytest
 from fastapi import FastAPI
 from t2_agentic_voice.adapters import phrase_cache, used_tokens
+from t2_agentic_voice.api.call_options import CallOptions
+from t2_agentic_voice.api.choice_calls import ChoiceBuilders
 from t2_agentic_voice.api.protocol import BODIES, OFFER_SECRET_HEADER
 from t2_agentic_voice.api.runtime import Providers, VoiceRuntime
 from t2_agentic_voice.core.config import VoiceSettings
@@ -29,6 +31,7 @@ from t2_agentic_voice.core.errors import JoinRejected
 from t2_agentic_voice.core.identity import Caller, Consent
 from t2_agentic_voice.core.settings.storage import StorageSettings
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
+from t2_agentic_voice.domain.ports.chat_model import ChatModel
 from t2_agentic_voice.domain.ports.identity import JoinContext
 from t2_agentic_voice.domain.ports.text_to_speech import AudioChunk, TextToSpeech
 from t2_agentic_voice.voice.calls import Calls
@@ -142,7 +145,9 @@ def patch_stores(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @dataclass
 class Harness:
-    """A runtime of `agent` on the fakes, and the fakes it was given."""
+    """A runtime of `agent` on the fakes, and the fakes it was given; `chat`, a chat model for
+    an agent that runs the talker; `call_options` and `choice_builders`, the call choices' offers
+    and how a choice's adapters are built."""
 
     settings: VoiceSettings
     agent: VoiceAgent = AGENT
@@ -151,6 +156,9 @@ class Harness:
     clock: FakeClock = field(default_factory=FakeClock)
     stt: FakeSpeechToText = field(default_factory=FakeSpeechToText)
     tts: FakeTextToSpeech = field(default_factory=FakeTextToSpeech)
+    chat: ChatModel | None = None
+    call_options: CallOptions | None = None
+    choice_builders: ChoiceBuilders | None = None
     built: list[dict[str, Any]] = field(default_factory=list)
     runtime: VoiceRuntime = field(init=False)
 
@@ -163,9 +171,11 @@ class Harness:
             self.agent,
             settings=self.settings,
             identity=self.identity,
-            providers=Providers(stt=self.stt, tts=self.tts),
+            providers=Providers(stt=self.stt, tts=self.tts, chat=self.chat),
+            call_options=self.call_options,
             _calls=calls,
             _clock=self.clock,
+            _choice_builders=self.choice_builders,
         )
 
     def app(self, *, dev: bool = False) -> FastAPI:

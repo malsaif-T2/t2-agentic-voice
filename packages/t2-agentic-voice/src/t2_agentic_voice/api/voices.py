@@ -3,17 +3,19 @@ phrase cache, which has the agent's fixed phrases at hand under `storage.var_dir
 name>/phrases` (api/lockfile.py's `agent_folder`), declared on the providers' text-to-speech;
 and, with `tts.cache_clauses` on and an agent whose calls run the talker (`session.mode_for`, as
 agent/talker.py's `chat_talkers` reads it), the clause cache over that text-to-speech under
-`<agent name>/clauses`, opened, its own close pushed on the
-runtime's stack. Otherwise the calls get the providers' text-to-speech itself. An echo agent's
-calls never have a clause cache: the echo says the caller's words back, and the cache keeps only
-what the agent produced (plan 007). The cache never closes the text-to-speech it wraps: the
-runtime closes the providers' own, once.
+`<agent name>/clauses` (or the folder given: a voice an app's page chose has its own, since a
+clause cache indexes and trims its whole folder: api/choice_calls.py), opened, its own close
+pushed on the runtime's stack. Otherwise the calls get the providers' text-to-speech itself. An
+echo agent's calls never have a clause cache: the echo says the caller's words back, and the
+cache keeps only what the agent produced (plan 007). The cache never closes the text-to-speech
+it wraps: the runtime closes the providers' own, once.
 """
 
 from __future__ import annotations
 
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
+from pathlib import Path
 
 from t2_agentic_voice.api.lockfile import agent_folder
 from t2_agentic_voice.core.config import VoiceSettings
@@ -33,10 +35,16 @@ class Voices:
 
 
 async def open_voices(
-    agent: VoiceAgent, settings: VoiceSettings, tts: TextToSpeech, *, stack: AsyncExitStack
+    agent: VoiceAgent,
+    settings: VoiceSettings,
+    tts: TextToSpeech,
+    *,
+    stack: AsyncExitStack,
+    clauses: Path | None = None,
 ) -> Voices:
     """The phrase cache declared on `tts`, then the clause cache over it when the settings and
-    the agent call for one (the module's docstring), its close pushed on `stack`."""
+    the agent call for one (the module's docstring), under `clauses` (None: `<agent
+    name>/clauses`), its close pushed on `stack`."""
     from t2_agentic_voice.adapters.phrase_cache import PhraseCache  # at first use: a test swaps it
 
     folder = agent_folder(settings, agent)
@@ -49,7 +57,8 @@ async def open_voices(
     if mode == "talker":
         from t2_agentic_voice.adapters.clause_cache import ClauseCache
 
-        cache = ClauseCache.from_settings(settings, tts, folder=folder / "clauses")
+        where = folder / "clauses" if clauses is None else clauses
+        cache = ClauseCache.from_settings(settings, tts, folder=where)
         await cache.open()
         stack.push_async_callback(cache.aclose)
         spoken = cache

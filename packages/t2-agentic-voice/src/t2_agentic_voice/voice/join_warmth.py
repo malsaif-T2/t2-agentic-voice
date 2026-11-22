@@ -6,13 +6,15 @@ pay a TLS handshake (the first turn's transcript took about 733 ms against 490 m
 only under `warmup.at_join` (core/settings/warmup.py: off by default until the warm-up's
 measurement keeps it, GP-18). In the background, each its own task, it sends:
 
-- **the speech-to-text** the call hears with (the dev console's choice, else the runtime's):
-  its `warm_up()` (domain/ports/connection_warmth.py's `WarmUp`: a GET of the provider's model
+- **the speech-to-text** the call hears with (a chosen call's, else the runtime's): its
+  `warm_up()` (domain/ports/connection_warmth.py's `WarmUp`: a GET of the provider's model
   list, which costs nothing); a provider without one is sent nothing;
-- **the text-to-speech**: its `check_language` for the call's language, the port's own request
-  that sends no synthesis (Groq's: a GET of its model list), so it reaches every text-to-speech,
-  the clause cache's wrapped one included;
-- **the chat model**, for a call with a talker, only when its connection is not warm
+- **the text-to-speech** it speaks with (a chosen call's, else the runtime's): its
+  `check_language` for the call's language, the port's own request that sends no synthesis
+  (Groq's: a GET of its model list), so it reaches every text-to-speech, the clause cache's
+  wrapped one included;
+- **the chat model** it writes with (a chosen call's, else the runtime's), for a call with a
+  talker, only when its connection is not warm
   (`ConnectionWarmth.warm()`: a model without it counts as cold): its `warm_up()`.
 
 Each request is bounded by `WARM_TIMEOUT_S`; a failure is logged by its type and never fails the
@@ -53,14 +55,25 @@ class JoinWarmth:
         self._on, self._tts, self._chat = on, tts, chat
         self._tasks: set[asyncio.Task[None]] = set()
 
-    def joined(self, call_id: CallId, stt: SpeechToText, language: str) -> None:
-        """Send the call's warm requests in the background, `stt` the one it hears with."""
+    def joined(
+        self,
+        call_id: CallId,
+        stt: SpeechToText,
+        language: str,
+        *,
+        tts: TextToSpeech | None = None,
+        chat: ChatModel | None = None,
+    ) -> None:
+        """Send the call's warm requests in the background, `stt` the one it hears with, `tts`
+        and `chat` the text-to-speech and the chat model it speaks and writes with (a chosen
+        call's, else the runtime's: None for the constructor's)."""
         if not self._on:
             return
         if isinstance(stt, WarmUp):
             self._send(call_id, "stt", stt.name, stt.warm_up)
-        self._send(call_id, "tts", self._tts.name, lambda: self._tts.check_language(language))
-        chat = self._chat
+        speaks = self._tts if tts is None else tts
+        self._send(call_id, "tts", speaks.name, lambda: speaks.check_language(language))
+        chat = self._chat if chat is None else chat
         if chat is None:
             return
         if isinstance(chat, ConnectionWarmth) and chat.warm():

@@ -65,7 +65,7 @@ body::before {
   backdrop-filter: blur(18px) saturate(140%);
 }
 
-button, input { font: inherit; color: inherit; }
+button, input, select { font: inherit; color: inherit; }
 
 button { min-height: 40px; padding-block: 6px; padding-inline: 16px; border: 1px solid var(--edge); border-radius: 999px; background: var(--glass-strong); cursor: pointer; transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, filter 0.2s ease; }
 
@@ -267,7 +267,9 @@ h3 { margin-block: 0 10px; font-size: 1rem; font-weight: 600; }
 .box { display: inline-flex; align-items: baseline; gap: 8px; color: var(--muted); }
 .box input { accent-color: var(--violet); }
 .field { display: grid; gap: 6px; color: var(--muted); }
-input[type="password"], input[type="search"] { inline-size: 100%; max-inline-size: 320px; padding-block: 8px; padding-inline: 12px; border: 1px solid var(--edge); border-radius: 12px; background: rgb(0 0 0 / 0.25); color: var(--ink); }
+input[type="password"], input[type="search"], .field select { inline-size: 100%; max-inline-size: 320px; padding-block: 8px; padding-inline: 12px; border: 1px solid var(--edge); border-radius: 12px; background: rgb(0 0 0 / 0.25); color: var(--ink); }
+.field select option { background: var(--deep); color: var(--ink); }
+.field select:disabled { opacity: 0.6; }
 
 .captions li { margin-block: 8px; }
 .captions .who { margin-inline-end: 6px; color: #c4b5fd; font-weight: 600; }

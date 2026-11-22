@@ -1,9 +1,10 @@
 """What the flight page's tests share (test_page.py, test_page_segments.py, test_page_recording.py,
-test_page_mute.py, test_page_access.py): the page's own files and the library's client served
-where the server serves them, run in the fake browser (tests/browser.py) on the page's markup with
-the profile's and the bookings' answers (the mock's profile, which books; `REAL`, the real
-flights' one, which books nothing and names no traveler); a call started with a made-up access
-code; a snapshot of an element by its id, or of the page."""
+test_page_mute.py, test_page_access.py, test_page_choices.py): the page's own files and the
+library's client served where the server serves them, run in the fake browser (tests/browser.py)
+on the page's markup with the profile's and the bookings' answers (the mock's profile, which
+books; `REAL`, the real flights' one, which books nothing and names no traveler); a call started
+with a made-up access code; a snapshot of an element by its id, or of the page; the page given
+a localStorage when a test asks (none by default, as a browser that blocks it)."""
 
 from __future__ import annotations
 
@@ -65,8 +66,22 @@ ANSWERS = {
 ENGLISH = {"do": "click", "query": ["button.language", 1]}
 
 
-def page(folder: Path, steps: list[Step], answers: dict[str, Any] | None = None) -> Shown:
-    names = ("app.js", "cards.js", "bookings.js", "microphone.js", "orb.js", "texts.js")
+def page(
+    folder: Path,
+    steps: list[Step],
+    answers: dict[str, Any] | None = None,
+    *,
+    storage: dict[str, str] | None = None,
+) -> Shown:
+    names = (
+        "app.js",
+        "cards.js",
+        "bookings.js",
+        "choices.js",
+        "microphone.js",
+        "orb.js",
+        "texts.js",
+    )
     files = {name: WEB / name for name in names}
     files[f"{VOICE_PREFIX[1:]}/client/1/t2v-client.js"] = CLIENT
     return browse(
@@ -77,6 +92,7 @@ def page(folder: Path, steps: list[Step], answers: dict[str, Any] | None = None)
         location="http://127.0.0.1:7862/",
         steps=steps,
         answers=ANSWERS if answers is None else answers,
+        storage=storage,
     )
 
 

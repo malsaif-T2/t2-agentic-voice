@@ -1,7 +1,8 @@
 """The call log (flight_voice/call_log/): every call kept in the SQLite database, its setup at
 its start, every event whole, each finished tool call, its turns and their times and its
-recording's folder at its end; the settings that turn it off or move it; and the setup snapshot,
-which holds no key."""
+recording's folder at its end; the settings that turn it off or move it; the setup snapshot,
+which holds no key; and a call's choice under Options, its row's setup naming the speech-to-text,
+model and voice it ran on in place of the settings', with the choice."""
 
 from __future__ import annotations
 
@@ -15,8 +16,9 @@ import pytest
 from flight_voice.airline.system import Airline
 from flight_voice.call_log.compose import call_log_of, log_path
 from flight_voice.call_log.log import CallLog
-from flight_voice.call_log.setup import call_setup
+from flight_voice.call_log.setup import call_setup, chosen_setup
 from flight_voice.call_log.store import SCHEMA_VERSION, CallStore
+from flight_voice.choices import CALL_OPTIONS
 from flight_voice.flight_data.compose import lean_deps
 from flight_voice.lean.agent import declare
 from flight_voice.voice_settings import for_the_app
@@ -32,6 +34,7 @@ from t2_agentic_voice.events import (
     TurnTimes,
     UserTurnEnded,
 )
+from t2_agentic_voice.server import CallChoice
 
 from tests.flight_voice.scenario_dates import TODAY
 from tests.flight_voice.server_support import settings
@@ -41,8 +44,8 @@ AT = datetime(2026, 11, 19, 9, 0, tzinfo=UTC)
 SETUP: dict[str, JsonValue] = {"agent": "flight-lean", "llm": {"model": "openai/gpt-oss-120b"}}
 
 
-def _log(folder: Path) -> CallLog:
-    return CallLog(CallStore(folder / "calls.sqlite3"), dict(SETUP), folder)
+def _log(folder: Path, **chosen: object) -> CallLog:
+    return CallLog(CallStore(folder / "calls.sqlite3"), dict(SETUP), folder, **chosen)  # type: ignore[arg-type]
 
 
 def _call(log: CallLog) -> None:
@@ -160,3 +163,62 @@ def test_the_app_records_the_calls_audio_unless_the_environment_says_not(
 ) -> None:
     voice = VoiceSettings.model_validate({"env": "test", "privacy": given})
     assert for_the_app(voice).privacy.record_audio is given.get("record_audio", True)
+
+
+def _base() -> dict[str, JsonValue]:
+    voice = for_the_app(VoiceSettings(env="test"), agent="lean", bookable=False)
+    app = settings(agent="lean", flight_data="mock").app
+    agent = declare(lean_deps(app, Airline(today=lambda: TODAY), app.names(), today=lambda: TODAY))
+    return call_setup(agent, voice, app, "abc123")
+
+
+def test_a_chosen_calls_setup_names_what_it_ran_on_and_the_choice() -> None:
+    base = _base()
+    choice = CallChoice(stt="whisper", model="gpt-5.5", voice="telnyx-bayan")
+    setup = chosen_setup(base, CALL_OPTIONS, choice)
+    assert setup["stt"] == {
+        "provider": "groq",
+        "model": "whisper-large-v3",
+        "live_language": base["stt"]["live_language"],  # type: ignore[index, call-overload]
+        "streaming": base["stt"]["streaming"],  # type: ignore[index, call-overload]
+    }
+    assert setup["llm"] == {"provider": "openai", "model": "gpt-5.5", "reasoning_effort": "none"}
+    jasem = {"model": "Telnyx.Bayan", "voice": "Jasem"}
+    assert setup["tts"] == {
+        "provider": "telnyx",
+        "voices": {
+            "ar-SA": jasem,
+            "ar": jasem,
+            "en": {"model": "Telnyx.Bayan", "voice": "Michael"},
+        },
+    }
+    assert setup["choice"] == {"stt": "whisper", "model": "gpt-5.5", "voice": "telnyx-bayan"}
+    others = {k: v for k, v in setup.items() if k not in {"stt", "llm", "tts", "choice"}}
+    assert others == {k: v for k, v in base.items() if k not in {"stt", "llm", "tts"}}
+    text = json.dumps(setup).lower()
+    assert "key" not in text and "secret" not in text and "http" not in text
+    assert base == _base()  # the settings' own setup left as it was
+
+
+def test_a_choice_of_one_group_keeps_the_others_and_none_keeps_the_setup() -> None:
+    base = _base()
+    assert chosen_setup(base, CALL_OPTIONS, None) is base
+    setup = chosen_setup(base, CALL_OPTIONS, CallChoice(model="gpt-6-luna"))
+    assert setup["stt"] == base["stt"] and setup["tts"] == base["tts"]
+    assert setup["llm"] == {"provider": "openai", "model": "gpt-6-luna", "reasoning_effort": "none"}
+    assert setup["choice"] == {"stt": None, "model": "gpt-6-luna", "voice": None}
+
+
+def test_each_calls_row_holds_its_own_setup(tmp_path: Path) -> None:
+    chosen = {CALL: CallChoice(voice="eleven-v4")}
+    _call(_log(tmp_path, chosen=chosen.get, options=CALL_OPTIONS))
+    ((setup,),) = _rows(tmp_path / "calls.sqlite3", "SELECT setup FROM calls")
+    row = json.loads(str(setup))
+    assert row["agent"] == SETUP["agent"] and row["choice"]["voice"] == "eleven-v4"
+    assert row["tts"]["provider"] == "elevenlabs"
+    assert {v["model"] for v in row["tts"]["voices"].values()} == {"eleven_v4"}
+    other = tmp_path / "other"
+    other.mkdir()
+    _call(_log(other, chosen=lambda call_id: None, options=CALL_OPTIONS))
+    ((plain,),) = _rows(other / "calls.sqlite3", "SELECT setup FROM calls")
+    assert json.loads(str(plain)) == SETUP  # a call with no choice keeps the setup

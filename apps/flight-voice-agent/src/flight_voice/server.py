@@ -13,7 +13,9 @@ airline, kept in memory and reset to its seed at each start, its modes and today
 flight source the one `FLIGHT_VOICE_FLIGHT_DATA` names, the mock behind the flight data port by
 default, flight_data/compose.py's `lean_deps`, closed as the app's lifespan ends, after the
 router's); each call's trip is kept in one trip book, dropped as the call ends (`CallEnded`), and
-every call in the call log's database (call_log/). Every join token names the demo traveler
+every call in the call log's database (call_log/), with the speech-to-text, model and voice it
+ran on: the page may choose each under Options among the offers of choices.py (`/voice/choices`,
+`server.call_choices`, which settings.py turns on). Every join token names the demo traveler
 (traveler.py), whatever the request says. There is no echo: the mock airline needs no
 outside service, and the library's runtime needs the Groq key for its chat model and voices
 whatever the agent, so with none set it refuses to start, naming the key's setting. The app is
@@ -67,6 +69,7 @@ from flight_voice.agent import declare
 from flight_voice.airline.bookings import BookingStore
 from flight_voice.airline.system import Airline
 from flight_voice.call_log.compose import call_log_of
+from flight_voice.choices import CALL_OPTIONS
 from flight_voice.flight_data.compose import lean_deps
 from flight_voice.lean.agent import OBSERVED, calendar_watch
 from flight_voice.lean.agent import declare as declare_lean
@@ -101,6 +104,7 @@ FILES: Final = {
     "/orb.js": ("orb.js", _JS),
     "/microphone.js": ("microphone.js", _JS),
     "/bookings.js": ("bookings.js", _JS),
+    "/choices.js": ("choices.js", _JS),
     "/texts.js": ("texts.js", _JS),
     "/mark.svg": ("mark.svg", "image/svg+xml"),
 }
@@ -175,7 +179,8 @@ def build_app(
 def make_app(settings: Settings) -> FastAPI:
     """The app as it serves the flight agent's calls: callers verified by the signed join tokens
     the token route mints (the key `join.current_kid` names); the agent `app.agent` chooses,
-    each call's trip dropped as it ends, the lean agent's booking check observing its events."""
+    each call's trip dropped as it ends, the lean agent's booking check observing its events;
+    the page's call choices offered (choices.py), each call's in its call log's row."""
     voice = settings.voice
     tokens = SignedJoinTokens.from_settings(voice.join, prefix=voice.prefix)
     names = settings.app.names()
@@ -194,8 +199,11 @@ def make_app(settings: Settings) -> FastAPI:
         trips = TripBook()
         agent = declare(airline, trips, names)
         ended = trips.call_ended
-    runtime = VoiceRuntime(agent, settings=voice, identity=tokens)
-    if (calls := call_log_of(settings.app, settings.app, voice, agent)) is not None:
+    runtime = VoiceRuntime(agent, settings=voice, identity=tokens, call_options=CALL_OPTIONS)
+    calls = call_log_of(
+        settings.app, settings.app, voice, agent, chosen=runtime.call_choice, options=CALL_OPTIONS
+    )
+    if calls is not None:
         runtime.on(Event)(calls.observe)  # every call kept in the call log's database
         closing.append(calls)
     runtime.on(CallEnded)(ended)

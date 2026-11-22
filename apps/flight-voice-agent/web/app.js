@@ -17,14 +17,18 @@
 // status line waiting for the yes, then booked; on a line that books nothing (real flights: anyone calls, with no profile) the heading
 // asks anyone where to fly, the brand is the assistant and its company, and no booking route is
 // ever asked. The lines the caller could say are text, never buttons: the client has no typed
-// text into a call. Every text, the captions, cards and notices included, is set with textContent.
+// text into a call. Under Options too, the call's speech-to-text, model and voice, three menus
+// from the server's own (choices.js), set before a call and fixed while it runs, sent with it
+// only when changed. Every text, the captions, cards and notices included, is set with
+// textContent.
 
 import { VoiceClient } from "./voice/client/1/t2v-client.js";
-import { Cards } from "./cards.js?v=2026-11-19";
-import { Booking } from "./bookings.js?v=2026-11-19";
-import { Microphone } from "./microphone.js?v=2026-11-19";
-import { Orb } from "./orb.js?v=2026-11-19";
-import { fill, wordsOf } from "./texts.js?v=2026-11-19";
+import { Cards } from "./cards.js?v=2026-11-22";
+import { Booking } from "./bookings.js?v=2026-11-22";
+import { Choices } from "./choices.js?v=2026-11-22";
+import { Microphone } from "./microphone.js?v=2026-11-22";
+import { Orb } from "./orb.js?v=2026-11-22";
+import { fill, wordsOf } from "./texts.js?v=2026-11-22";
 
 // The version the join token carries: the server's privacy.consent_version, as Ole5's widget
 // sends it, since both servers read the same .env.
@@ -39,6 +43,7 @@ const booking = new Booking($, cards, words, () => page.language);
 const orb = new Orb($("orb"));
 const redraw = () => ($("state").textContent = stateLine());
 const mic = new Microphone($, orb, words, () => page.call, redraw);
+const choices = new Choices($, words);
 // Whether the line asks no access code (the profile's `access`), else the caller types it.
 const open = () => page.profile?.access === "open";
 
@@ -96,6 +101,7 @@ function render() {
   booking.shown = books;
   cards.render();
   mic.render();
+  choices.render();
 }
 
 async function profile() {
@@ -118,6 +124,7 @@ function running(on) {
   $(on ? "end" : "start").focus?.();
   $("code").disabled = on;
   $("record").disabled = on;
+  choices.able(!on);
   for (const button of document.querySelectorAll("button.language")) button.disabled = on;
   mic.able();
 }
@@ -231,8 +238,10 @@ async function start() {
   running(true);
   state("starting", "connecting");
   await booking.started();
+  const choice = choices.picked();
   try {
     const call = await VoiceClient.start({
+      ...(choice ? { choice } : {}),
       base: "voice",
       language: page.language,
       getToken: token,
@@ -274,3 +283,4 @@ $("start").addEventListener("click", start);
 $("end").addEventListener("click", () => page.call?.hangup());
 render();
 profile();
+choices.load();

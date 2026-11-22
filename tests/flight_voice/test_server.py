@@ -16,6 +16,7 @@ from fastapi import APIRouter
 from fastapi.testclient import TestClient
 from flight_voice import server
 from flight_voice.agent import NAME
+from flight_voice.choices import CALL_OPTIONS
 from flight_voice.server import FILES, HOST, PORT, VOICE_PREFIX, WEB, airline_of, server_config
 from flight_voice.settings import load
 from flight_voice.traveler import TRAVELER_ID, demo_caller
@@ -144,8 +145,11 @@ class _Runtime:
 
     built: ClassVar[list[_Runtime]] = []
 
-    def __init__(self, agent: Any, *, settings: VoiceSettings, identity: Any) -> None:
+    def __init__(
+        self, agent: Any, *, settings: VoiceSettings, identity: Any, call_options: Any = None
+    ) -> None:
         self.agent, self.settings, self.identity = agent, settings, identity
+        self.call_options = call_options
         self.observers: list[tuple[type, Any]] = []
         _Runtime.built.append(self)
 
@@ -155,6 +159,9 @@ class _Runtime:
             return observer
 
         return register
+
+    def call_choice(self, call_id: str) -> None:
+        return None
 
     def router(self) -> APIRouter:
         return APIRouter()
@@ -171,6 +178,7 @@ def test_make_app_serves_the_talker_and_drops_each_calls_trip_as_it_ends(
     assert runtime.agent.name == NAME
     assert "Fahad" in runtime.agent.languages[1].greeting
     assert runtime.settings is loaded.voice
+    assert runtime.call_options is CALL_OPTIONS  # the page's choices under Options
     (logged, _), (kind, observer) = runtime.observers  # the call log sees every event first
     assert logged is Event and kind is CallEnded
     assert observer.__name__ == "call_ended"

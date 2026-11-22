@@ -1,9 +1,25 @@
 // Every fixed text of the flight agent's page (index.html, app.js, cards.js, bookings.js,
-// microphone.js), in Arabic and English: our own words, the Arabic written fresh. A text that
+// microphone.js, choices.js), in Arabic and English: our own words, the Arabic written fresh. A text that
 // holds a name or a number takes it through `fill` ("{name}"), never as markup: each is set with
 // textContent (the mute button's name as its attribute). The
 // `free` texts are the line that books nothing (the profile's `bookings` false): no traveler, the
-// heading a question to anyone, the brand the assistant and its company.
+// heading a question to anyone, the brand the assistant and its company. The call choices'
+// names (`CHOICE_NAMES`, by the server's offer ids) are the providers' and models' own, in
+// Latin letters in both languages.
+
+// The offers' names under Options (choices.js): an id the page does not know shows as itself.
+const CHOICE_NAMES = {
+  whisper: "Whisper (Groq)",
+  scribe: "ElevenLabs Scribe",
+  "gpt-oss-120b": "gpt-oss-120b (Groq)",
+  "gpt-5.5": "GPT-5.5 (OpenAI)",
+  "gpt-6-luna": "GPT-6 Luna (OpenAI)",
+  "gpt-5.4-mini": "GPT-5.4 mini (OpenAI)",
+  orpheus: "Canopy Labs Orpheus (Groq)",
+  "eleven-v4-turbo": "ElevenLabs v4 Turbo",
+  "eleven-v4": "ElevenLabs v4",
+  "telnyx-bayan": "Telnyx Bayan (Jasem)",
+};
 
 export const TEXT = {
   ar: {
@@ -41,6 +57,12 @@ export const TEXT = {
     code: "رمز الدخول",
     record: "سجّل المكالمة لنحسّن المساعد (نسخة تجريبية).",
     alpha: "نسخة تجريبية: نحفظ المكالمات لتحسين المساعد، وتقدر توقف التسجيل من الخيارات.",
+    choiceStt: "تحويل الكلام إلى نص",
+    choiceModel: "النموذج",
+    choiceVoice: "الصوت",
+    choiceDefault: "(الافتراضي)",
+    choiceServer: "إعداد الخادم",
+    choiceNames: CHOICE_NAMES,
     pushToTalk: "التحدث بالضغط (اضغط مطولاً على المسافة أو على الزر)",
     talk: "اضغط مطولاً للتحدث",
     you: "أنت",
@@ -72,6 +94,7 @@ export const TEXT = {
     closed: "أُغلق الدخول بعد محاولات كثيرة غير صحيحة، حتى يُعاد تشغيل الخادم.",
     network: "تعذّر الوصول إلى الخادم.",
     join_rejected: "رُفض الدخول إلى المكالمة. ابدأ مكالمة جديدة.",
+    invalid_request: "تعذّر بدء المكالمة بهذه الخيارات. أعد تحميل الصفحة أو اختر غيرها.",
     failed: "تعذّر بدء المكالمة. حاول مرة أخرى.",
   },
   en: {
@@ -109,6 +132,12 @@ export const TEXT = {
     code: "Access code",
     record: "Record this call to help improve the assistant (alpha).",
     alpha: "Alpha: calls are saved to improve the assistant. You can turn recording off in Options.",
+    choiceStt: "Speech-to-text",
+    choiceModel: "Model",
+    choiceVoice: "Voice",
+    choiceDefault: "(default)",
+    choiceServer: "Server's own",
+    choiceNames: CHOICE_NAMES,
     pushToTalk: "Push to talk (hold Space or the button)",
     talk: "Hold to talk",
     you: "You",
@@ -140,6 +169,7 @@ export const TEXT = {
     closed: "Too many wrong codes: sign-in is closed until the server restarts.",
     network: "The server could not be reached.",
     join_rejected: "The call could not be joined. Start a new one.",
+    invalid_request: "The call could not start with these options. Reload the page, or choose others.",
     failed: "The call could not start. Try again.",
   },
 };

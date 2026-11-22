@@ -1,12 +1,15 @@
 """The server's call log (`call_log_of`), from the settings: none when `call_log` is off, else the
 database at `call_log_path` (calls.sqlite3 in the app's storage folder by default), with the
-setup the server's agent runs on and the release it runs from."""
+setup the server's agent runs on and the release it runs from, and each call's choice of its
+speech-to-text, model and voice under Options (`chosen` among `options`), when given."""
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 from t2_agentic_voice import VoiceAgent, VoiceSettings
+from t2_agentic_voice.server import CallChoice, CallOptions
 
 from flight_voice.call_log.log import CallLog
 from flight_voice.call_log.settings import DEFAULT_FILE, CallLogFields
@@ -23,10 +26,17 @@ def log_path(app: CallLogFields, voice: VoiceSettings) -> Path:
 
 
 def call_log_of(
-    app: CallLogFields, flights: FlightDataFields, voice: VoiceSettings, agent: VoiceAgent
+    app: CallLogFields,
+    flights: FlightDataFields,
+    voice: VoiceSettings,
+    agent: VoiceAgent,
+    *,
+    chosen: Callable[[str], CallChoice | None] = lambda call_id: None,
+    options: CallOptions | None = None,
 ) -> CallLog | None:
     """The call log of a server of `agent` (the module's docstring)."""
     if not app.call_log:
         return None
     setup = call_setup(agent, voice, flights, release())
-    return CallLog(CallStore(log_path(app, voice)), setup, voice.storage.var_dir)
+    store = CallStore(log_path(app, voice))
+    return CallLog(store, setup, voice.storage.var_dir, chosen=chosen, options=options)

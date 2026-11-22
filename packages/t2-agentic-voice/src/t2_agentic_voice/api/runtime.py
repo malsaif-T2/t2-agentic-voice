@@ -41,11 +41,16 @@ plan's interfaces".
 - **The router** (api/router.py, which says what each route does): after its prefix, the
   `t2v/1` routes and, with `env` dev and the dev page on (`server.dev_page`, or `t2v dev`),
   `GET /dev` and the test console, its feed an observer of every event (api/dev_feed.py), and
-  the console's choice of each call's speech-to-text (api/stt_calls.py), handed to voice. It
-  carries the lifespan, which FastAPI merges when the router is included; in the mount, the
-  app's own CORS middleware answers, and the runtime says so at startup (the design's 5.5). Its
-  record of each call is api/offers.py's, swept every `SWEEP_PERIOD_S` on the runtime's clock;
-  its bodies and its one error shape are api/http_errors.py's (GP-19).
+  the console's choice of each call's speech-to-text (api/stt_calls.py), handed to voice; and,
+  with `server.call_choices` on, no dev page needed, an app's page's choice of each call's
+  speech-to-text, chat model and voice among the offers the app gave (`call_options`;
+  api/choice_calls.py), handed to voice too, and named per call by `call_choice`. A runtime
+  that built its own providers names the model its speech-to-text hears with in each call's
+  usage (api/providers.py's `stt_model_of`, D-140). It carries the lifespan, which FastAPI
+  merges when the router is included; in the mount, the app's own CORS middleware answers, and
+  the runtime says so at startup (the design's 5.5). Its record of each call is api/offers.py's,
+  swept every `SWEEP_PERIOD_S` on the runtime's clock; its bodies and its one error shape are
+  api/http_errors.py's (GP-19).
 - **Observers** (`on`) run off the call's path: queued (at most `OBSERVER_QUEUE` events; past
   it an event is dropped and logged), each with a timeout (`OBSERVER_TIMEOUT_S`); one that raises
   or runs over is logged by its type and the call goes on; none can change a call (the design's
@@ -71,12 +76,20 @@ from t2_agentic_voice.actions.action_runner import ActionRunner
 from t2_agentic_voice.agent.talker import chat_talkers
 from t2_agentic_voice.api import router as routing
 from t2_agentic_voice.api.actions import open_actions
+from t2_agentic_voice.api.call_options import CallChoice, CallOptions
+from t2_agentic_voice.api.choice_calls import (
+    CallChoices,
+    ChoiceBuilders,
+    ChoiceParts,
+    call_choices_of,
+    chosen_calls,
+)
 from t2_agentic_voice.api.dev_feed import DevFeed
 from t2_agentic_voice.api.lockfile import LockFile, agent_folder
 from t2_agentic_voice.api.offers import FORGOTTEN_KEPT_S, CallRecords
-from t2_agentic_voice.api.providers import Providers, opened
+from t2_agentic_voice.api.providers import Providers, opened, stt_model_of
 from t2_agentic_voice.api.router import Running
-from t2_agentic_voice.api.stt_calls import CallStts, chosen_calls
+from t2_agentic_voice.api.stt_calls import CallStts
 from t2_agentic_voice.api.voices import open_voices
 from t2_agentic_voice.core.config import VoiceSettings
 from t2_agentic_voice.core.errors import ConfigurationError
@@ -109,7 +122,8 @@ log = get_logger(__name__)
 class VoiceRuntime:
     """Runs one agent's calls (the design's 5.2): `agent` with `settings`, its callers verified
     by `identity` (one source; None only for `t2v dev`, which falls back to `DevIdentity`),
-    through `providers`, traced on `tracer_provider`. Served by `serve()` or `t2v serve`, or
+    through `providers`, traced on `tracer_provider`; `call_options`, what its page may choose
+    for a call under `server.call_choices`. Served by `serve()` or `t2v serve`, or
     mounted: `app.include_router(runtime.router(), prefix="/voice")`."""
 
     def __init__(
@@ -120,8 +134,10 @@ class VoiceRuntime:
         identity: IdentityVerifier | None = None,
         providers: Providers | None = None,
         tracer_provider: TracerProvider | None = None,
+        call_options: CallOptions | None = None,
         _calls: CallsFactory = VoiceCalls,
         _clock: Clock = SYSTEM_CLOCK,
+        _choice_builders: ChoiceBuilders | None = None,
     ) -> None:
         settings.check_environment()
         self._agent = agent
@@ -138,6 +154,8 @@ class VoiceRuntime:
         self._actions: ActionRunner | None = None  # the agent's, set as the lifespan starts
         self._running: Running | None = None
         self._stts: CallStts | None = None  # the dev console's choices, made with its routes
+        self._options, self._choice_builders = call_options, _choice_builders
+        self._choices: CallChoices | None = None  # an app's page's, made with their routes
         self._entered = False
         # Set by `serve()`, whose app answers CORS for `server.allowed_origins`.
         self._served = False
@@ -204,8 +222,20 @@ class VoiceRuntime:
             dev_page=dev_page,
             feed=feed,
             stt=self._stts,
+            choices=self._call_choices_of(),
         )
         return routing.build_router(served, lifespan=self.lifespan)
+
+    def _call_choices_of(self) -> CallChoices | None:
+        """The call choices the router mounts (api/choice_calls.py's `call_choices_of`)."""
+        self._choices = call_choices_of(self._settings, self._options, self._choice_builders)
+        return self._choices
+
+    def call_choice(self, call_id: str) -> CallChoice | None:
+        """The choice the call ran on, by its offers' ids, an id the settings' own never named;
+        None for a call with none, one not yet offered, or one past the last MOST_KEPT
+        (api/choice_calls.py), and for every call with `server.call_choices` off."""
+        return None if self._choices is None else self._choices.call_choice(call_id)
 
     @asynccontextmanager
     async def _lifespan(self) -> AsyncIterator[None]:
@@ -252,7 +282,13 @@ class VoiceRuntime:
         talking: dict[str, Any] = {} if classifier is None else {"classifier": classifier}
         if talker is not None:
             talking |= {"talker": talker, "chat": providers.chat}
-        talking |= await chosen_calls(self._stts, classifier=classifier is not None, stack=stack)
+        parts = ChoiceParts(agent=agent, providers=providers, talker=talker, actions=actions)
+        found = classifier is not None
+        talking |= await chosen_calls(
+            self._stts, self._choices, parts, classifier=found, stack=stack
+        )
+        if self._providers is None:  # the settings' own: its model named in the usage (D-140)
+            talking["stt_model"] = stt_model_of(settings)
         calls = self._calls(
             agent=agent,
             settings=settings,

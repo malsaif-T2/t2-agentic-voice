@@ -59,7 +59,7 @@ class TurnBook(TurnAudio):
         self, setup: CallSetup, books: CallBooks, *, listen: str | None, playback: Playback
     ) -> None:
         settings = setup.settings
-        self._model, self._listen = settings.stt.model, listen
+        self._model, self._listen = setup.heard_model, listen
         self._usage, self._trace, self._recorder = books.usage, books.trace, books.recorder
         self._events, self._history = books.events, books.history
         self._playback = playback

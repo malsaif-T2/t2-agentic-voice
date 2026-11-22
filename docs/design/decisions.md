@@ -4670,3 +4670,71 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   English, now cleanly (TD-156); the voice net one way only, English text under an Arabic tag
   in the Saudi voice (TD-157); the speech-to-text usage named by `stt.model` whatever the
   provider (TD-153); and a continued turn's language read from its last part alone (TD-158).
+
+## D-140 · A call's speech-to-text, chat model and voice chosen by an app's page among the app's offers (`server.call_choices`, `VoiceRuntime(call_options=)`, `GET`/`POST <prefix>/choices`); usage names the model that heard a call (TD-153) · 2026-11-22 · Accepted (the owner: "Can you add choices to choose the STT (whisper, elevenlabs), the LLM model and the TTS model (canopylabs, Elevenlabs v4/turbo, and telnyx bayan (Jasem)). Make it under Options. And make sure the work properly.", 2026-11-22; approving, "Yes, build it"; a library setting, off by default, GP-18; the flight app turns it on)
+
+- **Context:** only the dev console chose a call's providers, and only its speech-to-text
+  (api/dev_stt.py, under `env` dev to this machine). The owner wants to switch the flight
+  line's speech-to-text, model and voice call by call from its page, to hear each one live;
+  and the call log's usage named every call's speech-to-text `whisper-large-v3`, Scribe's
+  calls included (TD-153), so it could not show which ran.
+- **Decision:**
+  1. The setting is `server.call_choices` (off), beside `dev_page`: it says what the router
+     serves. The offers are code an app gives (`VoiceRuntime(call_options=CallOptions(...))`,
+     api/call_options.py: `SttOffer`, `ModelOffer`, `VoiceOffer`, by the app's own ids), since
+     which providers a product offers is the app's choice. The setting on with no options is a
+     ConfigurationError at `router()`; options with it off are ignored, logged once.
+  2. One menu of three groups, by the app's ids (api/choice_menu.py); the page sends ids
+     alone, never a provider's or a model's name, so the server takes only its own closed set
+     and refuses anything else with a fixed message that repeats nothing sent.
+  3. Keys filter the menu: Groq's offers always, another provider's only when its key is set
+     (a key file that cannot be read leaves it out, logged by the provider's name). Each
+     group's default is the offer that is the settings' own; an id equal to it counts as no
+     choice, and a page that changed nothing sends no request.
+  4. `GET`/`POST <prefix>/choices`, outside `/dev/` and `t2v/1` (api/choices_route.py): the
+     POST is admitted by the call's ID and offer secret before its offer, as `dev/stt` is, with
+     no env or loopback rule (the owner accepted that whoever holds the line's access code may
+     switch); the GET needs no token and names providers and models alone.
+  5. One function composes a chosen call's settings (`settings_of`, its `stt`, `llm` and `tts`
+     groups alone, each validated again), so its session, its talker and its usage read one
+     object; the talker's factory is built on them, once per combination of ids.
+  6. A chosen voice is opened on its first choice, once per process (api/choice_calls.py): its
+     fixed phrases declared on its own text-to-speech (the phrases folder is shared, its files
+     keyed by model and voice) and its clause cache in `<agent>/choices/<id>/clauses`, since a
+     clause cache indexes and trims its whole folder. The start is unchanged and sends no
+     request for a choice. Set aside: opening every offered voice at start in the background.
+  7. The chat adapter is the runtime's for a model of its provider (the request names the
+     model), else one built per provider; under OpenAI a `ChatRoute`, so the yes rule's check
+     and the uncertain overlap's request stay on Groq's gpt-oss-120b whatever the caller chose
+     (D-069, D-082, D-112).
+  8. A choice that cannot be built at the offer never fails the call: it runs on the server's
+     own, logged `call_choice_failed`. Only a voice that cannot be opened refuses the choice
+     (400 with a fixed message), so the owner hears of it before the call.
+  9. TD-153 is fixed for every call of a runtime that built its own providers: the model its
+     speech-to-text hears with (api/providers.py's `stt_model_of`) is handed to voice, which
+     names it in the usage, the turn's speech-to-text span and the trace's resource; a call that
+     chose its speech-to-text names its own (`ChosenCall.stt_model`; the dev console's, its
+     choice's model), and one that chose only a model or a voice the runtime's. An app that
+     passes its own `Providers` keeps today's naming. voice's `ChosenStt` became
+     `ChosenCall`, which also carries a chosen call's voice, phrases, talker and chat model,
+     and a join warms the ones the call really uses.
+  10. The flight app turns the setting on unless the environment sets it (`for_the_app`) and
+      offers the owner's list (flight_voice/choices.py's `CALL_OPTIONS`): Whisper
+      (`whisper-large-v3` on Groq) or Scribe (`scribe_v3`); `openai/gpt-oss-120b` on Groq at
+      effort medium, or OpenAI's `gpt-5.5`, `gpt-6-luna` and `gpt-5.4-mini` at effort none;
+      Groq's Orpheus, ElevenLabs' `eleven_v4_turbo` or `eleven_v4` in the owner's voice, or
+      Telnyx's Bayan (Jasem for both Arabic presets, Michael for English). Its page shows three
+      menus under Options (web/choices.js), each on the server's own until changed, the pick
+      held in the page alone, locked during a call, and sent only when changed; each call's row
+      in the call log names the speech-to-text, model and voice it ran on, with `setup.choice`
+      (call_log/setup.py's `chosen_setup`, from `VoiceRuntime.call_choice`).
+- **Consequences:** the first choice of a voice waits while its phrases are synthesized,
+  inside the join's window; after that they come from their files. A chosen OpenAI model keeps
+  an OpenAI and a Groq pool open for later calls. Each chosen voice has its own clause cache,
+  each bounded by `tts.clause_cache_mb`. A page loaded before a restart that lost a key sends
+  an id no longer offered, and that call does not start until the page is reloaded. The menu
+  shows which providers the server holds keys for, never a key (docs/SECURITY.md).
+  `api/runtime.py` (399 lines) and `api/router.py` grew (TD-154). Left as debt: the dev
+  console's Heard by and the flight call log's base setup still name a call's speech-to-text
+  by the settings (TD-159). Verified offline only; Telnyx's "Jasem" as a Bayan voice is
+  unchecked until the live calls, one per option, which read each call's usage.

@@ -9,7 +9,8 @@ part, since only api may build an adapter (harness.toml [layers]).
   `Providers.from_settings(settings).replace(stt=...)`; `each` lists the ones given.
 - `stt_kinds`: each speech-to-text provider `stt.provider` names (`SttKind`): its builder, its
   key's group and the models it takes, the one place the dev console's choice reads them from
-  (api/stt_choices.py).
+  (api/stt_choices.py); `stt_model_of`, the model the settings' provider hears with, as a
+  call's usage names it (D-140).
 - `tts_kinds`: each text-to-speech provider `tts.provider` names, by its builder: Groq's
   Orpheus, the fallback, ElevenLabs', the default, and Telnyx's (D-114); the eval commands build
   theirs with `Providers.text_to_speech`.
@@ -116,6 +117,12 @@ def stt_kinds() -> dict[str, SttKind]:
             build=nabrah_stt.NabrahSTT.from_settings, key_group="nabrah", models=(nabrah_stt.MODEL,)
         ),
     }
+
+
+def stt_model_of(settings: VoiceSettings) -> str:
+    """The model `stt.provider`'s adapter hears with, as `stt_kinds` names it (Groq's
+    `stt.model`, Scribe's `scribe_v3`, Telnyx's `telnyx.stt_model`, ...)."""
+    return stt_kinds()[settings.stt.provider].model_of(settings)
 
 
 def tts_kinds() -> dict[str, Callable[[VoiceSettings], TextToSpeech]]:

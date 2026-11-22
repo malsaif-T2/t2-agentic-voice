@@ -208,7 +208,8 @@ class CallSetup:
     (D-069) and judges an answer to a read-back that the yes rule's lists leave unplaced
     (D-082), each only for an agent that asks, None for a call that asks none; and the part that
     carries out a confirmed action (plan 007; the `ActionJobs` port), None for an agent with
-    none."""
+    none; and the model its turns are heard by, as the composition root names it (None:
+    `stt.model`, as a test's or a text call's setup leaves it; `heard_model` reads either)."""
 
     call_id: CallId
     caller: Caller
@@ -224,9 +225,15 @@ class CallSetup:
     talker: Talker | None = None
     overlap_model: ChatModel | None = None
     action_jobs: ActionJobs | None = None
+    stt_model: str | None = None
     now: CallLanguage = field(init=False, compare=False, repr=False)
 
     def __post_init__(self) -> None:
         moves = self.settings.stt.language_moves()
         now = CallLanguage(self.language, self.agent.languages, moves=moves)
         object.__setattr__(self, "now", now)
+
+    @property
+    def heard_model(self) -> str:
+        """The model the call's turns are heard by: `stt_model`, else `stt.model`."""
+        return self.stt_model or self.settings.stt.model

@@ -7,7 +7,9 @@
      traveler and their bookings (the trips, "Start over", the name and tier) starts hidden and is
      shown only when the profile says the line books (app.js). The alpha's notice sits under the
      call button, the mute button beside it during a call; the box that records the call starts
-     ticked under Options, and the access code is hidden on a line the profile says is open. -->
+     ticked under Options, and the access code is hidden on a line the profile says is open.
+     Under Options too, the call's speech-to-text, model and voice (choices.js), hidden until
+     the server's menu fills them (none when it offers no choice). -->
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
@@ -15,8 +17,8 @@
 <meta name="color-scheme" content="dark">
 <title data-text="title"></title>
 <link rel="icon" href="mark.svg?v=2026-11-19" type="image/svg+xml">
-<link rel="stylesheet" href="app.css?v=2026-11-19">
-<script type="module" src="app.js?v=2026-11-19"></script>
+<link rel="stylesheet" href="app.css?v=2026-11-22">
+<script type="module" src="app.js?v=2026-11-22"></script>
 </head>
 <body>
 <header class="bar glass">
@@ -78,6 +80,11 @@
       <p id="code-field"><label class="field"><span data-text="code"></span>
         <input type="password" id="code" autocomplete="off" spellcheck="false" dir="ltr"></label></p>
       <p><label class="box"><input type="checkbox" id="record" checked> <span data-text="record"></span></label></p>
+      <div id="choices" class="choices" hidden>
+        <p id="choice-stt-field"><label class="field"><span data-text="choiceStt"></span> <select id="choice-stt"></select></label></p>
+        <p id="choice-model-field"><label class="field"><span data-text="choiceModel"></span> <select id="choice-model"></select></label></p>
+        <p id="choice-voice-field"><label class="field"><span data-text="choiceVoice"></span> <select id="choice-voice"></select></label></p>
+      </div>
       <p class="controls">
         <label class="box"><input type="checkbox" id="push-to-talk"> <span data-text="pushToTalk"></span></label>
         <button type="button" id="talk" data-text="talk" aria-pressed="false" disabled></button>

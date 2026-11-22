@@ -31,8 +31,8 @@ class CallBooks:
         """A call's books, empty, built cheaply and with no IO: its traces carry the settings,
         the agent, the models it speaks with and the consent version as their resource."""
         settings, tag = setup.settings, setup.language.tag
-        usage = Usage(settings, tag)
-        models = (settings.stt.model, usage.model(tag))
+        usage = Usage(settings, tag, setup.stt_model)
+        models = (usage.stt_model, usage.model(tag))
         resource = resource_attributes(
             settings, agent=setup.agent.name, models=models, consent_version=setup.consent.version
         )

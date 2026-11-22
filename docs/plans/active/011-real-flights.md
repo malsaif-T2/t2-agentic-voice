@@ -233,10 +233,40 @@ the flight number to pick; an airline's own prefilled search replaces it where P
   flight app turns on
   (`llm.reply_line_always`, `words.hold_reply_language`, `tts.voice_by_script`), with each
   turn's reply language and voices in the call report (D-139); Ole5 keeps them off until run S's
-  s03 and s07 pass with them on. Left as debt: TD-156, TD-157, TD-158, and TD-153 brought up to
-  date.
+  s03 and s07 pass with them on. Left as debt: TD-156, TD-157, TD-158, and the speech-to-text
+  usage's name brought up to date (fixed since with the call choices, D-140).
+- 2026-11-22, the call choices (the owner: "Can you add choices to choose the STT (whisper,
+  elevenlabs), the LLM model and the TTS model ... Make it under Options"): the library lets an
+  app's page choose each call's speech-to-text, chat model and voice among the app's offers
+  (`server.call_choices`, off by default; `VoiceRuntime(call_options=...)`; `GET`/`POST
+  <prefix>/choices`; the client's `choice`), each listed only when the server holds its
+  provider's key, and a call's usage now names the model that heard it (the old debt fixed): D-140.
+  The flight app turns it on (unless set) and offers the owner's list (flight_voice/choices.py):
+  Whisper or Scribe; gpt-oss-120b on Groq, or OpenAI's GPT-5.5, GPT-6 Luna and GPT-5.4 mini at
+  effort none; Orpheus, ElevenLabs v4 Turbo or v4 in the owner's voice, or Telnyx Bayan (Jasem,
+  Michael for English). Its page shows three menus under Options (web/choices.js), each on the
+  server's own until changed, sent with a call only when changed, and fixed during it; each
+  call's row in the call log names the speech-to-text, model and voice it ran on, with its
+  choice (`setup.choice`). `poe check` passed (10,988 tests). Live calls on 2026-11-22, the
+  flight page in the browser pane on a fake microphone, one per option: Whisper and Scribe each
+  heard the caller; Orpheus, ElevenLabs v4 Turbo, v4 and Telnyx Bayan (Jasem, Michael) each
+  spoke the reply; the call log's setup and usage named each call's choice. OpenAI's three
+  models reached OpenAI with the model chosen and were refused there: the account has no
+  credits left (429 `insufficient_quota`), so Saad said his difficulty line; they work once
+  credits are added. A voice's first choice on a machine waits while its fixed phrases are made
+  (Telnyx 46 s, v4 18 s, v4 Turbo 8 s, inside the join's 60 s); after a restart they come from
+  their files (0.1 s). Left as debt: TD-159 (the dev console's Heard by and
+  the call log's base setup still name the speech-to-text by the settings); TD-154 brought up
+  to date (`api/runtime.py` at 399 lines).
 
 ## Decision log
+
+- 2026-11-22 (the call choices, D-140; the owner: "Yes, build it"): the offers are code an app
+  gives, not environment; the page sends ids alone; a voice is opened on its first choice, not
+  at the start, so the start sends no request; a choice that cannot be built runs the call on
+  the server's own, and only a voice that cannot be opened refuses the choice; the library's
+  own checks stay on Groq's gpt-oss-120b whatever model is chosen. Set aside: opening every
+  offered voice at start in the background.
 
 - 2026-11-22 (the language switch, D-139; the owner: "Yes, build it"): the reply's language is
   named by a system line at the end of every request, the wording the replay measured ("Reply

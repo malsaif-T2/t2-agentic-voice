@@ -1,6 +1,7 @@
 """The `server` group: how calls are served (the design's 5.5, 11): the public address, the
-pages allowed to call it, the ICE servers and the TURN secret, the dev page and the test
-console's dev caller, and which peers' proxy headers are trusted."""
+pages allowed to call it, the ICE servers and the TURN secret, the dev page, the call choices
+an app's page may make (api/choices_route.py), the test console's dev caller, and which peers'
+proxy headers are trusted."""
 
 from __future__ import annotations
 
@@ -106,6 +107,16 @@ class ServerSettings(Group):
     dev_page: bool = Field(
         default=False,
         description="Whether the router serves its /dev page, to loopback clients; dev only.",
+    )
+    call_choices: bool = Field(
+        default=False,
+        description=(
+            "Whether the router serves the call choices, GET and POST <prefix>/choices: before "
+            "its offer, a call's page may choose its speech-to-text, chat model and voice among "
+            "the offers the app gives the runtime in code (VoiceRuntime's call_options), each "
+            "listed only when this server holds its provider's key. Off: the routes are not "
+            "mounted and every call runs on these settings (GP-18)."
+        ),
     )
     dev_caller: Caller | None = Field(
         default=None,

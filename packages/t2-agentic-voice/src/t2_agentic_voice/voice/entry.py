@@ -51,14 +51,22 @@ class Candidate:
     sdp_mline_index: int
 
 
-@dataclass(frozen=True)
-class ChosenStt:
-    """One call's own speech-to-text, chosen on the dev console (api/stt_choices.py): the
-    adapter its turns are heard by, and the settings it runs with in place of the runtime's
-    (its `stt` group, and its provider's model setting, alone differ)."""
+@dataclass(frozen=True, kw_only=True)
+class ChosenCall:
+    """One call's own providers, chosen for it (the dev console's speech-to-text,
+    api/stt_calls.py; an app's page's choice, api/choice_calls.py): the settings it runs with in
+    place of the runtime's, the adapter its turns are heard by and the model that names it in
+    its usage; and, each None for the runtime's own, its text-to-speech with its phrase audio,
+    its talker's factory (built on these settings) and the chat model of its talker and its own
+    requests."""
 
-    stt: SpeechToText
     settings: VoiceSettings
+    stt: SpeechToText
+    stt_model: str | None = None
+    tts: TextToSpeech | None = None
+    phrases: PhraseAudio | None = None
+    talker: TalkerFactory | None = None
+    chat: ChatModel | None = None
 
 
 class Calls(Protocol):
@@ -113,6 +121,7 @@ class CallsFactory(Protocol):
         chat: ChatModel | None = None,
         action_jobs: ActionJobs | None = None,
         classifier: LanguageClassifier | None = None,
-        chosen: Callable[[CallId], ChosenStt | None] = lambda call_id: None,
+        chosen: Callable[[CallId], ChosenCall | None] = lambda call_id: None,
+        stt_model: str | None = None,
     ) -> Calls:
         """voice's entry point for the runtime's calls, built with no IO."""

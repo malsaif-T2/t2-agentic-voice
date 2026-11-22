@@ -4,7 +4,8 @@ an app includes them under: `t2v/1`'s `POST /join`, `POST` and `PATCH /offer`, a
 and `GET /client/1/t2v-client.js`; and `GET /dev`, no `t2v/1` route, only with `env` dev and
 the dev page on, to loopback clients, `env` checked before the client's address is read, any
 other getting the server's plain 404. With the dev page come the test console's routes, under
-`/dev/` (api/dev_console.py).
+`/dev/` (api/dev_console.py). With `server.call_choices` on, `GET` and `POST /choices`
+(api/choices_route.py): an app's page's choice of a call's providers, no `t2v/1` route.
 
 - **`/join`** reads the client's protocol version first, and answers a body of another version
   400 `protocol_mismatch`, with its notice, before the strict parse and before the token is
@@ -46,6 +47,8 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, SecretStr, ValidationError
 
 from t2_agentic_voice.adapters.dev_identity import is_loopback
+from t2_agentic_voice.api.choice_calls import CallChoices
+from t2_agentic_voice.api.choices_route import mount_choices
 from t2_agentic_voice.api.dev_console import mount_console
 from t2_agentic_voice.api.dev_feed import DevFeed
 from t2_agentic_voice.api.http_errors import Refusal, add_routes, read_body
@@ -109,8 +112,9 @@ class Running:
 class Served:
     """What the router serves: the agent with its settings and identity source, the records of
     its calls, the runtime's clock, what it runs (None until started), where the browser's files
-    are, whether `/dev` is mounted, the test console's feed (mounted with `/dev`), and the
-    dev console's choices of each call's speech-to-text (with the feed)."""
+    are, whether `/dev` is mounted, the test console's feed (mounted with `/dev`), the dev
+    console's choices of each call's speech-to-text (with the feed), and an app's page's call
+    choices (`server.call_choices`)."""
 
     agent: VoiceAgent
     settings: VoiceSettings
@@ -122,6 +126,7 @@ class Served:
     dev_page: bool = False
     feed: DevFeed | None = None
     stt: CallStts | None = None
+    choices: CallChoices | None = None
     _files: dict[str, bytes] = field(default_factory=dict)
 
 
@@ -171,6 +176,10 @@ def build_router(
                 records=served.records,
                 stt=served.stt,
             )
+    if served.choices is not None:
+        mount_choices(
+            router, choices=served.choices, records=served.records, running=served.running
+        )
     return router
 
 

@@ -44,18 +44,26 @@ class _Counts:
 
 
 class Usage:
-    """Each model's usage in one call: the speech-to-text model, each language's
-    text-to-speech model as `tts.languages` gives it, and each chat model the talker asked; the
-    call's own language's is reported even when it sent nothing."""
+    """Each model's usage in one call: the speech-to-text model (`stt_model`, the one the
+    call's turns are heard by, as the composition root names it: None for `stt.model`), each
+    language's text-to-speech model as `tts.languages` gives it, and each chat model the talker
+    asked; the call's own language's is reported even when it sent nothing."""
 
-    def __init__(self, settings: VoiceSettings, language: LanguageTag) -> None:
-        self._stt_model = settings.stt.model
+    def __init__(
+        self, settings: VoiceSettings, language: LanguageTag, stt_model: str | None = None
+    ) -> None:
+        self._stt_model = stt_model or settings.stt.model
         self._tts_models = {tag: voice.model for tag, voice in settings.tts.languages.items()}
         self._models: dict[str, _Counts] = {self._stt_model: _Counts()}
         self._tts(language)
 
     def _tts(self, language: LanguageTag) -> _Counts:
         return self._models.setdefault(self._tts_models[language], _Counts())
+
+    @property
+    def stt_model(self) -> str:
+        """The speech-to-text model the usage names."""
+        return self._stt_model
 
     def model(self, language: LanguageTag) -> str:
         """The text-to-speech model `language` is spoken in."""

@@ -110,6 +110,21 @@ def test_a_join_sends_each_warm_request_once_in_the_background(
     assert set(lines["stt"]) == {"call_id", "target", "provider", "ms", "outcome", "error"}
 
 
+def test_a_chosen_calls_own_voice_and_chat_are_warmed_in_place_of_the_runtimes() -> None:
+    """A call whose page chose its voice and model warms those, never the runtime's."""
+    tts, chat = FakeTextToSpeech(), _Chat(warm=False)
+    chosen_tts, chosen_chat = FakeTextToSpeech(), _Chat(warm=False)
+
+    async def run() -> None:
+        warmth = JoinWarmth(on=True, tts=tts, chat=chat)
+        warmth.joined("call-1", FakeSpeechToText(), "en", tts=chosen_tts, chat=chosen_chat)
+        await until(lambda: chosen_tts.checked == ["en"] and chosen_chat.warmed == 1)
+        await warmth.aclose()
+
+    asyncio.run(run())
+    assert (tts.checked, chat.warmed) == ([], 0)
+
+
 def test_a_warm_chat_connection_is_sent_no_request_and_a_provider_without_one_none() -> None:
     stt, tts, chat = FakeSpeechToText(), FakeTextToSpeech(), _Chat(warm=True)
 

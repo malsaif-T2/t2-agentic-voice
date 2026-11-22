@@ -23,6 +23,10 @@ voice): every model request ends with a line naming the reply's language
 (`llm.reply_line_always`; 15 plays of 5 switch dialogues, 8 of 30 switched turns in the wrong
 language without it, 0 of 30 with it), and a short turn ("yes please", «إي») keeps the
 language of the caller's last plain turn (`words.hold_reply_language`), each unless set.
+
+The page may choose each call's speech-to-text, model and voice under Options (the owner's
+request of 2026-11-22, choices.py): `server.call_choices` is on unless set, off in the library
+(GP-18).
 """
 
 from __future__ import annotations
@@ -100,8 +104,9 @@ def for_the_app(
     (which has no read-back), when it can book, `YES_OVER_QUESTION`, with the booking's
     `SEND_WORDS` its `words.send`, `REGISTER_WORDS` for the caller's register, app_voice.py's
     speech, the calls' audio recorded where the caller consents, turned_on.py's `TURNED_ON` (and
-    its `READ_BACK_TURNS` for the scripted agent), each unless set, and under `env` dev alone
-    the demo traveler the console's dev caller; every other setting as it was."""
+    its `READ_BACK_TURNS` for the scripted agent), the call choices the page offers under
+    Options (`server.call_choices`, choices.py's `CALL_OPTIONS`), each unless set, and under
+    `env` dev alone the demo traveler the console's dev caller; every other setting as it was."""
     storage = StorageSettings.model_validate(
         voice.storage.model_dump() | {"var_dir": voice.storage.var_dir / APP_FOLDER}
     )
@@ -130,8 +135,11 @@ def for_the_app(
     if "record_audio" not in voice.privacy.model_fields_set:  # the alpha keeps its calls' audio
         update["privacy"] = voice.privacy.model_copy(update={"record_audio": True})
     update |= turned_on(voice, read_back=agent == "scripted")
+    server: dict[str, object] = {}
+    if "call_choices" not in voice.server.model_fields_set:  # the page's Options (choices.py)
+        server["call_choices"] = True
     if voice.env == "dev":
-        update["server"] = ServerSettings.model_validate(
-            voice.server.model_dump() | {"dev_caller": demo_caller()}
-        )
+        server["dev_caller"] = demo_caller()
+    if server:
+        update["server"] = ServerSettings.model_validate(voice.server.model_dump() | server)
     return voice.model_copy(update=update)

@@ -80,7 +80,7 @@ def menu_of(settings: VoiceSettings, *, classifier: bool) -> SttMenu:
     options = tuple(
         SttOption(provider=name, models=_models(kind, settings))
         for name, kind in kinds.items()
-        if name in (default.provider, "groq") or _has_key(settings, name, kind)
+        if name in (default.provider, "groq") or has_key(settings, kind.key_group)
     )
     modes = tuple(mode for mode in get_args(LiveLanguage) if mode != "classified" or classifier)
     if default.live_language not in modes:
@@ -113,14 +113,16 @@ def _models(kind: SttKind, settings: VoiceSettings) -> tuple[str, ...]:
     return (first, *(model for model in kind.models if model != first))
 
 
-def _has_key(settings: VoiceSettings, name: str, kind: SttKind) -> bool:
-    """Whether the provider's key is set, inline or in a file that can be read."""
-    group = getattr(settings, kind.key_group, None)
-    resolve = getattr(group, "resolved_api_key", None)
+def has_key(settings: VoiceSettings, group: str, *, event: str = "stt_choice_unavailable") -> bool:
+    """Whether the key of the settings group `group` (a provider's) is set, inline or in a file
+    that can be read; a file that cannot be read leaves it out, logged as `event` with the
+    provider's name and the failure's type, never its path. The call choices' menu reads keys
+    the same way (api/choice_menu.py)."""
+    resolve = getattr(getattr(settings, group, None), "resolved_api_key", None)
     if resolve is None:
         return False
     try:
         return resolve(settings.prefix) is not None
     except ConfigurationError as error:
-        _log.warning("stt_choice_unavailable", provider=name, failure=type(error).__name__)
+        _log.warning(event, provider=group, failure=type(error).__name__)
         return False

@@ -7,14 +7,15 @@
 //   steps     what to do, in order, each {do, ...}: "click" an element, "set" an element's
 //             value, "check" a box (its checked to `value`), "change" it (its change event),
 //             "microphone" (each microphone track's enabled, oldest first), "start" a
-//             VoiceClient with listeners on every event, "open" the newest
+//             VoiceClient with listeners on every event (its `options` spread into the
+//             client's, when given; a refused start is kept as `failed`), "open" the newest
 //             data channel, "receive" text on it, "snapshot" an element; an element is named
 //             by its `id`, or by `query`, [selector, n], the nth the selector finds;
 //   answers   optional: more routes' answers, by "METHOD last-segment", as ANSWERS holds them,
 //             or {"sequence": [answer, ...]}: each request the next, the last kept;
 //   storage   optional: the page's localStorage, as text by key (none given: no localStorage,
 //             as a browser that blocks it).
-// It writes one JSON object on stdout: each snapshot, the events the started client gave, the
+// It writes one JSON object on stdout: each snapshot (a select's with its `value`), the events the started client gave, the
 // messages the client sent, the requests it made (each its method, path, content type and JSON
 // body), the microphone steps' track states, every console.error, and the localStorage left,
 // then exits, whatever timers the page left running.
@@ -258,6 +259,7 @@ function snapshot(node) {
     tag: node.localName,
     attrs: Object.fromEntries(node.attrs),
     children: node.childNodes.map(snapshot),
+    ...(node.localName === "select" ? { value: node.value } : {}),
   };
 }
 
@@ -304,7 +306,12 @@ for (const step of input.steps) {
   else if (step.do === "microphone") out.microphone.push(tracks.map((track) => track.enabled));
   else if (step.do === "start") {
     const on = Object.fromEntries(EVENTS.map((name) => [name, (value) => out.events.push([name, value])]));
-    await module.VoiceClient.start({ base: "/voice", token: "made-up-token", escape: false, on });
+    try {
+      await module.VoiceClient.start({ base: "/voice", token: "made-up-token", escape: false, on, ...(step.options ?? {}) });
+    } catch (error) {
+      if (!step.options) throw error;
+      out.failed = String(error?.code ?? error);
+    }
   } else if (step.do === "open") {
     const channel = channels.at(-1);
     channel.readyState = "open";

@@ -185,6 +185,7 @@ apps/flight-voice-agent/
     orb.js                       the orb's live level from the voices, decorative       <=200
     microphone.js                the mute button and push to talk, the client's switch  <=200
     bookings.js                  "Your trips", start over, the review's status (mock)    <=260
+    choices.js                   the call's speech-to-text, model, voice under Options   <=120
     texts.js                     every fixed text of the page, Arabic and English        <=200
     mark.svg                     our own airline mark (simple, ours)
   evals/
@@ -1076,7 +1077,8 @@ main:    Where are you flying, Khalid?               («وين ناوي تساف
            review:   the trip for confirmation; "Waiting for your yes", then "Booked · Reference …"
          then one card of no segment (the cabins of a flight, the cheapest days)
          Show conversation (collapsed): the captions
-         Options (collapsed): access code, "record this call" box, push to talk
+         Options (collapsed): access code, "record this call" box, the call's speech-to-text,
+                              model and voice (three menus, D-140), push to talk
 panel:   Your trips: each booking (route, dates, travelers, cabin, fare, reference shown as text),
          a filter by reference (local, no request), newest first
 ```
@@ -1130,12 +1132,12 @@ conversation", "Explore flights", "Select flight", "Flexible dates", and the dem
 
 | Route | What | Guard |
 | --- | --- | --- |
-| `GET /`, `/app.js`, `/cards.js`, `/orb.js`, `/bookings.js`, `/microphone.js`, `/texts.js`, `/app.css`, `/mark.svg` | the page's files | L1's page headers: CSP `default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors <website or 'none'>`, nosniff, no referrer, microphone for this origin |
+| `GET /`, `/app.js`, `/cards.js`, `/orb.js`, `/bookings.js`, `/choices.js`, `/microphone.js`, `/texts.js`, `/app.css`, `/mark.svg` | the page's files | L1's page headers: CSP `default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors <website or 'none'>`, nosniff, no referrer, microphone for this origin |
 | `POST /token` | a join token for the access code (L1's route), the caller the demo traveler | L1's guard (constant-time compare, slow-down, close after 20 wrong an hour, `FLIGHT_VOICE_TOKENS_PER_DAY` a day, 50 by default) |
 | `GET /api/profile` | first name, tier, chips in both languages | same origin; no secret; fictional data |
 | `GET /api/bookings` | the traveler's bookings | loopback clients only (404 else), as Ole5's `/tickets` |
 | `POST /api/demo/reset` | the bookings back to the seed | loopback only, `Content-Type: application/json` required (so a cross-site form cannot post it), body `{}` at most 64 bytes |
-| `/voice/...` | the library's router (join, offer, the client at `/voice/client/1/t2v-client.js`) | the library's |
+| `/voice/...` | the library's router (join, offer, the client at `/voice/client/1/t2v-client.js`, and the call choices `GET`/`POST /voice/choices` under `server.call_choices`, D-140) | the library's |
 
 Fifty tokens a day, not Ole5's ten: this is the agent shown and worked on (demos, live calls by
 agents with the fake-microphone rig, F.4's recordings, tester days), one token per call.
@@ -1170,6 +1172,21 @@ agents with the fake-microphone rig, F.4's recordings, tester days), one token p
   `words.hold_reply_language` (a short turn, "yes please", answered in the caller's last plain
   language), in `for_the_app`, and `tts.voice_by_script` (an Arabic clause of an English reply
   said in the Arabic voice, Saudi numbers and all) in `app_voice.py`'s `app_tts`;
+- turns on `server.call_choices` unless the environment sets it (D-140, the owner's request of
+  2026-11-22), and `server.py`'s `make_app` gives the runtime `choices.py`'s `CALL_OPTIONS`:
+  speech-to-text Whisper (`whisper-large-v3` on Groq) or Scribe (`scribe_v3`); the model
+  `openai/gpt-oss-120b` on Groq at effort medium, or OpenAI's `gpt-5.5`, `gpt-6-luna` and
+  `gpt-5.4-mini` at effort none (OpenAI's Chat Completions take function tools with no other);
+  the voice Groq's Orpheus (abdullah, troy for English), ElevenLabs' `eleven_v4_turbo` or
+  `eleven_v4` in the owner's voice, or Telnyx's Bayan (Jasem for both Arabic presets, Michael for
+  English). The library lists each only when the server holds its provider's key and starts
+  each menu on the settings' own. The page shows them as three menus under Options
+  (`web/choices.js`: filled from `GET /voice/choices`, hidden when it answers anything but the
+  menu, locked during a call, the pick kept in the page alone and sent with a call, after its
+  join and before its offer, only when changed). Each call's row in the call log
+  (`call_log/setup.py`'s `chosen_setup`, from `VoiceRuntime.call_choice`) names the
+  speech-to-text, model and voice it ran on, with its choice under `setup.choice`; its
+  `report.usage` names the models it really used;
 - under `env` dev, names the demo traveler the dev caller, as Ole5's names its customer.
 
 ### 6.3 What it needs from the library
@@ -1654,7 +1671,8 @@ ends, unless the caller said other words after it, and adds the booking's send w
 `words.send`, so «إي احجزها» and «نعم، احجزها» there are that yes too; and, as for the scripted
 agent, `guard.retry_claims`, `guard.retry_ids` up to twice a turn (D-136), each reply kept in
 the caller's language (`llm.reply_line_always`, `words.hold_reply_language` and
-`tts.voice_by_script`, D-139) and the caller read
+`tts.voice_by_script`, D-139), the call choices under Options (`server.call_choices`, D-140)
+and the caller read
 as Saudi first (below, "The owner's call of 2026-11-18"); each unless the environment sets
 it. Its name is `flight-lean`, so its traces and
 its runtime's folder are its own.

@@ -50,7 +50,12 @@ NAMES = {
     "t2_agentic_voice.identity": {"DevIdentity", "SignedJoinTokens"},
     "t2_agentic_voice.server": {
         "AccessCodeGuard",
+        "CallChoice",
+        "CallOptions",
+        "ModelOffer",
+        "SttOffer",
         "TokenMinter",
+        "VoiceOffer",
         "access_code_router",
         "combine_lifespans",
         "page_headers",

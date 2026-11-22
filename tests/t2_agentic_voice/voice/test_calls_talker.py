@@ -1,8 +1,9 @@
 """voice's entry point and the talker (voice/calls.py, voice/talkers.py; plan 006): each call of an
 agent that runs the talker gets the talker its factory builds for it, on the call's clock, in
 its `CallSetup`, and its speech-to-text bridge sends the early start's `held` requests; a call of
-the echo gets neither. A call the dev console chose a speech-to-text for (`ChosenStt`) is heard
-by it, with its settings; every other call by the runtime's."""
+the echo gets neither. A call whose providers were chosen for it (`ChosenCall`) is heard by its
+speech-to-text, with its settings, and speaks, writes and is named by each provider it names;
+every other call by the runtime's."""
 
 from __future__ import annotations
 
@@ -15,7 +16,7 @@ from t2_agentic_voice.core.settings.stt import SttSettings
 from t2_agentic_voice.core.tracing import Tracing
 from t2_agentic_voice.domain.declaration import Language, VoiceAgent
 from t2_agentic_voice.testing.llm_fakes import ScriptedLLM
-from t2_agentic_voice.voice.calls import ChosenStt, VoiceCalls
+from t2_agentic_voice.voice.calls import ChosenCall, VoiceCalls
 from t2_agentic_voice.voice.file_transport import file_output
 
 from tests.t2_agentic_voice.fakes import FakeClock, FakePhrases, FakeSpeechToText, FakeTextToSpeech
@@ -118,9 +119,9 @@ def test_a_call_with_a_chosen_speech_to_text_is_heard_by_it_and_no_other_call_is
     )
     asked: list[str] = []
 
-    def chosen(call_id: str) -> ChosenStt | None:
+    def chosen(call_id: str) -> ChosenCall | None:
         asked.append(call_id)
-        return ChosenStt(chosen_stt, chosen_settings) if call_id == "chosen" else None
+        return ChosenCall(stt=chosen_stt, settings=chosen_settings) if call_id == "chosen" else None
 
     calls = _calls(settings, ECHO, chosen=chosen)
 
@@ -148,3 +149,61 @@ def test_a_call_with_a_chosen_speech_to_text_is_heard_by_it_and_no_other_call_is
         output=file_output(),
     )
     assert alone.stt_bridge._requests._stt is default._stt and alone.setup.settings is settings
+
+
+def test_a_chosen_calls_voice_phrases_talker_chat_and_stt_model_are_its_own(
+    settings: VoiceSettings,
+) -> None:
+    """An app's page's choice (api/choice_calls.py): the chosen call speaks with its own
+    text-to-speech and phrases, within its `max_chars`, is written by its own talker factory, asks
+    its own chat model, and its usage names its own speech-to-text model; another call has the
+    runtime's."""
+    tts, chat, phrases = FakeTextToSpeech(limit=55), ScriptedLLM([]), FakePhrases.of(AGENT)
+    built: list[str] = []
+
+    def factory(name: str) -> Any:
+        def build(call: TalkerCall, on: object) -> Any:
+            built.append(name)
+            return object()
+
+        return build
+
+    def chosen(call_id: str) -> ChosenCall | None:
+        if call_id != "chosen":
+            return None
+        return ChosenCall(
+            settings=settings,
+            stt=FakeSpeechToText(),
+            stt_model="scribe_v3",
+            tts=tts,
+            phrases=phrases,
+            talker=factory("chosen"),
+            chat=chat,
+        )
+
+    calls = _calls(
+        settings,
+        AGENT,
+        talker=factory("runtime"),
+        chat=ScriptedLLM([]),
+        chosen=chosen,
+        stt_model="whisper-large-v3",
+    )
+
+    def pipeline(call_id: str) -> Any:
+        return calls._pipeline(
+            call_id,
+            (ToneVAD(), None),
+            caller=CALLER,
+            consent=CONSENT,
+            language=AGENT.languages[0],
+            output=file_output(),
+        )
+
+    one, other = pipeline("chosen"), pipeline("other")
+    assert built == ["chosen", "runtime"]
+    assert one.tts is tts and one.setup.phrases is phrases and one.setup.max_chars("en") == 55
+    assert one.setup.overlap_model is chat and one.setup.stt_model == "scribe_v3"
+    assert other.tts is calls._tts and other.setup.phrases is calls._phrases
+    assert other.setup.overlap_model is calls._chat
+    assert other.setup.stt_model == "whisper-large-v3"

@@ -100,6 +100,7 @@ class CallPipeline:
     ) -> None:
         self.setup = setup
         self.stt = stt  # the speech-to-text the call hears with, which its join warms
+        self.tts = tts  # the text-to-speech the call speaks with, which its join warms
         self.report = FailureReport(call_id=setup.call_id, emit=setup.emit, clock=setup.clock)
         self.events = events = EventStream(setup.clock, record=record)
         turns, early = setup.settings.turns, setup.talker is not None  # the talker's (plan 006, Q2)

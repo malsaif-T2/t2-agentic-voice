@@ -28,6 +28,7 @@ page play the agent's audio. It resolves with the call, or rejects with a `Voice
 | `audio` | Optional: an `<audio>` element to play the agent in; a new one otherwise |
 | `escape` | `false` leaves Esc unbound |
 | `pushToTalk` | `true` starts the call with push-to-talk on (below); off otherwise |
+| `choice` | Optional: `{ stt, model, voice }`, the ids of your app's offers this call runs on, each optional, sent before the offer; served only where the server turned `server.call_choices` on ("Letting the page choose a call's providers", below) |
 
 It opens the microphone first, with the browser's echo cancellation, noise suppression and gain
 control, and only then asks `getToken` for a token, so a missing, busy or refused microphone
@@ -335,6 +336,69 @@ only under `env` dev, to a browser on this machine that names it `localhost`, `1
 `[::1]`; any other request gets a plain 404. The token itself never goes to a log: the line
 `dev_token_minted` says only whether its consent keeps the audio.
 
+## Letting the page choose a call's providers
+
+An app may let its own page choose, call by call, the speech-to-text, the chat model and the
+voice among offers the app gives in code (D-140). Each offer has an id of the app's own; the
+page sends ids alone, never a provider's or a model's name, so a call runs only on what the app
+offers. Each voice offer's `languages` are its own provider's voices, here Orpheus' from
+`TtsSettings(provider="groq")`; the bare `TtsSettings()` holds ElevenLabs'. From
+[test_call_options.py](../../tests/t2_agentic_voice/api/test_call_options.py):
+
+```python
+from t2_agentic_voice import TtsSettings, VoiceRuntime
+from t2_agentic_voice.server import CallOptions, ModelOffer, SttOffer, VoiceOffer
+
+orpheus = TtsSettings(provider="groq").languages
+options = CallOptions(
+    stt=(
+        SttOffer(id="whisper", provider="groq", model="whisper-large-v3"),
+        SttOffer(id="scribe", provider="elevenlabs", model="scribe_v3"),
+    ),
+    models=(ModelOffer(id="gpt-5.5", model="gpt-5.5", reasoning_effort="none"),),
+    voices=(VoiceOffer(id="orpheus", provider="groq", languages=orpheus),),
+)
+runtime = VoiceRuntime(agent, settings=settings, identity=tokens, call_options=options)
+```
+
+Then turn `server.call_choices` on (`T2V_SERVER__CALL_CHOICES=true`; off by default, and with
+it off the routes are not mounted and the options are ignored). The offers are checked against
+the settings when the router is built, so a wrong pair stops the server there, never a call: a
+speech-to-text model its provider does not take, a model with an effort it does not take
+(OpenAI's models take function tools only with `none`), or a voice missing one of the presets
+`tts.languages` holds. The setting on with no options stops it too, naming the setting.
+
+The router then serves two routes:
+
+- **`GET choices`**, the menu: each group's offers, by id, with their providers and models, and
+  `default`, the offer each group runs on when nothing is chosen (the settings' own; `null` when
+  no offer is). It lists Groq's offers and the settings' own providers always, and another
+  provider's only when the server holds its key (`T2V_ELEVENLABS__API_KEY`,
+  `T2V_OPENAI__API_KEY`, `T2V_TELNYX__API_KEY`, or their `_FILE` forms), so a page never offers
+  what would fail. It never names a key, a key's file or a voice's ID, and needs no token.
+- **`POST choices`**, one call's choice, which the client sends for you when `VoiceClient.start`
+  is given `choice: { stt, model, voice }`: after the join, before the offer, with the call's ID
+  and offer secret. An id the menu does not list in its group is refused with a plain error that
+  repeats nothing sent, and the call does not start; an id that is the group's default counts as
+  no choice, and a `choice` with no id sends nothing, so a page that changed nothing costs the
+  call no request.
+
+The first call that chooses a voice opens it: its fixed phrases are made once, which takes a few
+seconds on a new machine and milliseconds after, from their files; a voice that cannot be
+opened refuses the choice (400, "That voice could not be opened just now"), and the next choice
+of it tries again. The client waits for the choice's answer before the offer; an offer sent
+while the voice opens runs on the server's own, and the choice is then refused (409
+`already_offered`), never kept. Each chosen voice keeps its own clause cache, under
+`<agent>/choices/<id>/clauses` in the data folder. A chosen OpenAI model writes the talker's
+replies; the library's own short checks (the yes rule's, an uncertain overlap's) stay on Groq's
+`openai/gpt-oss-120b` whatever is chosen.
+
+`runtime.call_choice(call_id)` names what each call ran on, by ids (None for a call with no
+choice), for your records, for the last 200 calls; each call's usage in its report names the
+models it really used, its speech-to-text's among them. The flight agent is the example: its
+offers in `flight_voice/choices.py`, its menus under Options in `web/choices.js`, and its call
+log's setup per call.
+
 ## Trying speech-to-text providers in the dev console
 
 The test console can hear each of its own calls with another speech-to-text provider and model,
@@ -381,8 +445,12 @@ heard it, with the time its request took, and the console's saved records (`dev-
 the data folder) carry the same `heard_by`, so two calls can be compared turn by turn.
 
 A choice the server does not offer is refused with a plain error before the call starts. Only
-this console may choose: its routes (`GET` and `POST dev/stt`) answer only under `env` dev, to a
-browser on this machine, and no join token or page of your app can set a call's speech-to-text.
+this console may choose this way: its routes (`GET` and `POST dev/stt`) answer only under `env`
+dev, to a browser on this machine, and no join token can set a call's speech-to-text (your
+app's own page may, among your offers, with `server.call_choices`: above). Should both choose
+for one call, the app's page's choice is the one it runs on; the console's **Heard by** names
+only its own choice or the server's settings, so for a call your page chose it still names the
+server's own (TD-159).
 A chosen call's audio goes to that provider; what each keeps is in
 [data-and-privacy.md](data-and-privacy.md). The measured comparison of the providers on the
 golden set, with the numbers to choose by, will be the speech-to-text bake-off's report.
