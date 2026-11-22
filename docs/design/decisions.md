@@ -4604,3 +4604,69 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   month", a lone weekday, two weekdays for the way back, or a weekday the lists miss leave the
   model's date as it was, so the caller chooses the return day freely. The mock's search and
   schema stay as run F reads them.
+
+## D-139 · Each reply's words in the language its voice is: the language named at the end of every request (`llm.reply_line_always`), a short turn's held (`words.hold_reply_language`), an Arabic clause of an English reply in the Arabic voice (`tts.voice_by_script`) · 2026-11-22 · Accepted (the owner: "there seems to be an issue with language switching. The TTS sounds switch but the LLM keeps the old language. What is the reason? and how can we fix it effectively.", 2026-11-22; approving, "Yes, build it"; library settings, off by default, GP-18; the flight app turns them on)
+
+- **Context:** in the owner's calls of 2026-11-22 (Scribe, `stt.live_language = "session"`),
+  English small talk in an Arabic call ("How's it going with you?") was answered in Arabic,
+  and the English voice read it. The voice and the words decided the language in two places.
+  The reply's tag is read from the script of the caller's words (agent/language.py's
+  `reply_language`: three Latin words, over twice the Arabic ones, make the turn English), and
+  every clause was said in that tag's voice; the model was told the language only by the
+  language section at the top of a long system prompt, under a history all in Arabic (the
+  greeting and each earlier reply), and
+  the line naming the reply's language (prompt.py's `reply_line`) ended a request only after a
+  tool result, which small talk never has. gpt-oss-120b followed the history and wrote Arabic,
+  and the English tag sent it to orpheus-v1-english: the call log counted 109 characters of
+  Arabic on that model. A short turn after a switch ("yes please", "okay") was heard as the
+  call's Arabic and given the Arabic prompt and the Saudi voice, the reverse mismatch.
+- **Decision:** four parts, each a library setting off by default, the record aside.
+  - `llm.reply_line_always` (false): every request of a turn ends with the system line naming
+    the reply's language; with no tool result before it, the language alone (prompt.py's
+    `LANGUAGE_LINES`, "Reply in English, the caller's language." and "Reply in Arabic, in the
+    Saudi dialect, the caller's language.", and `MSA_LANGUAGE_LINE` for an MSA caller),
+    opening with `NO_MORE_TOOLS` on the turn's last request; after a result, `REPLY_LINES` as
+    before (agent/turn_request.py).
+  - `words.hold_reply_language` (false): in a call whose language never moves
+    (`stt.language_moves()` false, as under `session`), a turn whose words plainly say no
+    language (under 3 words in either script, or the two mixed) is answered in the language of
+    the caller's most recent earlier turn that plainly said one, else as before; a turn that
+    asked for a language is still answered in it. The talker (agent/turn.py) and the session
+    (voice/session/talking.py) read it alike, so the prompt, the voice and the notices follow
+    one tag.
+  - `tts.voice_by_script` (false): in a reply tagged `en`, a clause with more words in Arabic
+    letters than in Latin ones is said in the agent's Arabic tag (`ar-SA` for the flight
+    agent) with the caller's register, its numbers in Saudi or MSA words; a clause with no
+    letter, or as many of each, keeps the tag of the clause before it; a reply tagged Arabic
+    never changes voice, so «flynas XY 299» keeps the Saudi speaker; a blocked clause's notice
+    is said in the clause's tag (agent/clause_voice.py).
+  - The record, no setting: the call report's `TurnRecord.reply_language` is the tag the
+    talker's reply began in (None for a turn it did not answer) and
+    `TurnRecord.spoken_languages` each tag its clauses were said in, once each, in order;
+    `TurnRecord.language` stays the one speech-to-text was told.
+
+  The flight app turns the three on for either agent, each unless the environment sets it
+  (voice_settings.py's `for_the_app` the llm and words ones, app_voice.py's `app_tts` the
+  voice). Ole5 keeps them off until its own check: run S's s03 and s07 played with them on.
+  Measured by replays of 2026-11-22 over 5 dialogues from the owner's calls, 3 plays each
+  (gpt-oss-120b, the lean agent on the recorded real flights): 8 of 30 switched turns in the
+  wrong script with the code as it was, 0 of 30 with the line on every request; the first
+  clause's mean 0.50 s against 0.52 s on turns with no tool, 1.32 s against 1.30 s on turns
+  with one (noise), about 20 more input tokens a request. Replayed again on the code as built,
+  all three on, over 8 dialogues, 3 plays each (the 5, a switched caller's "flynas" and
+  "okay", a return to Arabic ending «ايه», an Arabic caller's lone "OK"): 1 of 78 turns in the
+  wrong script, an "OK" answered in English and said in the Saudi voice (the way the net does
+  not turn, TD-157); every short turn after a switch kept the caller's language. Alternatives
+  set aside: a request
+  asked again before the first audio (about 0.7 s a turn where it fires), `detected` (more
+  time to speech-to-text, and the model's words unchanged), a voice net both ways (a Latin
+  name would change the speaker inside an Arabic reply), and the instructions' lines on the
+  other language dropped (TD-125's q38).
+- **Consequences:** no model request is added, and the time to the first clause is as it was
+  within the noise. An agent that declares no tool makes each request its turn's last, so each
+  line opens with `NO_MORE_TOOLS`. A returning Arabic caller's short «إي نعم» after English
+  turns is answered in English, and an English reply the model slips into Arabic changes
+  speaker for that clause. Left, as debt: a Latin-letter mis-transcript still flips its turn to
+  English, now cleanly (TD-156); the voice net one way only, English text under an Arabic tag
+  in the Saudi voice (TD-157); the speech-to-text usage named by `stt.model` whatever the
+  provider (TD-153); and a continued turn's language read from its last part alone (TD-158).

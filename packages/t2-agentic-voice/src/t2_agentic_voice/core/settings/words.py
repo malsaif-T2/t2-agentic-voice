@@ -11,7 +11,9 @@ Whisper prompt (plan 006), in any language: none by default.
 The register of the caller's Arabic (agent/language.py's `call_register`) reads the caller's
 words too: `dialect`, the Saudi forms a team adds to the library's list (none by default), and
 `saudi_first`, an `ar-SA` call read as Saudi unless the caller plainly speaks MSA (off by
-default, so a turn with no Saudi form is MSA, as before; GP-18).
+default, so a turn with no Saudi form is MSA, as before; GP-18). The reply's language reads
+them too (agent/language.py's `reply_language`): `hold_reply_language`, a short turn answered in
+the caller's last plain language in a call whose language never moves (off by default, GP-18).
 """
 
 from __future__ import annotations
@@ -95,5 +97,18 @@ class WordSettings(Group):
             "only MSA says (ureed, awadd, hal, matha, al-aan, sawfa and the like), and a turn "
             "with neither keeps the call's register, Saudi until an MSA one is heard; a Saudi "
             "form makes the call Saudi from then on. Off: a turn with no Saudi form is MSA."
+        ),
+    )
+    hold_reply_language: bool = Field(
+        default=False,
+        description=(
+            "Whether a short turn keeps the caller's language in a call whose language never "
+            "moves (stt.live_language session, auto or classified, or hinted or single where "
+            "they run as session): a turn of under 3 words in each script is answered in the "
+            "language of the caller's most recent earlier turn that plainly said one, so a "
+            "caller who switched to English and says yes please is answered in English, in the "
+            "English voice. A longer turn, one that mixes the two included, and a turn that "
+            "asked for a language are answered as before. Off: a short turn is answered in the "
+            "language it was heard in, the call's under session, as before."
         ),
     )

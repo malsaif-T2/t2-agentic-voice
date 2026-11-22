@@ -61,7 +61,9 @@ same for a replay's calls, which run on the system clock.
   where it stands.
 - **`FunctionLLM(fn)`** asks `fn` for each request's steps, so a test need not count requests: it
   can answer by the last message, the caller's words or a tool's result. A request that follows
-  a tool's result ends with a short system line naming the reply's language, after the result.
+  a tool's result ends with a short system line naming the reply's language, after the result;
+  under `llm.reply_line_always` every request does, so a test finds the caller's words as the
+  last message whose role is `user`.
 - Both keep every request in `requests`, so a test reads what the talker sent: the prompt, the
   history, the tools offered, a tool's result as the model read it.
 - **The session's own requests reach the same model.** An agent that sets

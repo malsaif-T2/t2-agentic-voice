@@ -16,6 +16,13 @@ For either agent too, a clause the guard blocks is first sent again (the owner's
 `retries_per_turn`, unless set); a clause still blocked after that is told as the library
 tells it, the caller hearing that something went wrong (the owner: "it should say it have
 some difficulties"). The real network declares no booking claims (lean/choose.py).
+
+For either agent too, each reply keeps the caller's language (the owner's calls of 2026-11-22,
+where English small talk in an Arabic call was written in Arabic and read by the English
+voice): every model request ends with a line naming the reply's language
+(`llm.reply_line_always`; 15 plays of 5 switch dialogues, 8 of 30 switched turns in the wrong
+language without it, 0 of 30 with it), and a short turn ("yes please", «إي») keeps the
+language of the caller's last plain turn (`words.hold_reply_language`), each unless set.
 """
 
 from __future__ import annotations
@@ -70,6 +77,10 @@ GUARD_ON: Final = (
 )
 # The guard's other values the app sets, each unless set (the module's docstring).
 _GUARD_SET: Final[Mapping[str, object]] = {"retries_per_turn": 2}
+# What keeps each reply in the caller's language, each unless set (the module's docstring): the
+# line naming it at the end of every request, and a short turn's held.
+_LANGUAGE_LLM: Final[dict[str, object]] = {"reply_line_always": True}
+_LANGUAGE_WORDS: Final[dict[str, object]] = {"hold_reply_language": True}
 REQUESTS_PER_TURN: Final = 4
 YES_OVER_READ_BACK: Final = "yes_over_read_back"
 YES_OVER_QUESTION: Final = "answer_yes_over_question"
@@ -84,7 +95,8 @@ def for_the_app(
     """`voice` as the app runs `agent`: its folder nested (`APP_FOLDER`), its bookings a caller a
     day `ACTIONS_PER_DAY`, the guard's `GUARD_ON` on and its `_GUARD_SET` values, its most
     requests a turn `REQUESTS_PER_TURN` and a rejected request sent once more
-    (`llm.retry_rejected`), for the scripted agent `YES_OVER_READ_BACK` on and for the lean one
+    (`llm.retry_rejected`), each reply kept in the caller's language (`_LANGUAGE_LLM`,
+    `_LANGUAGE_WORDS`), for the scripted agent `YES_OVER_READ_BACK` on and for the lean one
     (which has no read-back), when it can book, `YES_OVER_QUESTION`, with the booking's
     `SEND_WORDS` its `words.send`, `REGISTER_WORDS` for the caller's register, app_voice.py's
     speech, the calls' audio recorded where the caller consents, turned_on.py's `TURNED_ON` (and
@@ -107,10 +119,11 @@ def for_the_app(
         update["interruptions"] = InterruptionSettings.model_validate(
             voice.interruptions.model_dump() | {yes: True}
         )
-    words = REGISTER_WORDS | ({"send": SEND_WORDS} if books else {})
+    words = REGISTER_WORDS | _LANGUAGE_WORDS | ({"send": SEND_WORDS} if books else {})
     if unset := {k: v for k, v in words.items() if k not in voice.words.model_fields_set}:
         update["words"] = WordSettings.model_validate(voice.words.model_dump() | unset)
-    model = {"max_requests_per_turn": REQUESTS_PER_TURN, "retry_rejected": True}  # D-132
+    model: dict[str, object] = {"max_requests_per_turn": REQUESTS_PER_TURN, "retry_rejected": True}
+    model |= _LANGUAGE_LLM  # D-132, then the reply's language
     if llm := {k: v for k, v in model.items() if k not in voice.llm.model_fields_set}:
         update["llm"] = LlmSettings.model_validate(voice.llm.model_dump() | llm)
     update["tts"] = app_tts(voice.tts)

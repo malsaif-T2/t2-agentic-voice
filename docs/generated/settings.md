@@ -150,7 +150,7 @@ Speech-to-text: the adapter, the Whisper model, how long a request may take, the
 
 ## `llm`
 
-The chat model the talker writes its replies with: the adapter, the model, how much it reasons, the most it may write, how long a request may take, whether each request opens with a line of its own, the most requests a turn, and whether a rejected request is sent once more.
+The chat model the talker writes its replies with: the adapter, the model, how much it reasons, the most it may write, how long a request may take, whether each request opens with a line of its own, the most requests a turn, whether a rejected request is sent once more, and whether every request ends with a line naming the reply's language.
 
 | Variable | Type | Default | Unit | Description |
 | --- | --- | --- | --- | --- |
@@ -162,10 +162,11 @@ The chat model the talker writes its replies with: the adapter, the model, how m
 | `T2V_LLM__VARY_FIRST_LINE` | true or false | `true` | — | Whether each request's system message opens with a line new on every request, so no two requests share a prefix the provider has cached. Groq's cache can be slow: on openai/gpt-oss-120b with one app's system prompt, 3 of the 8 requests it served from its cache took 1.03, 1.25 and 5.71 s to the first token, while 12 requests with a first line of their own all took 0.15 to 0.30 s (2026-11-07, D-072). |
 | `T2V_LLM__MAX_REQUESTS_PER_TURN` | integer | `3` | — | The most model requests one turn makes: each but the last offers the agent's tools, the last none, so the turn ends in words. |
 | `T2V_LLM__RETRY_REJECTED` | true or false | `false` | — | Whether a request of a turn the provider rejects (a rejected error, such as Groq's tool_use_failed when the model wrote a malformed tool call) is sent once more, with a new first line and nothing of the first kept, when nothing of it was said yet and neither a leak nor the question limit stopped the reply (D-132): never twice for one request, and not counted in max_requests_per_turn. Off: the reply ends with the error notice, as before. |
+| `T2V_LLM__REPLY_LINE_ALWAYS` | true or false | `false` | — | Whether every request of a turn ends with the short system line naming the reply's language, as a request after a tool result does: with no tool result before it, the line names the language alone, saying nothing of results. The owner's calls of 2026-11-22 had English small talk in an Arabic call, which calls no tool, answered in Arabic and read by the English voice; 15 plays of 5 switch dialogues had 8 of 30 switched turns in the wrong language without the line and 0 of 30 with it, with no measurable change in time. Off: only a request after a tool result ends with it, as before. |
 
 ## `tts`
 
-Text-to-speech: the adapter, a model and a voice for each language, and what is done with the audio.
+Text-to-speech: the adapter, a model and a voice for each language, what is done with the audio, and which voice a clause written in the other script is said in.
 
 | Variable | Type | Default | Unit | Description |
 | --- | --- | --- | --- | --- |
@@ -179,6 +180,7 @@ Text-to-speech: the adapter, a model and a voice for each language, and what is 
 | `T2V_TTS__SPOKEN_KEY_COMBINATIONS` | true or false | `false` | — | Whether a key combination in a reply is said as its keys, its plus signs left out ("Ctrl + Shift + R" is said "Control Shift R"; in Arabic, by the Arabic names of its keys); off, it is said as written. |
 | `T2V_TTS__TRIM_SILENCE` | true or false | `false` | — | Whether the silence the model puts before its speech is trimmed; off, the audio plays as it comes. |
 | `T2V_TTS__STREAM_REPLIES` | true or false | `false` | — | Whether the talker's replies are spoken on the provider's streaming socket, one a call, each clause sent as the talker writes it and each reply one turn of the voice (ElevenLabs' Text-to-Dialogue socket, for its v3 and v4 models; D-121). Fixed lines, an action's lines and the clause cache's takes keep to one request a clause, as does a provider or model with no socket; a socket's failure turns it off for the rest of the call. Off by default until it is measured. |
+| `T2V_TTS__VOICE_BY_SCRIPT` | true or false | `false` | — | Whether a clause of an English reply with more words in Arabic letters than in Latin ones is said in the agent's Arabic voice, its numbers in the caller's register: a clause with no letters, or as many of each, keeps the voice of the clause before it, and an Arabic reply never changes voice, so a Latin product name in it keeps the Arabic one. The owner's calls of 2026-11-22 had two Arabic replies to English small talk read by orpheus-v1-english. Off: every clause is said in its reply's language, whatever its letters, as before. |
 
 ## `turns`
 
@@ -234,6 +236,7 @@ Words: what a team adds to each language's lists, which the interruption rule re
 | `T2V_WORDS__DIALECT` | JSON list of text | `[]` | — | Saudi forms added to the library's list the register of the caller's Arabic is read by, as a JSON list of Arabic words or phrases; a phrase of several words is one of them heard as those words in a row. A value replaces the list. |
 | `T2V_WORDS__FIXED_REGISTER` | one of saudi, msa, or unset | unset | — | The register every ar-SA call is held in from its start to its end, whatever the caller says: saudi (the Saudi spoken register) or msa; unset (the default), it is read from the caller's words as dialect and saudi_first say. |
 | `T2V_WORDS__SAUDI_FIRST` | true or false | `false` | — | Whether an ar-SA call reads the caller as Saudi unless they plainly speak MSA: a turn with no Saudi form is MSA only when it holds one of the library's few forms only MSA says (ureed, awadd, hal, matha, al-aan, sawfa and the like), and a turn with neither keeps the call's register, Saudi until an MSA one is heard; a Saudi form makes the call Saudi from then on. Off: a turn with no Saudi form is MSA. |
+| `T2V_WORDS__HOLD_REPLY_LANGUAGE` | true or false | `false` | — | Whether a short turn keeps the caller's language in a call whose language never moves (stt.live_language session, auto or classified, or hinted or single where they run as session): a turn of under 3 words in each script is answered in the language of the caller's most recent earlier turn that plainly said one, so a caller who switched to English and says yes please is answered in English, in the English voice. A longer turn, one that mixes the two included, and a turn that asked for a language are answered as before. Off: a short turn is answered in the language it was heard in, the call's under session, as before. |
 
 ## `guard`
 

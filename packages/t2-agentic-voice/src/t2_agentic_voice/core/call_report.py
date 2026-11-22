@@ -109,7 +109,13 @@ class ModelUsage(_Frozen):
 
 class TurnRecord(_Frozen):
     """One turn of a call: what was heard, and the agent's tag of the language its request was
-    sent in (the call's, unless a classifier moved it) and how that was chosen (`language_by`);
+    sent in to speech-to-text (`language`: the call's, unless a classifier moved it) and how that
+    was chosen (`language_by`); the tag the talker's reply to it was in as it began
+    (`reply_language`: agent/language.py's `reply_language`, which the words' script can move
+    from the heard one; None for a turn the talker did not answer) and each tag its clauses were
+    said in, each once, in order (`spoken_languages`: an Arabic clause of an English reply is
+    said in the Arabic voice under `tts.voice_by_script`, and the `switch_language` tool moves
+    the rest of a reply), so a reply's language that is not the heard one shows in its own turn;
     what the agent said back; whether the turn was dropped (its speech began while the agent
     spoke, the greeting included, or just after), its reply stopped by the caller, or the turn
     left unfinished (the call ended before its transcript came, so nothing was heard); whether
@@ -119,6 +125,8 @@ class TurnRecord(_Frozen):
     turn_id: TurnId
     language: LanguageTag | None = None
     language_by: LanguageBy = "session"
+    reply_language: LanguageTag | None = None
+    spoken_languages: tuple[LanguageTag, ...] = ()
     heard: str
     said: str = ""
     dropped: bool = False

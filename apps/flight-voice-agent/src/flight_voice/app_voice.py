@@ -9,6 +9,10 @@ environment sets it:
 - **Numbers said in the caller's register** (`SPOKEN_NUMBERS`, D-107): "14:00" is said
   «ثنتين الظهر» to a Saudi caller and "two in the afternoon" in English, never digit by digit,
   since the lean agent writes times and fares in digits.
+- **An Arabic clause of an English reply in the Arabic voice** (`VOICE_BY_SCRIPT`,
+  `tts.voice_by_script`): the owner's calls of 2026-11-22 had two Arabic replies to English
+  small talk read by orpheus-v1-english; now such a clause is said by abdullah with Saudi
+  numbers, while an Arabic reply keeps abdullah through a Latin name («flynas XY 299»).
 """
 
 from __future__ import annotations
@@ -19,6 +23,7 @@ from t2_agentic_voice import TtsSettings
 
 TTS_PROVIDER: Final = "groq"
 SPOKEN_NUMBERS: Final = "by_register"
+VOICE_BY_SCRIPT: Final = True
 
 
 def app_tts(tts: TtsSettings) -> TtsSettings:
@@ -27,6 +32,8 @@ def app_tts(tts: TtsSettings) -> TtsSettings:
     update: dict[str, object] = {}
     if "spoken_numbers" not in tts.model_fields_set:
         update["spoken_numbers"] = SPOKEN_NUMBERS
+    if "voice_by_script" not in tts.model_fields_set:
+        update["voice_by_script"] = VOICE_BY_SCRIPT
     if "provider" not in tts.model_fields_set:
         update["provider"] = TTS_PROVIDER
     if not update:

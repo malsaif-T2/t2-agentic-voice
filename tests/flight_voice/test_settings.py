@@ -3,7 +3,8 @@ library's under `T2V_`, a `.env` read only when given; each refusal naming the s
 its value; the runtime's folder always nested under the library's; 50 bookings a caller a day,
 the guard's two rules of run F's round 2, its plain speech (D-111) and a claim or a number sent
 again on, up to twice a turn (a clause still blocked then told as the library tells it),
-four model requests a turn, and a yes over the read-back held (D-108), each unless set; the
+four model requests a turn, a yes over the read-back held (D-108), and each reply kept in the
+caller's language (the line naming it on every request, a short turn's held), each unless set; the
 demo traveler the console's dev caller under `env` dev alone; and a persona's name that would
 break the lines' rule refused, naming its setting."""
 
@@ -13,7 +14,7 @@ from datetime import date
 from pathlib import Path
 
 import pytest
-from flight_voice.app_voice import SPOKEN_NUMBERS
+from flight_voice.app_voice import SPOKEN_NUMBERS, VOICE_BY_SCRIPT
 from flight_voice.settings import (
     ACTIONS_PER_DAY,
     APP_FOLDER,
@@ -26,7 +27,13 @@ from flight_voice.settings import (
     load,
 )
 from flight_voice.traveler import demo_caller
-from t2_agentic_voice import ConfigurationError, GuardSettings, InterruptionSettings, VoiceSettings
+from t2_agentic_voice import (
+    ConfigurationError,
+    GuardSettings,
+    InterruptionSettings,
+    VoiceSettings,
+    WordSettings,
+)
 
 from tests.flight_voice.server_support import CODE
 from tests.isolation import FLIGHT_PREFIX
@@ -197,6 +204,28 @@ def test_a_rejected_request_is_sent_once_more_unless_the_environment_sets_it(
     assert not voice.llm.retry_rejected and voice.llm.max_requests_per_turn == REQUESTS_PER_TURN
 
 
+def test_each_reply_keeps_the_callers_language_unless_the_environment_sets_it(
+    environment: pytest.MonkeyPatch,
+) -> None:
+    """The owner's calls of 2026-11-22: English small talk in an Arabic call was written in
+    Arabic and read by the English voice; the library's defaults stay off (GP-18)."""
+    library = VoiceSettings(env="test")
+    assert not library.llm.reply_line_always and not library.words.hold_reply_language
+    for agent in ("scripted", "lean"):
+        app = for_the_app(library, agent=agent)
+        assert app.llm.reply_line_always and app.words.hold_reply_language, agent
+    voice = load().voice
+    assert voice.llm.reply_line_always and voice.words.hold_reply_language
+    environment.setenv("T2V_LLM__REPLY_LINE_ALWAYS", "false")
+    environment.setenv("T2V_WORDS__HOLD_REPLY_LANGUAGE", "false")
+    voice = load().voice
+    assert not voice.llm.reply_line_always and not voice.words.hold_reply_language
+    assert voice.llm.retry_rejected and voice.words.fixed_register == "saudi"  # the rest still on
+    # In code: a group's field set there is kept.
+    given = VoiceSettings(env="test", words=WordSettings(hold_reply_language=False))
+    assert not for_the_app(given, agent="lean").words.hold_reply_language
+
+
 def test_a_yes_over_the_read_back_is_held_unless_the_environment_sets_it(
     environment: pytest.MonkeyPatch,
 ) -> None:
@@ -247,6 +276,17 @@ def test_numbers_and_times_are_said_in_the_callers_register_unless_set(
     assert load().voice.tts.spoken_numbers == SPOKEN_NUMBERS == "by_register"
     environment.setenv("T2V_TTS__SPOKEN_NUMBERS", "as_written")
     assert load().voice.tts.spoken_numbers == "as_written"
+
+
+def test_an_arabic_clause_of_an_english_reply_is_said_in_the_arabic_voice_unless_set(
+    environment: pytest.MonkeyPatch,
+) -> None:
+    """The owner's calls of 2026-11-22 (app_voice.py): two Arabic replies to English small talk
+    were read by the English voice; the library's default stays off (GP-18)."""
+    assert not VoiceSettings(env="test").tts.voice_by_script
+    assert load().voice.tts.voice_by_script is VOICE_BY_SCRIPT is True
+    environment.setenv("T2V_TTS__VOICE_BY_SCRIPT", "false")
+    assert not load().voice.tts.voice_by_script
 
 
 def test_the_demo_traveler_is_the_dev_caller_under_dev_alone(

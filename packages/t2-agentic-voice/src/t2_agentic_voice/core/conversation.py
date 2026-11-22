@@ -132,16 +132,19 @@ class TalkerTurn(_Plain):
     words, whole (a turn the caller went on with after a pause, within the hold, is one turn);
     the language its transcript was heard in (None when the provider named none); the tag of the
     language it asked the call to move to (`asked`, a spoken switch request under
-    `stt.live_language = "detected"`; None for none), which its reply is in; the reply its
-    speech began over (`over_reply`, None when it was said while the agent was silent) and the
-    reply it stopped (`cut_reply`, None when it stopped none; a turn said alone may stop a
-    reply to an earlier turn before it played); the action this turn declined, if any; and the
-    call so far."""
+    `stt.live_language = "detected"`; None for none), which its reply is in; whether a short
+    turn's reply holds the caller's last plain language (`hold_language`, agent/language.py's
+    held rule: the session sets it, from the call's own settings, so the talker's prompt and the
+    session's voice follow one tag); the reply its speech began over (`over_reply`, None when
+    it was said while the agent was silent) and the reply it stopped (`cut_reply`, None when it
+    stopped none; a turn said alone may stop a reply to an earlier turn before it played); the
+    action this turn declined, if any; and the call so far."""
 
     turn_id: TurnId
     words: str = Field(min_length=1)
     language: _Heard | None = None
     asked: _Heard | None = None
+    hold_language: bool = False
     over_reply: ReplyId | None = None
     cut_reply: ReplyId | None = None
     declined: DeclinedAction | None = None

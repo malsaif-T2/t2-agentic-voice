@@ -10,7 +10,8 @@ of the talker's as a `Talk` (each reply's run is talk_runner.py's `TalkRunner`).
   model request's answer (`ModelReplied`'s count and labels) is added to its turn's log, for the
   turn's span, and logged by its count and labels alone. Whether the turn's first model request
   went out on a kept-alive connection (`ModelReplied.warm_connection`) is kept on its turn's log,
-  for its record in the call's report and its span. A progress line with several wordings
+  for its record in the call's report and its span, and so is each tag a clause of it is said in,
+  each once (`spoken_languages`), for its record. A progress line with several wordings
   (`Language.progress`) is said in one of them, never the one the call said last for its key.
 """
 
@@ -125,6 +126,9 @@ class TalkPlayer:
         match event:
             case SpokenClause(text=text, language=tag, caller_register=register):
                 talk.said, talk.language = talk.said + 1, tag
+                log = self._turns.turn(turn_id)
+                if tag not in log.spoken_languages:  # for its record in the call's report
+                    log.spoken_languages = (*log.spoken_languages, tag)
                 await reply.add_clause(text, language=tag, at=at, register=register)
             case ShownCard(card=card):
                 await reply.card(card)

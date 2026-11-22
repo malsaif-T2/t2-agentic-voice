@@ -236,13 +236,17 @@ class Talking(KeptReplies):
 
     def _turn(self, turn: TurnLog, heard: HeardWords) -> TalkerTurn:
         """The turn as the talker reads it: its words whole, the language they were heard in,
-        the language it asked for (call_language.py), the replies it spoke over and cut, the
-        action it declined (read_back.py's `handed`), and the call before it as heard."""
+        the language it asked for (call_language.py), whether a short one holds the caller's
+        language (`words.hold_reply_language` in a call that never moves, by the call's own
+        settings: agent/language.py), the replies it spoke over and cut, the action it declined
+        (read_back.py's `handed`), and the call before it as heard."""
+        now = self._setup.now  # the call's current language, and the agent's (call_language.py)
         return TalkerTurn(
             turn_id=turn.turn_id,
             words=heard.text,
             language=heard_language(heard.language),
-            asked=self._setup.now.asked_tag(heard.text),
+            asked=now.asked_tag(heard.text),
+            hold_language=self._setup.settings.words.hold_reply_language and not now.moves,
             over_reply=turn.over_reply,
             cut_reply=turn.cut_reply,
             declined=self._confirming.handed(turn.turn_id, words=heard.text),
@@ -251,7 +255,8 @@ class Talking(KeptReplies):
 
     def _start(self, talk: Talk, turn: TalkerTurn) -> None:
         now = self._setup.now  # the call's current language, and the agent's (call_language.py)
-        talk.language = reply_language(turn, call=now.tag, spoken=now.spoken)
+        talk.language = reply_language(turn, call=now.tag, spoken=now.spoken)  # as the talker
+        self._turns.turn(talk.turn_id).reply_language = talk.language  # the report's (report.py)
         self._talks[talk.turn_id] = talk
         talk.scope.start(self._runner.run(talk, turn), name=f"talker-{talk.turn_id}")
 

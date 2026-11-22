@@ -1163,6 +1163,13 @@ agents with the fake-microphone rig, F.4's recordings, tester days), one token p
 - turns on `llm.retry_rejected` unless the environment sets it (D-132): a request the provider
   rejected before any of it was said, such as the malformed tool call Groq refused in the owner's
   call of 2026-11-19, is sent once more instead of the error notice;
+- keeps each reply in the caller's language (D-139: the owner's calls of 2026-11-22, where
+  English small talk in an Arabic call was written in Arabic and read by the English voice),
+  each unless the environment sets it: `llm.reply_line_always` (every request ends with the
+  line naming the reply's language, not only one after a tool's result) and
+  `words.hold_reply_language` (a short turn, "yes please", answered in the caller's last plain
+  language), in `for_the_app`, and `tts.voice_by_script` (an Arabic clause of an English reply
+  said in the Arabic voice, Saudi numbers and all) in `app_voice.py`'s `app_tts`;
 - under `env` dev, names the demo traveler the dev caller, as Ole5's names its customer.
 
 ### 6.3 What it needs from the library
@@ -1645,7 +1652,9 @@ said over its closing question ("Shall I book it?", «أحجزها لك؟») is 
 ends, unless the caller said other words after it, and adds the booking's send words
 (`booking/lines.py`'s `SEND_WORDS`: «احجزها», «احجز», "book it", "confirm" and the like) to
 `words.send`, so «إي احجزها» and «نعم، احجزها» there are that yes too; and, as for the scripted
-agent, `guard.retry_claims`, `guard.retry_ids` up to twice a turn (D-136) and the caller read
+agent, `guard.retry_claims`, `guard.retry_ids` up to twice a turn (D-136), each reply kept in
+the caller's language (`llm.reply_line_always`, `words.hold_reply_language` and
+`tts.voice_by_script`, D-139) and the caller read
 as Saudi first (below, "The owner's call of 2026-11-18"); each unless the environment sets
 it. Its name is `flight-lean`, so its traces and
 its runtime's folder are its own.

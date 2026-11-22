@@ -11,6 +11,21 @@ Saudi, MSA and English turns, each answered in its own.
   English question Whisper writes in Latin letters in an Arabic call is answered in English,
   while an Arabic sentence with English product terms in it ("VPN" and "Outlook" in a Saudi
   question) stays Arabic.
+- **Held.** Under `words.hold_reply_language` (off by default, GP-18), in a call whose language
+  never moves (`stt.language_moves()` false, as under `session`), a short turn (`_short`: under
+  `SWITCH_WORDS` words in each script) is answered in the language of the caller's most recent
+  earlier turn that plainly said one, else as above; a turn that asked for a language is still
+  answered in it. Under `session` every turn is heard in the call's language, so a caller who
+  had switched to English and said "yes please" or "okay" was answered as the call's Arabic,
+  with the Arabic prompt and the Saudi voice, while the model, told by a team's Arabic
+  instructions "If they speak English, answer in English", may write English: the reverse of
+  the mismatch the owner's calls of 2026-11-22 heard. An Arabic caller's lone "OK" still
+  follows their Arabic. A longer turn that mixes the two («ابي احجز business class على
+  Saudia», I want to book business class on Saudia) is no short reply: it is answered as it
+  was heard, as before. The session decides it from the call's own settings and sets it on the
+  turn (`TalkerTurn.hold_language`, voice/session/talking.py), which the talker (agent/turn.py)
+  reads, so the prompt, the voice and the notices follow one tag even in a call whose
+  speech-to-text the dev console picked, its settings not the talker's.
 - **The tag.** That language is the agent's tag for it: the call's own when its language is
   the same (an `ar-SA` call stays `ar-SA`), else the first of the agent's tags in it, else the
   call's.
@@ -55,14 +70,21 @@ _ARABIC_LETTER = re.compile("[\u0621-\u063a\u0641-\u064a\u0671-\u06d3]")
 _LATIN_LETTER = re.compile("[A-Za-z]")
 
 
-def _written(words: str, heard: LanguageCode | None) -> LanguageCode | None:
-    """The language the script of `words` plainly says, when it is not `heard`."""
+def script_words(words: str) -> tuple[int, int]:
+    """How many of `words`' words hold an Arabic letter, and how many of the others a Latin
+    one; a word with neither (a number, a mark) counts in neither."""
     arabic = latin = 0
     for word in words.split():
         if _ARABIC_LETTER.search(word):
             arabic += 1
         elif _LATIN_LETTER.search(word):
             latin += 1
+    return arabic, latin
+
+
+def _written(words: str, heard: LanguageCode | None) -> LanguageCode | None:
+    """The language the script of `words` plainly says, when it is not `heard`."""
+    arabic, latin = script_words(words)
     if heard != "en" and latin >= SWITCH_WORDS and latin > 2 * arabic:
         return "en"
     if heard != "ar" and arabic >= SWITCH_WORDS and arabic > 2 * latin:
@@ -70,17 +92,33 @@ def _written(words: str, heard: LanguageCode | None) -> LanguageCode | None:
     return None
 
 
+def _short(words: str) -> bool:
+    """Whether `words` are too few to say a language: under `SWITCH_WORDS` in each script."""
+    return max(script_words(words)) < SWITCH_WORDS
+
+
 def reply_language(
     turn: TalkerTurn, *, call: LanguageTag, spoken: Sequence[LanguageTag]
 ) -> LanguageTag:
     """The tag the reply to `turn` is in, in a call held in `call` by an agent that speaks
     `spoken` (the module's docstring); the language the turn asked the call to move to, when it
-    asked for one the agent speaks (`TalkerTurn.asked`)."""
+    asked for one the agent speaks (`TalkerTurn.asked`); for a short turn the session holds
+    (`TalkerTurn.hold_language`), the caller's last plain language (`_last_plain`)."""
     asked = next((tag for tag in spoken if tag == turn.asked), None)
     if asked is not None:
         return asked
+    last = _last_plain(turn) if turn.hold_language and _short(turn.words) else None
+    if last is not None:
+        return tag_of(last, call=call, spoken=spoken)
     heard = heard_code(turn.language)
     return tag_of(_written(turn.words, heard) or heard, call=call, spoken=spoken)
+
+
+def _last_plain(turn: TalkerTurn) -> LanguageCode | None:
+    """The language the caller's most recent earlier turn with one plainly said (`_written`),
+    of those not dropped; None when none did."""
+    past = [t.words for t in turn.conversation.turns if t.fate != "dropped" and t.words]
+    return next((code for words in reversed(past) if (code := _written(words, None))), None)
 
 
 def tag_of(

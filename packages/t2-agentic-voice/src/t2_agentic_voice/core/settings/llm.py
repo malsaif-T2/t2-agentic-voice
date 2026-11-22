@@ -87,8 +87,8 @@ HIDDEN_REASONING: Final[frozenset[str]] = frozenset({"minimaxai/minimax-m2.7"})
 class LlmSettings(Group):
     """The chat model the talker writes its replies with: the adapter, the model, how much it
     reasons, the most it may write, how long a request may take, whether each request opens
-    with a line of its own, the most requests a turn, and whether a rejected request is sent
-    once more."""
+    with a line of its own, the most requests a turn, whether a rejected request is sent once
+    more, and whether every request ends with a line naming the reply's language."""
 
     provider: LlmProvider = Field(
         default="groq",
@@ -166,6 +166,19 @@ class LlmSettings(Group):
             "said yet and neither a leak nor the question limit stopped the reply (D-132): "
             "never twice for one request, and not counted in max_requests_per_turn. Off: the "
             "reply ends with the error notice, as before."
+        ),
+    )
+    reply_line_always: bool = Field(
+        default=False,
+        description=(
+            "Whether every request of a turn ends with the short system line naming the "
+            "reply's language, as a request after a tool result does: with no tool result "
+            "before it, the line names the language alone, saying nothing of results. The "
+            "owner's calls of 2026-11-22 had English small talk in an Arabic call, which calls "
+            "no tool, answered in Arabic and read by the English voice; 15 plays of 5 switch "
+            "dialogues had 8 of 30 switched turns in the wrong language without the line and 0 "
+            "of 30 with it, with no measurable change in time. Off: only a request after a tool "
+            "result ends with it, as before."
         ),
     )
 

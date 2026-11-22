@@ -83,7 +83,9 @@ class TurnLog:
     `stray_scripts` labels their kinds (agent/stray_script.py), never a character. `language`,
     `language_by` and `language_share` are what its first request named, how, and the verdict's
     best share, from its first `Transcribing`, whatever its part, as
-    turn_book.py keeps them. `warm_connection`: whether its first chat request went out on a
+    turn_book.py keeps them. `reply_language`: the tag its talker's reply began in (talking.py),
+    and `spoken_languages` each tag its clauses were said in, each once, in order
+    (talker_play.py). `warm_connection`: whether its first chat request went out on a
     kept-alive connection, None when the model does not say (talker_play.py)."""
 
     turn_id: TurnId
@@ -121,6 +123,8 @@ class TurnLog:
     language: str | None = None
     language_by: LanguageBy | None = None
     language_share: float | None = None
+    reply_language: LanguageTag | None = None
+    spoken_languages: tuple[LanguageTag, ...] = ()
     warm_connection: bool | None = None
 
     @property
@@ -167,11 +171,13 @@ class TurnLog:
     def record(self, language: LanguageTag, spoken: Sequence[LanguageTag] = ()) -> TurnRecord:
         """Its record in the report of a call held in `language` by an agent that speaks
         `spoken`: the tag of the language its request was sent in (agent/language.py's
-        `tag_of`), the call's when none was named."""
+        `tag_of`), the call's when none was named, beside its reply's."""
         return TurnRecord(
             turn_id=self.turn_id,
             language=tag_of(self.language, call=language, spoken=spoken),
             language_by=self.language_by or "session",
+            reply_language=self.reply_language,
+            spoken_languages=self.spoken_languages,
             heard=self.heard,
             said=self.said,
             dropped=self.dropped,

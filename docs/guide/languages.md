@@ -282,12 +282,39 @@ call may hold Saudi, MSA and English turns, each answered in its own. The rule, 
    call's Arabic reply is `ar-SA`), else in the first of the agent's tags in that language, else
    in the call's: an agent that speaks no English answers an English turn in its own language.
 
+**A short turn, held.** With `T2V_WORDS__HOLD_REPLY_LANGUAGE=true`, in a call whose language
+never moves (`session`, and the modes that run as it), a turn whose words plainly say no
+language (under 3 words in either script, or the two mixed: "yes please", "okay", "that one")
+is answered in the language of the caller's most recent earlier turn that plainly said one, and
+by the rule above when none did. Under `session` every turn is heard in the call's language, so
+without it a caller who switched to English and says "yes please" is answered as the call's
+Arabic, with the Arabic prompt and the Saudi voice. A turn that asked for a language is still
+answered in it. The talker and the session read it alike, so the prompt and the voice follow
+one tag.
+
 The system prompt's language section, and the instructions of that tag when you give one a
 language, follow the reply's tag; each clause is spoken in that tag's voice. A request that
 follows a tool's result ends with a short line naming the reply's language, whatever language
 the result is in, so an English question answered from Arabic passages is answered in English.
-The output guard, the speaking rules and the pronunciation map read the clause in its own
-language.
+With `T2V_LLM__REPLY_LINE_ALWAYS=true` every request ends with one, the language alone where no
+result came before it ("Reply in English, the caller's language."): the section sits at the
+top of a long prompt, above a history that may be all in the call's other language, and in the
+owner's calls of 2026-11-22 English small talk in an Arabic call, which calls no tool, was
+written in Arabic. A replay of those switches had 8 of 30 switched turns in the wrong language
+without the line and 0 of 30 with it, with no measurable change in time (D-139). The output
+guard, the speaking rules and the pronunciation map read the clause in its own language.
+
+**A clause by its script.** With `T2V_TTS__VOICE_BY_SCRIPT=true`, a clause of an English reply
+written mostly in Arabic letters is said in the agent's Arabic voice, its numbers in the
+caller's register, so an Arabic sentence the model slipped into an English reply is not read by
+the English voice. A clause with no letter keeps the voice of the clause before it ("14:00."
+after an Arabic sentence), and a reply in Arabic never changes voice, so a Latin name inside it
+(«flynas XY 299») keeps the Arabic speaker. The call report's `TurnRecord.reply_language` is
+the tag each reply began in, and `TurnRecord.spoken_languages` the tags its clauses were said
+in, so a reply in another language than the one heard shows in its own turn.
+
+The three settings are off by default (GP-18), so a call answers as it did; the flight app
+turns them on, and Ole5 keeps them off until its own check.
 
 ## Saudi Arabic and MSA
 

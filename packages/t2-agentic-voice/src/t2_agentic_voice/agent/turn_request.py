@@ -1,8 +1,9 @@
 """One model request of a turn (agent/turn.py's "The request"), as `request_of` builds it from
 the turn's messages: a first line new on every request (`llm.vary_first_line`), the calls with
 their results dropped from the last request, which offers no tools, the line that names the
-reply's language after a tool result of the turn, and the `llm` group's model, effort and
-output bound.
+reply's language after a tool result of the turn, and on every request under
+`llm.reply_line_always`, the language alone where no result came before (agent/prompt.py's
+docstring), and the `llm` group's model, effort and output bound.
 """
 
 from __future__ import annotations
@@ -32,8 +33,8 @@ def request_of(
         messages = [ChatMessage.system(with_first_line(messages[0].content)), *messages[1:]]
     if not tools:
         messages = without_calls(messages)
-    if after_tools:  # the request's own line, never kept in the turn's messages
-        line = reply_line(language, register, last=not tools)
+    if after_tools or llm.reply_line_always:  # the request's own, never kept in the turn's
+        line = reply_line(language, register, last=not tools, after_results=after_tools)
         messages = [*messages, ChatMessage.system(line)]
     return ChatRequest(
         messages=tuple(messages),

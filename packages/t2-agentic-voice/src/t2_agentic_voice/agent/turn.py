@@ -5,7 +5,8 @@ turn and the call as it was heard to the events the session plays, within the re
   Arabic over the call (agent/prompt.py, agent/language.py), opened by a line new on every request
   (`llm.vary_first_line`: prompt.py's `FIRST_LINE`), the call as the caller heard it with what the
   talker kept beside it (agent/context.py), then the turn, whole; a request after a tool result of
-  the turn ends with a line naming the reply's language (prompt.py's `reply_line`). At most
+  the turn ends with a line naming the reply's language (prompt.py's `reply_line`), and every
+  request does under `llm.reply_line_always` (agent/turn_request.py). At most
   `llm.max_requests_per_turn` (3) a turn: each but the last offers the agent's tools, the last
   none, so the turn ends in words, told so and holding the results with the calls that asked for
   them dropped (agent/context.py's `without_calls`); a tool call the last one makes anyway is not
@@ -21,9 +22,11 @@ turn and the call as it was heard to the events the session plays, within the re
   (agent/context.py's `Unnoted`), and each whole clause, once the output guard passed it
   (agent/speech_guard.py: rule A on claims, for an agent with actions or tools that claim, then
   rule B against the evidence seen this call: its tools' results, its record, the caller's words),
-  is yielded at once (agent/clause_gate.py). A blocked one is `ClauseBlocked`, with its rule's
-  reason, and by `guard.on_block` the rest of the reply goes with it (`drop_rest`: no more clause,
-  request or tool) or only it; the next turn's history holds a developer note.
+  is yielded at once (agent/clause_gate.py), in the reply's tag (an Arabic clause of an English
+  reply in the agent's Arabic one under `tts.voice_by_script`: agent/clause_voice.py). A blocked
+  one is `ClauseBlocked`, with its rule's reason, and by `guard.on_block` the rest of the reply
+  goes with it (`drop_rest`: no more clause, request or tool) or only it; the next turn's history
+  holds a developer note.
 - **Questions.** Before the guard, a clause that asks the caller a question past
   `guard.questions_per_reply` (agent/question_limit.py) is dropped with every clause after it,
   unspoken and unblocked: the reply stops there, but its request's tool calls still run and are
@@ -88,6 +91,7 @@ from t2_agentic_voice.actions.record import ActionRecord
 from t2_agentic_voice.actions.runner import ToolRunner
 from t2_agentic_voice.actions.tools import ToolResult
 from t2_agentic_voice.agent.clause_gate import ClauseGate
+from t2_agentic_voice.agent.clause_voice import arabic_tag
 from t2_agentic_voice.agent.context import (
     call_context,
     continued,
@@ -147,7 +151,7 @@ class Turn:
         self.settings, self.clock, self.memory = settings, clock, memory
         self.turn, self.scope, self.actions = turn, scope, actions
         spoken = [language.tag for language in agent.languages]
-        self.language = reply_language(turn, call=call_language, spoken=spoken)
+        self.language = reply_language(turn, call=call_language, spoken=spoken)  # held: the turn's
         self.ctx = call_context(
             caller=caller, call_id=call_id, language=self.language, actions=actions, record=record
         ).hearing(turn.words)  # the caller's words, for a tool that checks the model's reading
@@ -168,6 +172,7 @@ class Turn:
             heard=self.heard,
             scripts=self.scripts,
             register=self.register,
+            arabic=arabic_tag(settings.tts.voice_by_script, call=call_language, spoken=spoken),
         )
         notes = settings.guard.drop_stage_notes  # a tag holds a tool's or an action's name
         names = [schema.name for schema in tool_definitions(runner, actions)] if notes else []
@@ -291,9 +296,11 @@ class Turn:
         yield ReplyDone(unsaid_clauses=self.gate.questions.unsaid)
 
     def _moved(self, tag: LanguageTag) -> None:
-        """The reply goes on in `tag`, which the `switch_language` tool moved it to: its clauses,
-        its leak check, its tools' context and its lines' wording."""
-        self.language = self.gate.language = tag
+        """The reply goes on in `tag`, which the `switch_language` tool moved it to: its clauses
+        (their voice starting again from it), its leak check, its tools' context and its lines'
+        wording."""
+        self.language = tag
+        self.gate.voice.moved(tag)
         self.leak = self.leak.anew(arabic=tag != "en")  # nothing held: each request closed it
         self.ctx = self.tools.ctx = self.ctx.model_copy(update={"language": tag})
         self.tools.wording = wording(tag, self.register)

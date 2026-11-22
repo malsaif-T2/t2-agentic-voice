@@ -22,7 +22,9 @@ The library's settings as the app runs them: voice_settings.py's `for_the_app`, 
   `limits.actions_per_caller_per_day`: a demo day books more than the library's default;
 - **turns on** `guard.question_stop_drops_calls`, `guard.drop_stage_notes`, `guard.plain_speech`
   `guard.retry_claims`, `guard.day_month_apart` and `guard.retry_ids` (`GUARD_ON`) and
-  `llm.retry_rejected` (D-132), sets `guard.retries_per_turn` to 2 (D-136) and
+  `llm.retry_rejected` (D-132), `llm.reply_line_always`, `words.hold_reply_language` and
+  `tts.voice_by_script` (D-139: each reply in the caller's language, by its voice too), sets
+  `guard.retries_per_turn` to 2 (D-136) and
   `llm.max_requests_per_turn` to 4 (`REQUESTS_PER_TURN`), and, for the scripted agent alone,
   `interruptions.yes_over_read_back` (`YES_OVER_READ_BACK`), for the lean agent on the mock alone
   `interruptions.answer_yes_over_question` (`YES_OVER_QUESTION`), each unless the environment sets

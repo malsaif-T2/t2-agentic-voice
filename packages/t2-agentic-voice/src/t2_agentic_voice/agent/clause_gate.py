@@ -9,7 +9,9 @@ reply (`stopped`, for `drop_rest`) or goes alone. Under `guard.plain_speech` (D-
 that is not speech is never said, nor anything of its request after it (`not_speech`, which
 agent/turn.py reads), and every other is said with the invisible and markdown marks taken out
 (agent/plain_speech.py). A card passes only when rule B passes each of its texts; one that does
-not is logged by its tool's name alone.
+not is logged by its tool's name alone. Each clause, spoken or blocked, carries the reply's tag,
+but under `tts.voice_by_script` an Arabic clause of an English reply carries the agent's Arabic
+tag (agent/clause_voice.py), the caller's register with it.
 
 **A clause sent again** (`guard.retry_claims`; the owner's call of 2026-11-18, where an agent
 whose booking tool had refused said «تم حجز رحلتك», your trip is booked, and a guard that held
@@ -30,6 +32,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 
 from t2_agentic_voice.actions.record import ActionRecord
+from t2_agentic_voice.agent.clause_voice import ClauseVoice
 from t2_agentic_voice.agent.context import BLOCKED, CLAIM_BLOCKED
 from t2_agentic_voice.agent.events import ClauseBlocked, SpokenClause, TalkerEvent
 from t2_agentic_voice.agent.plain_speech import is_speech, spoken
@@ -65,7 +68,9 @@ class ClauseGate:
     """The gate of one reply in `language`, the turn `turn_id`'s (the module's docstring); the
     guard reads the `claimants` (the agent's actions and its tools that declare claims), the
     call's `record`, the talker's `memory` and the caller's `heard` words, and `scripts` is the
-    reply's stray-script filter; each Arabic clause carries the caller's `register`."""
+    reply's stray-script filter; each Arabic clause carries the caller's `register`, and an
+    Arabic clause of an English reply the `arabic` tag when one is given (agent/clause_voice.py's
+    `arabic_tag`)."""
 
     def __init__(
         self,
@@ -80,8 +85,10 @@ class ClauseGate:
         heard: Sequence[str],
         scripts: StrayScript,
         register: Register | None = None,
+        arabic: LanguageTag | None = None,
     ) -> None:
-        self.settings, self.language, self.turn_id = settings, language, turn_id
+        self.settings, self.turn_id = settings, turn_id
+        self.voice = ClauseVoice(language, arabic)  # each clause's tag (agent/clause_voice.py)
         self.register = register
         self.memory, self.scripts = memory, scripts
         self.guard = SpeechGuard(
@@ -143,11 +150,10 @@ class ClauseGate:
             if self.questions.drops(text, said=self.guard.passed):
                 continue  # a question past the reply's limit, or a clause after one: unsaid
             checked = self.guard.check(text)
+            tag = self.voice.of(text)
             if checked.passed:
-                register = None if self.language == "en" else self.register
-                events.append(
-                    SpokenClause(text=text, language=self.language, caller_register=register)
-                )
+                register = None if tag == "en" else self.register
+                events.append(SpokenClause(text=text, language=tag, caller_register=register))
                 self.said_now += 1
                 continue
             self.blocked += 1
@@ -158,7 +164,7 @@ class ClauseGate:
             events.append(
                 ClauseBlocked(
                     text=text,
-                    language=self.language,
+                    language=tag,
                     unsupported=checked.unsupported,
                     reason=checked.reason or "unsupported_id",
                     sent_again=again,

@@ -26,6 +26,7 @@ def test_the_llm_and_guard_defaults_are_the_designs() -> None:
         "vary_first_line": True,
         "max_requests_per_turn": 3,
         "retry_rejected": False,
+        "reply_line_always": False,  # the line naming the reply's language after a result only
     }
     assert settings.guard.model_dump() == {
         "id_patterns": (),

@@ -39,8 +39,8 @@ __all__ = [
 
 
 class TtsSettings(Group):
-    """Text-to-speech: the adapter, a model and a voice for each language, and what is done
-    with the audio."""
+    """Text-to-speech: the adapter, a model and a voice for each language, what is done with
+    the audio, and which voice a clause written in the other script is said in."""
 
     provider: TtsProvider = Field(
         default=DEFAULT_PROVIDER,
@@ -148,5 +148,17 @@ class TtsSettings(Group):
             "an action's lines and the clause cache's takes keep to one request a clause, as "
             "does a provider or model with no socket; a socket's failure turns it off for the "
             "rest of the call. Off by default until it is measured."
+        ),
+    )
+    voice_by_script: bool = Field(
+        default=False,
+        description=(
+            "Whether a clause of an English reply with more words in Arabic letters than in "
+            "Latin ones is said in the agent's Arabic voice, its numbers in the caller's "
+            "register: a clause with no letters, or as many of each, keeps the voice of the "
+            "clause before it, and an Arabic reply never changes voice, so a Latin product name "
+            "in it keeps the Arabic one. The owner's calls of 2026-11-22 had two Arabic replies "
+            "to English small talk read by orpheus-v1-english. Off: every clause is said in its "
+            "reply's language, whatever its letters, as before."
         ),
     )

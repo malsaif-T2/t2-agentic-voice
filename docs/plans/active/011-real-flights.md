@@ -219,8 +219,34 @@ the flight number to pick; an airline's own prefilled search replaces it where P
 - 2026-11-22, a search's day held to the weekday the caller named, read from their words
   (D-138): "Saturday" for the way back was searched as Wednesday or Thursday in 8 to 10 of 12
   replays, the model never passing the weekday; held, all 12 searched Saturday the 28th.
+- 2026-11-22, the language switch (the owner: "The TTS sounds switch but the LLM keeps the old
+  language"): in the owner's calls under `session`, English small talk in an Arabic call was
+  written in Arabic and read by orpheus-v1-english (109 characters in the call log), the voice
+  following the script of the caller's words while the model met the language only at the top
+  of its prompt, under a history all in Arabic, and the line naming it only after a tool result.
+  Replayed over 5 dialogues from the calls, 3 plays each (gpt-oss-120b, the lean agent on the
+  recorded flights): 8 of 30 switched turns in the wrong script, 0 of 30 with that line on every
+  request, the first clause's mean 0.50 s against 0.52 s on turns with no tool and 1.32 s
+  against 1.30 s with one. On the code as built, all three on, over 8 dialogues, 3 plays each:
+  1 of 78 turns in the wrong script (an Arabic caller's lone "OK" answered in English), every
+  short turn after a switch in the caller's language. Built behind three library settings the
+  flight app turns on
+  (`llm.reply_line_always`, `words.hold_reply_language`, `tts.voice_by_script`), with each
+  turn's reply language and voices in the call report (D-139); Ole5 keeps them off until run S's
+  s03 and s07 pass with them on. Left as debt: TD-156, TD-157, TD-158, and TD-153 brought up to
+  date.
 
 ## Decision log
+
+- 2026-11-22 (the language switch, D-139; the owner: "Yes, build it"): the reply's language is
+  named by a system line at the end of every request, the wording the replay measured ("Reply
+  in English, the caller's language."), rather than a note inside the caller's turn, which no
+  replay measured; a short turn keeps the caller's last plain language only in a call whose
+  language never moves; the voice net goes one way, an Arabic clause of an English reply to the
+  Arabic voice and never back, so a Latin name in an Arabic reply keeps its speaker. Set aside: a
+  request asked again before the first audio and `detected`, for their time; a net both ways;
+  dropping the instructions' lines on the other language (TD-125's q38). The cause and the
+  measurement are in the progress log.
 
 - 2026-11-18 (Phase 3): a connection of two marketing carriers names both in the link's `q`
   ("on Qatar Airways and British Airways"), since the first alone may filter out the itinerary

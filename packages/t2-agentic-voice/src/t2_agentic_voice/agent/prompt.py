@@ -28,8 +28,15 @@ Every request that follows a tool result of the turn ends with a short system li
 naming the reply's language (`reply_line`, in the section's register), so the last thing the
 model reads before it writes is the language to write in, whatever language the results are
 in: run K's first dev round had English questions answered in Arabic after seven Arabic
-passages, the section saying English. The first request of a turn ends with the caller's
-words, as it did.
+passages, the section saying English. Under `llm.reply_line_always` (off by default, GP-18)
+every other request ends with one too, the language alone (`LANGUAGE_LINES`,
+`MSA_LANGUAGE_LINE`: "Reply in English, the caller's language."), opening with
+`NO_MORE_TOOLS` on the turn's last: the owner's calls of 2026-11-22 had English small talk in
+an Arabic call, which calls no tool, written in Arabic and read by the English voice, the
+section's "Reply in English" far above a history all in Arabic; 15 plays of 5 switch
+dialogues had 8 of 30 switched turns in the wrong language without the line and 0 of 30 with
+it, with no measurable change in time. Without it, the first request of a turn ends with the
+caller's words, as it did.
 
 The rules are written in English, which models follow more reliably, whatever language the call
 is in (the design's 6.4 says the same of a tool's description).
@@ -104,20 +111,35 @@ LANGUAGE_SECTIONS: dict[LanguageTag, str] = {
     "ar": _ARABIC,
     "en": "Reply in English. Keep product names as the caller says them.",
 }
-# The line that ends each request after a tool result of the turn (agent/turn.py), by the reply
-# language's tag, so the last thing the model reads is the language to write in.
-_WHATEVER = "whatever language the tool results are in."
-REPLY_LINES: dict[LanguageTag, str] = {
-    "ar-SA": f"Reply in Arabic, in the Saudi dialect, the caller's language, {_WHATEVER}",
-    "ar": f"Reply in Arabic, the caller's language, {_WHATEVER}",
-    "en": f"Reply in English, the caller's language, {_WHATEVER}",
+# The line that ends a request with no tool result of the turn before it, under
+# `llm.reply_line_always` (agent/turn_request.py), by the reply language's tag: the replay's
+# wording (the module's docstring).
+LANGUAGE_LINES: dict[LanguageTag, str] = {
+    "ar-SA": "Reply in Arabic, in the Saudi dialect, the caller's language.",
+    "ar": "Reply in Arabic, the caller's language.",
+    "en": "Reply in English, the caller's language.",
 }
-# The section and the line of an `ar-SA` reply to a caller whose Arabic holds no dialect form.
+# The line that ends each request after a tool result of the turn (agent/turn.py), by the reply
+# language's tag, so the last thing the model reads is the language to write in: the line above,
+# and whatever language the results are in.
+_WHATEVER = "whatever language the tool results are in."
+
+
+def _after_results(line: str) -> str:
+    """`line`, the language alone, followed by `_WHATEVER`."""
+    return f"{line.removesuffix('.')}, {_WHATEVER}"
+
+
+REPLY_LINES: dict[LanguageTag, str] = {
+    tag: _after_results(line) for tag, line in LANGUAGE_LINES.items()
+}
+# The section and the lines of an `ar-SA` reply to a caller whose Arabic holds no dialect form.
 MSA_SECTION = (
     "Reply in Modern Standard Arabic, as the caller speaks it, with no Saudi or Gulf dialect "
     "word. Keep product names as the caller says them."
 )
-MSA_REPLY_LINE = f"Reply in Modern Standard Arabic, the caller's register, {_WHATEVER}"
+MSA_LANGUAGE_LINE = "Reply in Modern Standard Arabic, the caller's register."
+MSA_REPLY_LINE = _after_results(MSA_LANGUAGE_LINE)
 # The section of an `ar-SA` reply when the call is held in the Saudi register (D-125).
 HELD_SAUDI_SECTION = (
     "Reply in Arabic, in the Saudi dialect, in every reply of the call, whatever register the "
@@ -143,11 +165,22 @@ def language_section(
     return MSA_SECTION if (language, register) == ("ar-SA", "msa") else LANGUAGE_SECTIONS[language]
 
 
-def reply_line(language: LanguageTag, register: Register = "saudi", *, last: bool = False) -> str:
+def reply_line(
+    language: LanguageTag,
+    register: Register = "saudi",
+    *,
+    last: bool = False,
+    after_results: bool = True,
+) -> str:
     """The line that ends a request after a tool result, for a reply in `language` to a caller
     whose Arabic is in `register` (the module's docstring), opening with `NO_MORE_TOOLS` for a
-    turn's `last` request."""
-    line = MSA_REPLY_LINE if (language, register) == ("ar-SA", "msa") else REPLY_LINES[language]
+    turn's `last` request; with no tool result before it (not `after_results`), the language
+    alone (`LANGUAGE_LINES`, `MSA_LANGUAGE_LINE`)."""
+    msa = (language, register) == ("ar-SA", "msa")
+    if after_results:
+        line = MSA_REPLY_LINE if msa else REPLY_LINES[language]
+    else:
+        line = MSA_LANGUAGE_LINE if msa else LANGUAGE_LINES[language]
     return f"{NO_MORE_TOOLS} {line}" if last else line
 
 

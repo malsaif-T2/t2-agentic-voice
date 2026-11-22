@@ -436,9 +436,13 @@ measured it: 0.027 of Ole5's English items heard right). `stt.live_language = "c
 sends each turn in the language a classifier heard instead (D-086); whether that holds up is
 measured before it is promised (plan 007's run H), so until then a caller who will ask in
 English picks English in the client. The prompt's language
-section, your instructions for that language and the voice all follow the reply's language;
-the rule in full, and how Saudi Arabic and MSA are told apart, are in
-[languages.md](languages.md).
+section, your instructions for that language and the voice all follow the reply's language.
+Three settings, off by default, keep a switched call's replies in the caller's language (D-139):
+`llm.reply_line_always` ends every request with a line naming it, not only a request after a
+tool's result; `words.hold_reply_language` answers a short turn ("yes please") in the
+caller's last plain language, under `session`; and `tts.voice_by_script` says an Arabic clause
+of an English reply in the Arabic voice. The rule in full, these settings, and how Saudi Arabic
+and MSA are told apart, are in [languages.md](languages.md).
 
 ## Speech over a reply: `interruptions.mode`
 
