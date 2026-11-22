@@ -30,25 +30,33 @@ LAST = window(TODAY)[1]
 FAR = TODAY.replace(year=TODAY.year + 1)
 LEAN_DIR = files("flight_voice") / "lean" / "instructions"
 # Round 1's real render, the calendar left out, was 5370 characters in English and 6871 in the
-# Saudi file: the new ones stay under 70% of that.
-LONGEST: dict[Tag, int] = {"en": 3760, "ar-SA": 4810}
+# Saudi file: round 2's stayed under 70% of that; the trip's flow from start to end (the
+# owner, 2026-11-22; D-137) takes them to about 74% and 71%.
+LONGEST: dict[Tag, int] = {"en": 4000, "ar-SA": 4900}
 # The tools' facts the model needs, each by a phrase both files hold.
 FACTS = (
-    "pass it too (depart_weekday, return_weekday)",
+    "pass the weekday (depart_weekday, return_weekday): the tool works its date out.",
     "Never use a day the caller did not say.",
     "a trip said to be one way has none",
-    "To add a way back to a chosen one-way trip, search the way back: it is read as the trip's "
-    "return.",
+    "To add a way back, or move it to another day, search it on its day: it is read as the "
+    "trip's return, the way out kept.",
     "one search gives each day's cheapest price",
     "For the priciest, a time of day, an airline or nonstop flights over those days, search the "
     "span with flights_per_day.",
     "call find_flights again with airline, never answer from the options",
     "Work the caller's pick out yourself from the options (the priciest, the earliest, an "
     "airline's, a time)",
-    "choose_flights then lists the way back",
+    "choose_flights then lists the way back, only flights leaving after the way out lands",
+    "call choose_flights with its id the moment they pick: until it is called nothing is "
+    "chosen and no link is ready.",
+    "If the caller has not said whether they come back, ask it once, naturally",
+    "A total comes only from choose_flights: when the caller asks what flights come to, "
+    "choose them.",
+    "the way back follows it",
     "the link to book it is ready for the caller by itself",
     "say the link to book it is ready",
-    "Sum the whole trip up only when it helps: once it is complete, briefly",
+    "Once the trip is complete, sum it up once, briefly: each way's airline, day and time, "
+    "and the total.",
     "Say a connection briefly: where, how long the wait, and overnight or partly by bus",
     "Say only what a tool gave in this call",
     "never divide or multiply one",

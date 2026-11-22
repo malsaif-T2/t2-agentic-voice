@@ -4,9 +4,9 @@ only each day's lowest price): every day is searched, and each gives its flights
 and highest prices, its first and last departures and its airlines, over the flights its own
 search lists from, with a note that a day's flights come at once from find_flights for that
 day; the priciest is then listed to choose. Without the flag a span stays the one-search
-calendar. The flag is the real network's: the mock's search has none, as run F reads it; its
-timetable still gives the same day by day to the real network's search. A span longer than two
-weeks is cut, the days after offered."""
+calendar. The flag is the real network's: the mock's search has none (nor `one_way`), as run F
+reads it; its timetable still gives the same day by day to the real network's search. A span
+longer than two weeks is cut, the days after offered."""
 
 from __future__ import annotations
 
@@ -17,7 +17,9 @@ from typing import Any, Final
 from flight_voice.flight_data.model import Money, Offer
 from flight_voice.flight_data.queries import DayFare, DayFares, SpanQuery
 from flight_voice.lean.find import find_flights
+from flight_voice.lean.find_schema import REAL_ONLY, RETURN
 from flight_voice.lean.span import CHECKED_LAST, TO_PICK
+from flight_voice.lean.weekday import SAID
 
 from tests.flight_voice.flight_data.fake import (
     FLYADEAL,
@@ -119,8 +121,17 @@ def test_the_mocks_search_has_no_flag_as_run_f_reads_it() -> None:
     real_schema = dict(find_flights(_over_the_mock().deps).tool_schema().parameters)
     mock, real = mock_schema.pop("properties"), real_schema.pop("properties")
     assert isinstance(mock, dict) and isinstance(real, dict)
-    assert "flights_per_day" not in mock and "flights_per_day" in real
-    assert mock == {name: held for name, held in real.items() if name != "flights_per_day"}
+    assert REAL_ONLY == ("flights_per_day", "one_way")
+    assert not set(REAL_ONLY) & set(mock) and set(REAL_ONLY) <= set(real)
+    # The same fields, the weekdays' and the return day's described as run F read them (the
+    # real network asks for a weekday plainly: weekday.py's SAID_OUT, SAID_BACK).
+    told = {"depart_weekday": SAID, "return_weekday": SAID, "return_date": RETURN}
+    as_before: dict[str, object] = {}
+    for name, held in real.items():
+        if name not in REAL_ONLY:
+            assert isinstance(held, dict)
+            as_before[name] = {**held, **({"description": told[name]} if name in told else {})}
+    assert mock == as_before
     assert mock_schema == real_schema  # the same required fields and definitions
     refused = LeanCall().find(destination="Jeddah", depart=_span(), flights_per_day=True)
     assert not refused.ok and refused.failure == "bad_arguments"

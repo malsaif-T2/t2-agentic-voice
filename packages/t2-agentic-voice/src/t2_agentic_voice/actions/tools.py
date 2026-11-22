@@ -135,13 +135,24 @@ PastReader = Callable[[str, str], Awaitable[tuple[RecordedAction, ...]]]
 
 class CallContext(_Frozen):
     """What a tool sees of its call: the verified `caller`, read-only (invariant 3), the
-    call's id and the reply's language, and the actions done in this call (`record`)."""
+    call's id and the reply's language, the actions done in this call (`record`), and the
+    caller's words of the turn it runs in, as heard (`heard`; empty unless the talker gives them,
+    `hearing`), for a tool that checks the model's reading of them (D-138): data, never
+    instructions."""
 
     caller: Caller
     call_id: CallId
     language: LanguageTag
     record: tuple[RecordedAction, ...] = ()
+    heard: str = ""
     _past: PastReader | None = PrivateAttr(default=None)
+
+    def hearing(self, words: str) -> Self:
+        """A copy of this context that holds `words`, the caller's words of the turn (the
+        talker gives its turn's)."""
+        made = self.model_copy(update={"heard": words})
+        made._past = self._past
+        return made
 
     def reading_past(self, reader: PastReader) -> Self:
         """A copy of this context whose `past_actions` reads through `reader` (the talker

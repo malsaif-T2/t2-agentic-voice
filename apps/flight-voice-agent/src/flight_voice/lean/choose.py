@@ -9,7 +9,9 @@ caller asks to hear, listed without choosing (the way back's before the way out 
 caller may ask about it first, and is answered; a way back that could not be checked says so).
 In order: nothing listed yet is `nothing_listed`; an id not among this call's latest options for
 its leg is `unknown_id`, and an offer that does not seat the travelers `no_seats`, each with the
-leg's other options' ids, prices and seats as data. An error writes nothing.
+leg's other options' ids, prices and seats as data. An error writes nothing, but on the real
+network a way out chosen in the same call as a refused way back is kept (so a way back passed
+alone next is taken, not met with `outbound_first`).
 
 It returns the trip so far (`TripSoFar`): the route and the trip's kind, each with its MSA form
 beside a Saudi reply's, each chosen leg as it was listed with its day, the travelers, the cabin,
@@ -26,9 +28,22 @@ pick kept beside it; the whole trip and its total in the review segment once com
 is chosen, with no tool to call (the owner, 2026-11-19). Each flight row carries its link
 (offer_cards.py's `row_links`, so a pick kept beside the next leg's flights has its own), the
 trip card one per chosen leg (`trip_links`), and each chosen leg says `"link": "ready"`, so the
-model knows the link to book it is there. The tool declares the booking's claims (book.py's
-`LEAN_CLAIMS`) and backs none (no result is `done`), so the output guard holds every booking
-claim on this line.
+model knows the link to book it is there. It declares no booking claims there (the owner,
+2026-11-22: a guard on «تم الحجز» must not cause an error on a line that books nothing); the
+instructions ask the model never to say a trip is booked. On the mock, `book_trip` declares
+them (book.py's `LEAN_CLAIMS`).
+
+**The way out first, the way back after it** (turnaround.py; the real network alone, the
+owner's calls of 2026-11-22): on a round trip, a `return_id` while the outbound is not chosen,
+and no `outbound_id` beside it, is `outbound_first`, after `nothing_listed` and before any other
+refusal (both in one call stay allowed: the outbound is chosen first, the return checked
+against it). With the outbound chosen, the return's flights
+listed, carded and taken are those leaving at least two hours after it lands: a return id
+leaving sooner is `too_early`, with the outbound's arrival and the valid others, and none left
+is said (`NONE_LATE_ENOUGH`). Another outbound keeps a chosen return only while it still leaves
+late enough; else the return is dropped, named in `lost` (`RETURN_DROPPED`), and listed again.
+The trip's end is noted beside any other note: one way so far, both ways chosen, or a round
+trip whose way back has no day yet (choose_notes.py, which says all of this).
 """
 
 from __future__ import annotations
@@ -38,13 +53,13 @@ from typing import Annotated, Final, Literal
 from pydantic import Field, JsonValue
 from t2_agentic_voice import CallContext, Card, Tool, ToolResult, tool
 
-from flight_voice.flight_data.model import Cabin, Place, has_seats
-from flight_voice.lean.book import LEAN_CLAIMS
+from flight_voice.flight_data.model import Cabin, Offer, Place, has_seats
+from flight_voice.lean.choose_notes import ends, lost_return, too_early
 from flight_voice.lean.deps import LeanDeps
 from flight_voice.lean.draft import LEGS, LegKind
 from flight_voice.lean.find_return import RETURN_UNKNOWN
 from flight_voice.lean.offer_cards import options_card, row_links, trip_card, trip_links
-from flight_voice.lean.picking import Chosen, Picking
+from flight_voice.lean.picking import Chosen, Lost, Picking
 from flight_voice.lean.results import (
     LegList,
     Network,
@@ -54,6 +69,7 @@ from flight_voice.lean.results import (
     route_said,
     trip_said,
 )
+from flight_voice.lean.turnaround import OUTBOUND_FIRST, kept_return
 from flight_voice.said import Tag
 
 CHOOSE_FLIGHTS: Final = "choose_flights"
@@ -98,6 +114,7 @@ class TripSoFar(_Data):
     missing: tuple[LegKind, ...]
     total: int | None = None
     listed: dict[LegKind, LegList] | None = None
+    lost: tuple[Lost, ...] | None = None
     note: str | None = None
 
 
@@ -108,11 +125,11 @@ def _error(status: str, leg: LegKind, wanted: str, others: list[JsonValue]) -> T
 def choose_flights(deps: LeanDeps) -> Tool:
     """The pick over the call's trip in `deps.trips`, marked in `deps.check` (the module's
     docstring)."""
+    real = deps.network == "real"
 
     @tool(
         name=CHOOSE_FLIGHTS,
         description=DESCRIPTION if deps.bookable else DESCRIPTION_REAL,
-        claims=None if deps.network == "mock" else LEAN_CLAIMS,
     )
     async def choose(
         ctx: CallContext,
@@ -125,44 +142,66 @@ def choose_flights(deps: LeanDeps) -> Tool:
         to = made.destination
         if to is None or made.listed_outbound is None:
             return lean_result({"status": "nothing_listed", "note": NOTHING_LISTED})
+        alone = return_id is not None and outbound_id is None and made.chosen_outbound is None
+        if real and alone and not made.one_way:
+            return lean_result({"status": "outbound_first", "note": OUTBOUND_FIRST})
         picked: tuple[tuple[LegKind, str | None], ...] = (
             ("outbound", outbound_id),
             ("return", return_id),
         )
+        dropped: Offer | None = None
         for leg, wanted in picked:
             if wanted is None:
                 continue
-            picking = Picking(made, deps.places, tag)
+            picking = Picking(made, deps.places, tag, turnaround=real)
             one = picking.find(leg, wanted)
-            if one is None:
-                return _error("unknown_id", leg, wanted, picking.others(leg))
-            if not has_seats(one, made.travelers):
-                return _error("no_seats", leg, wanted, picking.others(leg, but=wanted))
+            if one is None or not has_seats(one, made.travelers):
+                if one is None and picking.too_early(leg, wanted):
+                    refusal = too_early(picking, wanted)
+                elif one is None:
+                    refusal = _error("unknown_id", leg, wanted, picking.others(leg))
+                else:
+                    refusal = _error("no_seats", leg, wanted, picking.others(leg, but=wanted))
+                if real and leg == "return" and outbound_id is not None:
+                    deps.trips.put(ctx.call_id, made)  # the way out chosen just now is kept
+                    deps.check.mark(ctx.call_id, made)
+                return refusal
             made = made.choose(leg, one)
+            if real and leg == "outbound":  # the way back must still leave after it lands
+                made, dropped = kept_return(made)
         if list_leg == "return" and made.return_unknown() and not (outbound_id or return_id):
             return lean_result({"status": "unknown", "note": RETURN_UNKNOWN})
         deps.trips.put(ctx.call_id, made)
         deps.check.mark(ctx.call_id, made)
-        return _so_far(Picking(made, deps.places, tag), list_leg, to, deps.network)
+        lost = () if dropped is None or made.chosen_return else (lost_return(dropped),)
+        picking = Picking(made, deps.places, tag, turnaround=real)
+        return _so_far(picking, list_leg, to, deps.network, lost)
 
     return choose
 
 
-def _so_far(picking: Picking, asked: LegKind | None, to: Place, network: Network) -> ToolResult:
-    """The trip so far to `to`, the leg `asked` about listed, and its card (the module's
-    docstring)."""
+def _so_far(
+    picking: Picking,
+    asked: LegKind | None,
+    to: Place,
+    network: Network,
+    lost: tuple[Lost, ...] = (),
+) -> ToolResult:
+    """The trip so far to `to`, the leg `asked` about listed, the return pick another outbound
+    dropped (`lost`), and its card (the module's docstring)."""
     draft, tag = picking.draft, picking.tag
     route = (draft.origin, to)
     missing = tuple(leg for leg in LEGS if leg in draft.missing())
     listed = {
         leg: picking.listing(held)
         for leg in (missing[:1] if asked is None else (asked,))
-        if (held := draft.listed(leg)) is not None
+        if (held := picking.held(leg)) is not None
     }
     unknown = "return" in missing and draft.return_unknown()
     notes = (
         full_note(listed.values(), draft.travelers, draft.cabin),
         RETURN_UNKNOWN if unknown and (asked == "return" or missing[:1] == ("return",)) else None,
+        *(ends(draft, missing, listed, lost) if network == "real" else ()),
     )
     said, msa = route_said(route, tag)
     kind, kind_msa = trip_said(draft.one_way, tag)
@@ -178,6 +217,7 @@ def _so_far(picking: Picking, asked: LegKind | None, to: Place, network: Network
         missing=missing,
         total=None if missing else draft.total(),
         listed=listed or None,
+        lost=lost or None,
         note=" ".join(n for n in notes if n) or None,
     )
     return lean_result(answer, _card(picking, missing, network))
@@ -198,7 +238,7 @@ def _card(picking: Picking, missing: tuple[LegKind, ...], network: Network) -> C
         links = () if network == "mock" else trip_links(draft, tag)
         return trip_card(draft, picking.chosen_options(), tag, links)
     leg = missing[0]
-    held = draft.listed(leg)
+    held = picking.held(leg)
     if held is None or draft.destination is None:
         return None
     other: LegKind = "return" if leg == "outbound" else "outbound"

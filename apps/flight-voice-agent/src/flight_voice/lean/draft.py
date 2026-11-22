@@ -12,7 +12,11 @@ step, in one assignment, so a tool cancelled by a barge-in leaves the draft as i
 changed. A search (`searched`) keeps a leg's pick only while its route and day are the same and
 the new answer still holds an offer of that id with seats for the travelers: the new offer is
 kept (its new price), so the total equals what was just said; a pick dropped so is named in
-`lost`. The book keeps at most 64 calls and drops a call's draft when the call ends.
+`lost`. A search with no return day makes the trip one way, unless it says the trip stays round
+(`one_way` false: the real network's way out changed while its way back's day is asked again,
+find_return.py), when `missing` holds the return's day. On the real network a kept return pick
+must also leave late enough after the outbound's (turnaround.py). The book keeps at most 64
+calls and drops a call's draft when the call ends.
 """
 
 from __future__ import annotations
@@ -156,12 +160,14 @@ def searched(
     cabin: Cabin,
     out: tuple[DayOffers, Listed],
     back: tuple[DayOffers, Listed] | None,
+    one_way: bool | None = None,
 ) -> LeanChange:
     """`draft` with a search's route, days, travelers and cabin, and each leg's answer and
     listing (`back` None for one way, or for a way back that could not be checked): the
     module's docstring. A way back not checked keeps its pick only when nothing about that leg
-    changed."""
-    one_way = return_date is None
+    changed. The trip is one way when it has no return day, unless `one_way` says otherwise."""
+    if one_way is None:
+        one_way = return_date is None
     same_route = (origin.code, destination.code) == (
         draft.origin.code,
         None if draft.destination is None else draft.destination.code,
@@ -173,7 +179,8 @@ def searched(
         picked_out, dropped = _kept(draft.chosen_outbound, out[0], travelers)
         lost += ["outbound"] if dropped else []
     picked_back: Offer | None = None
-    if same_route and not one_way and return_date == draft.return_date:
+    same_back = not one_way and return_date is not None and return_date == draft.return_date
+    if same_route and same_back:
         if back is None and party_same:
             picked_back = draft.chosen_return
         else:

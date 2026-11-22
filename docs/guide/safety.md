@@ -456,7 +456,11 @@ rules, to say why or ask for what is missing.
   claim as the model's own words and a note that the claim was held back (agent/clause_gate.py's
   `CLAIM_HELD`), one request past `llm.max_requests_per_turn`. So a model that said "booked"
   after its booking tool refused gets to say what the tool asked instead. A second blocked claim
-  in the turn goes as above.
+  in the turn goes as above, unless `T2V_GUARD__RETRIES_PER_TURN` allows more (1 to 3).
+- **A number sent again** (`T2V_GUARD__RETRY_IDS=true`, off by default): a clause the ID rule
+  blocks, such as a sum the model worked out itself, is sent once more the same way, with a note
+  to say only the numbers the results give (`ID_HELD`), counted with claims in
+  `retries_per_turn`. A clause still blocked then is answered with the notice, as above.
 - In a test, `turn.expect.blocked()` checks that a clause was held back, and `call.violations`
   lists any clause said that breaks a rule ([testing.md](testing.md)).
 

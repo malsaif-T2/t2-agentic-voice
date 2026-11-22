@@ -1,12 +1,12 @@
 """The way back asked as a new search (flight_voice/lean/find_return.py's `as_return`): with the
-trip's outbound chosen, A to B on day D, a one-way search B to A on a day on or after D is read
-as the trip's return, the outbound's pick kept, the trip made a round trip, and the return's
-flights listed to choose from; a round trip's return day moves the same way; never while the
-outbound is not chosen, never for a day before D, and never for another route; an airline
-asked then narrows the way back alone. The owner's call of 2026-11-19 played exactly: RUH to
-DMM on 21 November on flynas, chosen one way, then DMM to RUH on the 25th, then the cheapest
-return chosen: a round trip of both legs, its total their sum. The real network's alone: the
-mock's search stays as run F reads it."""
+trip's outbound listed, A to B on day D, a one-way search B to A on a day on or after D is read
+as the trip's return, the outbound's listing and pick kept, the trip made a round trip: with
+the outbound chosen the return's flights listed to choose from, else the return's day alone,
+the way out settled first; a round trip's return day moves the same way; never for a day
+before D, and never for another route; an airline asked then narrows the way back alone. The
+owner's call of 2026-11-19 played exactly: RUH to DMM on 21 November on flynas, chosen one way,
+then DMM to RUH on the 25th, then the cheapest return chosen: a round trip of both legs, its
+total their sum. The real network's alone: the mock's search stays as run F reads it."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from datetime import date, datetime
 from typing import Final
 
 from flight_voice.flight_data.model import Offer, Place
-from flight_voice.lean.find_return import RETURN_ADDED
+from flight_voice.lean.find_return import RETURN_ADDED, RETURN_ASKED
 
 from tests.flight_voice.flight_data.fake import (
     FLYADEAL,
@@ -100,16 +100,29 @@ def test_a_round_trips_return_day_moves_the_same_way() -> None:
     assert call.draft.return_date == LATER and call.draft.chosen_outbound is not None
 
 
-def test_a_search_back_is_a_new_trip_without_a_chosen_outbound_or_before_it() -> None:
+def test_a_search_back_with_the_way_out_listed_lists_the_way_back_too() -> None:
+    # The owner's call of 2026-11-22: the way out listed, not chosen, then the way back asked.
     call = _dammam()
-    call.find(destination="Dammam", depart=OUT.isoformat())  # listed, not chosen
-    alone = data(call.find(origin="Dammam", destination="Riyadh", depart=BACK.isoformat()))
-    assert alone["route"] == "Dammam to Riyadh" and "return" not in alone
-    assert "note" not in alone or RETURN_ADDED not in alone["note"]
+    found = data(call.find(destination="Dammam", depart=OUT.isoformat()))  # listed, not chosen
+    outs = [o["id"] for o in found["outbound"]["options"]]
+    answer = data(call.find(origin="Dammam", destination="Riyadh", depart=BACK.isoformat()))
+    assert answer["route"] == "Riyadh to Dammam" and "chosen" not in answer
+    assert answer["return"]["day"] == {"date": BACK.isoformat(), "weekday": "Wednesday"}
+    assert answer["return"]["options"]  # the caller asked about them: the way back's flights
+    assert RETURN_ASKED.format(day=BACK.isoformat()) in answer["note"]
+    assert [o["id"] for o in answer["outbound"]["options"]] == outs  # their ids as before
+    assert RETURN_ADDED not in answer["note"]
+    draft = call.draft
+    assert not draft.one_way and (draft.depart, draft.return_date) == (OUT, BACK)
+    assert draft.listed_return is not None and draft.chosen_outbound is None
+
+
+def test_a_search_back_before_the_day_out_is_a_new_trip() -> None:
     chosen = _dammam()
     _flynas_out(chosen)
     before = data(chosen.find(origin="Dammam", destination="Riyadh", depart=EARLIER.isoformat()))
-    assert before["route"] == "Dammam to Riyadh" and chosen.draft.chosen_outbound is None
+    assert before["route"] == "Dammam to Riyadh" and "return" not in before
+    assert chosen.draft.chosen_outbound is None and chosen.draft.one_way
 
 
 def test_an_airline_asked_for_the_way_back_narrows_the_way_back_alone() -> None:

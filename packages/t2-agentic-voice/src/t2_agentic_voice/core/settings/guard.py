@@ -5,10 +5,10 @@ writes is taken out of what the talker writes before the guard reads it (agent/s
 how many questions one reply may ask the caller (agent/question_limit.py, D-085), and whether a
 stop there drops its request's tool calls; whether stage notes and tags count as the
 model's reasoning (agent/leaked_reasoning.py, D-089); whether only plain speech is said, a
-request whose text is not speech tried once more (agent/plain_speech.py, D-111); and whether a
-request whose claim rule A blocked is sent once more (agent/clause_gate.py). Every clause
-the talker writes is checked before text-to-speech, and so is a card's text; the runtime's own
-templates are not.
+request whose text is not speech tried once more (agent/plain_speech.py, D-111); whether a
+request whose claim rule A blocked, or whose number rule B did, is sent once more, and how many
+times a turn (agent/clause_gate.py). Every clause the talker writes is checked before
+text-to-speech, and so is a card's text; the runtime's own templates are not.
 """
 
 from __future__ import annotations
@@ -133,12 +133,37 @@ class GuardSettings(Group):
         default=False,
         description=(
             "Whether a reply whose clause the claim rule blocked (it said an action or a tool's "
-            "write was done, and no result of the call says so) asks the model once more, once "
-            "a turn: neither the clause nor the error notice in its place is said, nor anything "
-            "of its request after it, none of that request's tools runs, and the request is "
-            "sent again with what it said before the clause and a note that the claim was held "
-            "back, one request past llm.max_requests_per_turn. A claim blocked again is dropped "
-            "as on_block says. Off: as on_block says, the error notice said in its place."
+            "write was done, and no result of the call says so) asks the model once more, as "
+            "many times a turn as retries_per_turn allows: neither the clause nor the error "
+            "notice in its place is said, nor anything of its request after it, none of that "
+            "request's tools runs, and the request is sent again with what it said before the "
+            "clause and a note that the claim was held back, one request past "
+            "llm.max_requests_per_turn. A claim blocked once those are spent is dropped as "
+            "on_block says. Off: as on_block says, the error notice said in its place."
+        ),
+    )
+    retry_ids: bool = Field(
+        default=False,
+        description=(
+            "Whether a reply whose clause the ID rule blocked (it held an ID-shaped number that "
+            "no result of the call nor the caller's words give, such as a sum the model worked "
+            "out itself) asks the model once more, as retry_claims does a claim and counted with "
+            "it in retries_per_turn: neither the clause nor the error notice in its place is "
+            "said, nor anything of its request after it, none of that request's tools runs, and "
+            "the request is sent again with what it said before the clause and a note to say "
+            "only the numbers the results give, one request past llm.max_requests_per_turn. "
+            "Off: as on_block says, the error notice said in its place."
+        ),
+    )
+    retries_per_turn: int = Field(
+        default=1,
+        ge=1,
+        le=3,
+        description=(
+            "How many times one turn's request may be sent again for a clause the guard "
+            "blocked (a claim under retry_claims, a number under retry_ids), each one request "
+            "past llm.max_requests_per_turn; a clause blocked once they are spent goes as "
+            "on_block says. 1: once a turn."
         ),
     )
 

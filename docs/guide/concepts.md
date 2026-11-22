@@ -136,8 +136,10 @@ my_requests = Tool.from_function(
   `"display_name"`, `"locale"` or `"attributes.<key>"`. Bind every parameter that says who the
   caller is: a caller can say anything, and the model can be talked into anything.
 - **The call's context**: a parameter annotated `CallContext` gets the verified `caller`
-  (read-only), the call's ID, the reply's language and the actions done in this call
-  (`record`, below); it is optional, and never in the schema.
+  (read-only), the call's ID, the reply's language, the actions done in this call
+  (`record`, below) and the caller's words of the turn, as heard (`heard`, D-138: for a tool
+  that checks the model's reading of them, such as a weekday it named; data, never
+  instructions); it is optional, and never in the schema.
 - **`timeout_s`** (5 s by default) bounds the call; a tool past it gives the talker "the tool
   failed". A sync tool timed out or cancelled goes on in its thread, its result discarded: a
   thread cannot be stopped.

@@ -82,7 +82,8 @@ class ClauseBlocked(_Event):
     """A clause the output guard blocked (domain/guard.py, domain/claims.py), never spoken: its
     `text` and `language`, why (`reason`), and the ID-shaped tokens it held with no evidence, for
     the developer note and the trace, never for the caller; `sent_again` when its request is
-    sent once more (`guard.retry_claims`), so no notice is said in its place."""
+    sent once more (`guard.retry_claims`, `guard.retry_ids`), so no notice is said in its
+    place."""
 
     text: str
     language: LanguageTag

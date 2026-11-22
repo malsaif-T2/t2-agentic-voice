@@ -67,9 +67,10 @@ turn and the call as it was heard to the events the session plays, within the re
   said nothing so is sent once more, the same messages, a new first line and nothing of its text
   kept (what the leak check held of it included), while the turn has a request left and neither a
   leak nor the question limit stopped the reply; after that, or with none left, the reply ends, and
-  the session says the `error` notice when none of it was said. Under `guard.retry_claims`, the
-  turn's first claim rule A blocks ends its request so too, with no notice, and the request is sent
-  once more, one past the limit, with what it said and a note (agent/clause_gate.py's `held_back`).
+  the session says the `error` notice when none of it was said. A claim rule A blocks under
+  `guard.retry_claims`, or a number rule B does under `guard.retry_ids`, ends its request so too,
+  with no notice, and the request is sent once more, one past the limit, with what it said and a
+  note, up to `guard.retries_per_turn` times a turn (agent/clause_gate.py's `held_back`).
 - **Time** is the call's clock's alone: a tool's `ms`, a request's `first_token_s` and the prompt's
   date (the runner times each tool's timeout on it too).
 - **Warmth.** Each request's `ModelReplied` says whether it went out on a kept-alive connection
@@ -149,7 +150,7 @@ class Turn:
         self.language = reply_language(turn, call=call_language, spoken=spoken)
         self.ctx = call_context(
             caller=caller, call_id=call_id, language=self.language, actions=actions, record=record
-        )
+        ).hearing(turn.words)  # the caller's words, for a tool that checks the model's reading
         heard = [t.words for t in turn.conversation.turns if t.fate != "dropped" and t.words]
         self.heard = (*heard, turn.words)
         self.register = call_register(self.heard, settings.words)  # the call's, this turn's too
@@ -204,7 +205,7 @@ class Turn:
         requests = tools_run = 0
         warm: bool | None = None  # whether the turn's first request went out on a warm connection
         llm, retried = self.settings.llm, False
-        most = llm.max_requests_per_turn  # one more for a claim sent again (guard.retry_claims)
+        most = llm.max_requests_per_turn  # one more for each clause held back (clause_gate.py)
         while requests < most:
             last = requests == most - 1
             tools = () if last else tool_definitions(self.runner, self.actions)
@@ -226,7 +227,7 @@ class Turn:
             finally:
                 await asked.aclose()
             warm = answer.warm if requests == 1 else warm
-            if self.gate.held:  # a claim held back: sent once more, one past the limit
+            if self.gate.held:  # a clause held back: sent once more, one past the limit
                 messages += self.gate.held_back()
                 most += 1
                 continue

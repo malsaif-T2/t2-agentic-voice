@@ -25,18 +25,23 @@ held over its date (weekday.py). Then:
   outbound segment; on the real network, the return's with the outbound's pick kept beside it
   once that pick is kept (find_return.py), and a listing that leaves flights out (`more`), for
   every airline, notes that one airline's flights come from another search (`MORE_REAL`).
-- **The way back asked as a new search** (find_return.py's `as_return`, the real network's):
-  with the trip's outbound chosen, A to B on day D, a one-way search B to A on a day on or
-  after D is read as the trip's return (the search of A to B on D with that return day, the
-  pick kept), noted `RETURN_ADDED`; an airline asked then narrows the way back alone.
+- **The trip's two ways, on the real network** (find_return.py's `planned`): a one-way search
+  back from the trip's destination to its origin, on or after its day out, is the trip's
+  return while its way out is listed (`as_return`: the outbound's listing and pick kept, an
+  airline asked narrowing the way back alone); a search for the way out with no return day
+  keeps a round trip round, the way back following the new destination on its day (asked again
+  when that day is before the new day out); `one_way` makes the trip one way. With the
+  outbound chosen, the way back's flights are those leaving at least two hours after it lands
+  (turnaround.py), and a return pick that no longer does is dropped (`RETURN_DROPPED`).
 - **A span** (span.py): nothing is written to the trip; on the real network, with
   `flights_per_day` each day is searched and summed up (its flights, lowest and highest
   prices, first and last departures, airlines), for a question beyond each day's cheapest.
 
 On the mock, the search is as run F reads it, before plan 011's round 2: no `flights_per_day`
-in its schema, no way back read as the return, the outbound's card. Its progress line is due
-at once there (run F's timing) and after about 1.5 s on the real network
-(`PROGRESS_LIVE_AT_S`), so a fast or cached answer never opens with it.
+or `one_way` in its schema (find_schema.py), no way back read as the return, a search with no
+return day one way, the outbound's card. Its progress line is due at once there (run F's
+timing) and after about 1.5 s on the real network (`PROGRESS_LIVE_AT_S`), so a fast or cached
+answer never opens with it. The parameters' descriptions are in find_schema.py.
 
 A source that does not answer is a `ToolError` that says the search failed (`SEARCH_DOWN` when
 it will not answer again soon), never "no flights".
@@ -45,9 +50,9 @@ it will not answer again soon), never "no flights".
 from __future__ import annotations
 
 from datetime import date
-from typing import Annotated, Any, Final, Literal
+from typing import Annotated, Final, Literal
 
-from pydantic import Field, create_model
+from pydantic import Field
 from t2_agentic_voice import CallContext, Tool, ToolError, ToolResult, tool
 
 from flight_voice.flight_data.model import Cabin
@@ -66,14 +71,26 @@ from flight_voice.lean.find_legs import (
     unknown_place,
 )
 from flight_voice.lean.find_return import (
-    RETURN_ADDED,
+    Planned,
     ReturnDay,
-    Turned,
-    as_return,
     kept_ids,
     lost_picks,
+    planned,
     return_card,
+    trip_notes,
     way_back,
+)
+from flight_voice.lean.find_schema import (
+    AIRLINE,
+    CABIN,
+    CITY,
+    DEPART,
+    ONE_WAY,
+    ORIGIN,
+    PER_DAY,
+    RETURN_REAL,
+    TRAVELERS,
+    as_run_f,
 )
 from flight_voice.lean.offer_cards import options_card, row_links
 from flight_voice.lean.picking import Lost
@@ -86,8 +103,10 @@ from flight_voice.lean.results import (
     lean_result,
     route_said,
 )
+from flight_voice.lean.said_days import draft_end, held_days
 from flight_voice.lean.span import DaySpan, SpanAsked, span_search
-from flight_voice.lean.weekday import SAID, Weekday, on_weekday
+from flight_voice.lean.turnaround import RETURN_DROPPED, kept_return
+from flight_voice.lean.weekday import SAID_BACK, SAID_OUT, Weekday, next_weekday, on_weekday
 from flight_voice.persona import PROGRESS_AT_S, PROGRESS_LIVE_AT_S
 from flight_voice.said import Tag
 from flight_voice.tools.results import SEARCH_FAILED
@@ -98,25 +117,7 @@ DESCRIPTION: Final = (
     "or what flies over a span of days. Call it as soon as you know where the caller goes and "
     "the day they leave."
 )
-_CITY: Final = "The city they go to, in any language, or its code."
-_ORIGIN: Final = "The city they leave from; Riyadh unless they said another."
-_DEPART: Final = (
-    "The day they leave, YYYY-MM-DD, from the calendar; or a span of at most two months they "
-    "asked about without naming one day."
-)
-_RETURN: Final = "The day they come back, YYYY-MM-DD; null for one way or not said yet."
-_CABIN: Final = "economy, business or first; the trip's own (economy at first) when not said."
-_TRAVELERS: Final = "How many travel, 1 to 9; the trip's own (1 at first) when not said."
-_AIRLINE: Final = (
-    "An airline the caller asked for, by its name in any language or its code; null for every "
-    "airline."
-)
 LOST: Final = "A flight chosen before is no longer offered with seats for everyone: choose again."
-_PER_DAY: Final = (
-    "For a span only: true when the caller asks about the days' flights beyond each day's "
-    "cheapest price (the priciest, a time of day, an airline, nonstop only); each day is then "
-    "searched, which takes longer."
-)
 # On the real network, a day's options are some of its flights (plan 011: asked for flyadeal
 # after a listing of 6 of 15, the model once answered from the 2 it was given, of 4).
 MORE_REAL: Final = (
@@ -158,16 +159,17 @@ def find_flights(deps: LeanDeps) -> Tool:
     )
     async def find(
         ctx: CallContext,
-        destination: Annotated[str, Field(min_length=1, max_length=40, description=_CITY)],
-        depart: Annotated[date | DaySpan, Field(description=_DEPART)],
-        origin: Annotated[str | None, Field(max_length=40, description=_ORIGIN)] = None,
-        return_date: Annotated[date | None, Field(description=_RETURN)] = None,
-        cabin: Annotated[Cabin | None, Field(description=_CABIN)] = None,
-        travelers: Annotated[int | None, Field(ge=1, le=9, description=_TRAVELERS)] = None,
-        depart_weekday: Annotated[Weekday | None, Field(description=SAID)] = None,
-        return_weekday: Annotated[Weekday | None, Field(description=SAID)] = None,
-        airline: Annotated[str | None, Field(max_length=40, description=_AIRLINE)] = None,
-        flights_per_day: Annotated[bool, Field(description=_PER_DAY)] = False,
+        destination: Annotated[str, Field(min_length=1, max_length=40, description=CITY)],
+        depart: Annotated[date | DaySpan, Field(description=DEPART)],
+        origin: Annotated[str | None, Field(max_length=40, description=ORIGIN)] = None,
+        return_date: Annotated[date | None, Field(description=RETURN_REAL)] = None,
+        cabin: Annotated[Cabin | None, Field(description=CABIN)] = None,
+        travelers: Annotated[int | None, Field(ge=1, le=9, description=TRAVELERS)] = None,
+        depart_weekday: Annotated[Weekday | None, Field(description=SAID_OUT)] = None,
+        return_weekday: Annotated[Weekday | None, Field(description=SAID_BACK)] = None,
+        airline: Annotated[str | None, Field(max_length=40, description=AIRLINE)] = None,
+        flights_per_day: Annotated[bool, Field(description=PER_DAY)] = False,
+        one_way: Annotated[bool, Field(description=ONE_WAY)] = False,
     ) -> ToolResult:
         tag: Tag = ctx.language
         draft = deps.trips.get(ctx.call_id)
@@ -188,11 +190,21 @@ def find_flights(deps: LeanDeps) -> Tool:
                 return not_served(deps.places, tag)
             return unknown_place("destination" if end is None else "origin")
         back = None if isinstance(depart, DaySpan) else return_date
-        turned: Turned | None = None
-        if real and not isinstance(depart, DaySpan):
-            turned = as_return(draft, start, end, depart, back)
-        if turned is not None:  # the way back, asked as a new search
-            start, end, depart, back = turned.start, turned.end, turned.depart, turned.back
+        plan: Planned | None = None
+        if real and not isinstance(depart, DaySpan):  # the trip's two ways (find_return.py)
+            reverse = (start.code, end.code) == (draft_end(draft), draft.origin.code)
+            if back is None and return_weekday is not None:  # the way back by its weekday
+                if reverse:  # the way back's own search: its day is the weekday's
+                    depart = on_weekday(depart, return_weekday, not_before=draft.depart or today)
+                else:
+                    back = next_weekday(return_weekday, after=depart)
+            heard, day_out = ctx.heard, draft.depart
+            depart, back = held_days(
+                heard, depart, back, said=return_weekday, reverse=reverse, day_out=day_out
+            )
+            plan = planned(draft, start, end, depart, back, one_way=one_way)
+            start, end, depart, back = plan.start, plan.end, plan.depart, plan.back
+        turned = plan is not None and plan.turned
         if (problem := refused(depart, back, today, last)) is not None:
             return date_problem(problem, today, last, deps.network)
         kept: Cabin = draft.cabin if cabin is None else cabin
@@ -226,7 +238,10 @@ def find_flights(deps: LeanDeps) -> Tool:
         for day, answer in ((depart, out), (back, home)):
             if day is not None and isinstance(answer, DayOffers) and answer.status == "no_flights":
                 return no_flights(day, await nearest(deps.data, answer.query, today), tag)
-        legs = both_legs((out, home), airline, tag, party, deps.places, back_only=bool(turned))
+        out_airline = None if plan is None else plan.airline
+        legs = both_legs(
+            (out, home), airline, tag, party, deps.places, back_only=turned, out_airline=out_airline
+        )
         if isinstance(legs, dict):
             return lean_result(legs)
         went, came = legs
@@ -241,22 +256,24 @@ def find_flights(deps: LeanDeps) -> Tool:
             cabin=kept,
             out=(out, went.listed),
             back=None if came is None or not isinstance(home, DayOffers) else (home, came.listed),
+            one_way=False if plan is not None and plan.round_trip else None,
         )
-        made = change.draft
+        made, early = kept_return(change.draft) if real else (change.draft, None)
         deps.trips.put(ctx.call_id, made)
         deps.check.mark(ctx.call_id, made)
         said, msa = route_said((start, end), tag)
         basis, basis_msa = fares_are(
-            tag, round_trip=back is not None, travelers=party, network=deps.network
+            tag, round_trip=not made.one_way, travelers=party, network=deps.network
         )
-        home_back = way_back(made, back, came, tag)
+        home_back, shown = way_back(made, back, came, tag, deps.places, turned=turned, real=real)
         listed = (went.data, *([home_back] if isinstance(home_back, LegList) else []))
         some = real and airline is None and any(leg.more for leg in listed)
         notes = [
             full_note(listed, party, kept),
             LOST if change.lost else None,
+            RETURN_DROPPED if early else None,
             MORE_REAL if some else None,
-            RETURN_ADDED if turned is not None and made.chosen_outbound is not None else None,
+            *trip_notes(plan, made, home_back, end, tag),
         ]
         found = Found(
             route=said,
@@ -268,13 +285,13 @@ def find_flights(deps: LeanDeps) -> Tool:
             outbound=went.data,
             return_=home_back,
             chosen=kept_ids(made),
-            lost=lost_picks(latest, change.lost) or None,
+            lost=lost_picks(latest, (*change.lost, *(("return",) if early else ()))) or None,
             note=" ".join(n for n in notes if n) or None,
         )
         card = None
-        if real and came is not None and isinstance(home_back, LegList):
+        if real and shown is not None:
             route = (start, end)
-            card = return_card(made, went, came, route, kept, deps.places, tag, deps.network)
+            card = return_card(made, went, shown, route, kept, deps.places, tag, deps.network)
         if card is None:
             links = row_links(went.listed.offers, tag, deps.network)
             card = options_card(
@@ -282,16 +299,4 @@ def find_flights(deps: LeanDeps) -> Tool:
             )
         return lean_result(found, card)
 
-    return find if real else _as_run_f(find)
-
-
-def _as_run_f(made: Tool) -> Tool:
-    """The mock's search as run F reads it, before plan 011's round 2: no `flights_per_day`
-    in its schema (the function's default, false, holds)."""
-    fields = made.parameters.model_fields
-    kept: dict[str, Any] = {
-        n: (f.annotation, f) for n, f in fields.items() if n != "flights_per_day"
-    }
-    config = made.parameters.model_config
-    narrowed = create_model("Arguments", __config__=config, **kept)
-    return made.model_copy(update={"parameters": narrowed})
+    return find if real else as_run_f(find)

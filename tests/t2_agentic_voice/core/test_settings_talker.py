@@ -39,6 +39,8 @@ def test_the_llm_and_guard_defaults_are_the_designs() -> None:
         "drop_stage_notes": False,
         "plain_speech": False,
         "retry_claims": False,
+        "retry_ids": False,
+        "retries_per_turn": 1,
     }
     assert (settings.words.vocabulary, settings.session.mode) == ((), None)
 
@@ -55,6 +57,8 @@ def test_the_new_settings_load_from_the_environment(monkeypatch: pytest.MonkeyPa
     monkeypatch.setenv("T2V_GUARD__QUESTIONS_PER_REPLY", "2")
     monkeypatch.setenv("T2V_GUARD__QUESTION_STOP_DROPS_CALLS", "true")
     monkeypatch.setenv("T2V_GUARD__DROP_STAGE_NOTES", "true")
+    monkeypatch.setenv("T2V_GUARD__RETRY_IDS", "true")
+    monkeypatch.setenv("T2V_GUARD__RETRIES_PER_TURN", "3")
     monkeypatch.setenv("T2V_WORDS__VOCABULARY", '["VPN", "Outlook"]')
     monkeypatch.setenv("T2V_SESSION__MODE", "talker")
     settings = VoiceSettings.from_env()
@@ -66,6 +70,8 @@ def test_the_new_settings_load_from_the_environment(monkeypatch: pytest.MonkeyPa
     assert (settings.guard.id_patterns, settings.guard.on_block) == (("LT-\\d{5}",), "drop_clause")
     assert settings.guard.questions_per_reply == 2
     assert settings.guard.question_stop_drops_calls and settings.guard.drop_stage_notes
+    assert settings.guard.retry_ids
+    assert settings.guard.retries_per_turn == 3
     assert settings.llm.max_requests_per_turn == 4 and settings.llm.retry_rejected
     assert (settings.words.vocabulary, settings.session.mode) == (("VPN", "Outlook"), "talker")
 
@@ -94,6 +100,9 @@ def test_no_question_limit_is_set_in_code() -> None:
         ("GUARD__QUESTIONS_PER_REPLY", "one"),
         ("GUARD__QUESTION_STOP_DROPS_CALLS", "maybe"),
         ("GUARD__DROP_STAGE_NOTES", "maybe"),
+        ("GUARD__RETRY_IDS", "maybe"),
+        ("GUARD__RETRIES_PER_TURN", "0"),
+        ("GUARD__RETRIES_PER_TURN", "4"),
         ("WORDS__VOCABULARY", '[""]'),
         ("SESSION__MODE", "auto"),
     ],

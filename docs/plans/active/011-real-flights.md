@@ -209,6 +209,16 @@ the flight number to pick; an airline's own prefilled search replaces it where P
   each request, built once a day and kept, so no latency is added, and the airline's today is
   read live (D-135). The owner keeps gpt-oss-120b for now; other models (Google's, Anthropic's)
   may be tried later.
+- 2026-11-22, the round trip from start to end (the owner's Qassim to Istanbul calls, replayed
+  as text over the same flights recorded from SerpApi, and five dialogues over the recorded
+  Riyadh flights): the way back asked as its own search is the trip's return, the way out
+  first, the way back two hours after it lands and following its changes, a total only from
+  choose_flights and one summary (D-137); a blocked number sent again like a claim, twice a
+  turn, the notice still said when blocked again, and no booking claim guarded on the real
+  network (D-136).
+- 2026-11-22, a search's day held to the weekday the caller named, read from their words
+  (D-138): "Saturday" for the way back was searched as Wednesday or Thursday in 8 to 10 of 12
+  replays, the model never passing the weekday; held, all 12 searched Saturday the 28th.
 
 ## Decision log
 

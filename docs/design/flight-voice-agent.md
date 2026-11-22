@@ -1645,8 +1645,9 @@ said over its closing question ("Shall I book it?", «أحجزها لك؟») is 
 ends, unless the caller said other words after it, and adds the booking's send words
 (`booking/lines.py`'s `SEND_WORDS`: «احجزها», «احجز», "book it", "confirm" and the like) to
 `words.send`, so «إي احجزها» and «نعم، احجزها» there are that yes too; and, as for the scripted
-agent, `guard.retry_claims` and the caller read as Saudi first (below, "The owner's call of
-2026-11-18"); each unless the environment sets it. Its name is `flight-lean`, so its traces and
+agent, `guard.retry_claims`, `guard.retry_ids` up to twice a turn (D-136) and the caller read
+as Saudi first (below, "The owner's call of 2026-11-18"); each unless the environment sets
+it. Its name is `flight-lean`, so its traces and
 its runtime's folder are its own.
 
 **What stays in code, and nothing more.**
@@ -1714,13 +1715,18 @@ would mislead: a full flight, a route not served, a date outside the window):
   own search then answering at once (each day cached). A day's listing keeps its cheapest and
   its priciest flight first, before each airline's cheapest, so "the most expensive" is always
   one to choose, however many airlines fly the day. On the real network too, a search for the
-  way back (B to A on a day on or after the chosen outbound's, with no return,
-  `lean/find_return.py`) is read as the trip's return, the outbound's pick kept and the trip
-  made a round trip, its card the return's with the pick beside it (the owner's call of
-  2026-11-19, where the pick was lost); an airline asked then narrows the way back alone, the
-  outbound left whole, and one that does not fly it is that search's `no_flights_for_airline`.
-  The mock's search stays as run F reads it: no `flights_per_day` in its schema, no way back
-  read as the return, the outbound's card. Its refusals are data: `not_served` with the cities,
+  way back (B to A on a day on or after the outbound's, with no return, the outbound listed
+  or chosen, `lean/find_return.py`) is read as the trip's return, the outbound's listing and
+  pick kept and the trip made a round trip (the owner's calls of 2026-11-19 and 2026-11-22,
+  where the trip was lost); with the outbound chosen its card is the return's with the pick
+  beside it, else the return's day alone, the way out to settle first (D-137); an airline
+  asked then narrows the way back alone, the outbound left whole, and one that does not fly
+  it is that search's `no_flights_for_airline`. The way back's flights are those leaving two
+  hours after the chosen way out lands (`lean/turnaround.py`); a new search for the way out
+  on a round trip, with no return day, keeps the trip round, the way back following the new
+  route on its day, unless `one_way`. The mock's search stays as run F reads it: no
+  `flights_per_day` or `one_way` in its schema, no way back read as the return, the
+  outbound's card. Its refusals are data: `not_served` with the cities,
   `date_problem` naming the window, `cabin_not_offered`, `no_flights` with the nearest days. On
   the real network its progress line is due after about 1.5 s, so a cached answer never opens
   with one.
@@ -1913,7 +1919,8 @@ before actually reserving it". Two changes, each behind a library setting the ap
    those phrases to them as an action's are held to its record: «تم حجز رحلتك» is said only
    once this call's booking was made. The library's default phrases are not read for an
    agent that declares no action, so an honest "nothing has been booked yet" is said. A claim it holds back is not answered with the error
-   notice: under `guard.retry_claims` the request is sent once more, one past the turn's four,
+   notice: under `guard.retry_claims` the request is sent again, one past the turn's four, up
+   to `guard.retries_per_turn` times (2 in the app, D-136),
    with what it said before the claim and a note that the claim was held back, so the model
    says what `book_trip`'s `say` asked (`tests/flight_voice/lean/test_lean_claims.py`). The
    booking check is unchanged. Run F's `notice` check still counts the blocked clause of such a

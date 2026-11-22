@@ -1,7 +1,8 @@
 """The flight agent's settings (flight_voice/settings.py): its own under `FLIGHT_VOICE_` and the
 library's under `T2V_`, a `.env` read only when given; each refusal naming the setting, never
 its value; the runtime's folder always nested under the library's; 50 bookings a caller a day,
-the guard's two rules of run F's round 2, its plain speech (D-111) and a claim sent again on,
+the guard's two rules of run F's round 2, its plain speech (D-111) and a claim or a number sent
+again on, up to twice a turn (a clause still blocked then told as the library tells it),
 four model requests a turn, and a yes over the read-back held (D-108), each unless set; the
 demo traveler the console's dev caller under `env` dev alone; and a persona's name that would
 break the lines' rule refused, naming its setting."""
@@ -137,9 +138,11 @@ def test_the_guards_rules_and_four_requests_a_turn_hold_unless_set(
         "plain_speech",
         "retry_claims",
         "day_month_apart",
+        "retry_ids",
     )
     assert (voice.guard.question_stop_drops_calls, voice.guard.drop_stage_notes) == (True, True)
     assert voice.guard.plain_speech and voice.guard.retry_claims and voice.guard.day_month_apart
+    assert voice.guard.retry_ids
     assert voice.llm.max_requests_per_turn == REQUESTS_PER_TURN == 4
     environment.setenv("T2V_GUARD__QUESTION_STOP_DROPS_CALLS", "false")
     environment.setenv("T2V_GUARD__QUESTIONS_PER_REPLY", "2")
@@ -153,6 +156,25 @@ def test_the_guards_rules_and_four_requests_a_turn_hold_unless_set(
     assert (app.guard.question_stop_drops_calls, app.guard.drop_stage_notes) == (True, False)
     assert app.llm.max_requests_per_turn == 4 and given.llm.max_requests_per_turn == 3
     assert app.guard.plain_speech and not given.guard.plain_speech
+
+
+def test_a_blocked_clause_is_sent_again_up_to_twice_a_turn_unless_set(
+    environment: pytest.MonkeyPatch,
+) -> None:
+    """The owner's calls of 2026-11-22: a sum the model worked out itself was heard as an error;
+    it is sent again first, and still told as the library tells it when blocked again."""
+    for agent in ("scripted", "lean"):
+        guard = for_the_app(VoiceSettings(env="test"), agent=agent).guard
+        assert guard.retry_ids and guard.retries_per_turn == 2, agent
+        assert guard.on_block == "drop_rest", agent  # the library's, the notice said
+    assert VoiceSettings(env="test").guard.retries_per_turn == 1
+    environment.setenv("T2V_GUARD__RETRY_IDS", "false")
+    environment.setenv("T2V_GUARD__RETRIES_PER_TURN", "3")
+    guard = load().voice.guard
+    assert not guard.retry_ids and guard.retries_per_turn == 3
+    assert guard.retry_claims  # the rest of the app's still on
+    given = VoiceSettings(env="test", guard=GuardSettings(retries_per_turn=1))
+    assert for_the_app(given, agent="lean").guard.retries_per_turn == 1
 
 
 def test_plain_speech_is_off_when_the_environment_sets_it_so(

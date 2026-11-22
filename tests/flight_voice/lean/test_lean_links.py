@@ -3,7 +3,8 @@ answer of RUH-JED on 2026-11-26 replayed and the fake London days: every option 
 listing carries its flight's link (the `tfs=` search checked in a browser), «احجز» / "Book";
 the trip card carries one per chosen leg the moment a flight is chosen, with no tool to call,
 and `choose_flights` says each chosen leg's link is ready; no url is in any text the guard or
-the model reads; the real line declares the booking's claims and backs none; the mock's cards
+the model reads; the real line declares no booking claims (the owner, 2026-11-22: a guard on «تم
+الحجز» must not cause an error on a line that books nothing); the mock's cards
 carry no link. And a search's progress line waits about 1.5 s on the real network alone."""
 
 from __future__ import annotations
@@ -14,7 +15,6 @@ from flight_voice.flight_data.compose import real_places
 from flight_voice.flight_data.links import tfs
 from flight_voice.flight_data.recorded import recorded
 from flight_voice.lean.agent import lean_tools
-from flight_voice.lean.book import LEAN_CLAIMS
 from flight_voice.lean.booking_check import BookingCheck
 from flight_voice.lean.deps import LeanDeps
 from flight_voice.lean.draft import LeanBook
@@ -126,8 +126,9 @@ def test_a_round_trip_gets_a_link_per_chosen_leg_in_the_callers_language() -> No
     went, came = call.draft.legs()
     assert out_link.url.endswith(f"?tfs={tfs(went)}&hl=ar&curr=SAR&gl=sa")
     assert back_link.url.endswith(f"?tfs={tfs(came)}&hl=ar&curr=SAR&gl=sa")
-    # The trip made one way after: one link, of the outbound alone, with the bare label.
-    call.find(destination="London", depart=OUT.isoformat())
+    # The trip made one way after (one_way: a round trip's way back otherwise follows): one
+    # link, of the outbound alone, with the bare label.
+    call.find(destination="London", depart=OUT.isoformat(), one_way=True)
     again = call.choose(outbound_id=ids(listed)[0]).card
     assert again is not None and [link.label for link in again.links] == ["احجز على السعودية"]
 
@@ -135,7 +136,7 @@ def test_a_round_trip_gets_a_link_per_chosen_leg_in_the_callers_language() -> No
 def test_the_real_line_claims_no_booking_and_the_mock_says_no_link() -> None:
     real = {t.name: t for t in lean_tools(real_call().deps)}
     assert list(real) == ["find_flights", "choose_flights"]  # no booking_link: no tool to call
-    assert real["choose_flights"].claims is LEAN_CLAIMS  # declared, and no result backs one
+    assert real["choose_flights"].claims is None  # nothing books: no claim guarded
     assert "book_trip" not in real["choose_flights"].description
     mock = {t.name: t for t in lean_tools(LeanCall().deps)}
     assert list(mock) == ["find_flights", "choose_flights", "book_trip", "traveler_profile"]

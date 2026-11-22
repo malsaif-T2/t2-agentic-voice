@@ -131,7 +131,7 @@ async def answer_events(
                     answer.text += piece
                     for said in reply.gate.said(splitter.feed(unnoted.feed(piece))):
                         yield said
-                    if reply.gate.stopped or reply.gate.ended:  # D-111, guard.retry_claims
+                    if reply.gate.stopped or reply.gate.ended:  # D-111, a clause held back
                         reply.leak.close()  # what the leak check held of it is never said
                         return
                     if reply.leak.found:  # the rest is reasoning: what was held is said

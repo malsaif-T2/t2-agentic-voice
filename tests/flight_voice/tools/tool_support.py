@@ -47,13 +47,15 @@ def run(
     call_id: str = CALL_ID,
     *,
     caller: Caller = CALLER,
+    heard: str = "",
     **arguments: Any,
 ) -> ToolResult:
     """`tool` run by the library's runner on `arguments`, sent as JSON, in a call in `tag` for
-    `caller` (the demo traveler by default)."""
+    `caller` (the demo traveler by default), the caller's words of the turn `heard`."""
     request = ToolCallRequest(id="t-1", name=tool.name, arguments=json.dumps(arguments))
     runner = ToolRunner([tool])
-    return asyncio.run(runner.run(request, context(tag, call_id, caller), clock=SYSTEM_CLOCK))
+    ctx = context(tag, call_id, caller).hearing(heard)
+    return asyncio.run(runner.run(request, ctx, clock=SYSTEM_CLOCK))
 
 
 def data(result: ToolResult) -> dict[str, Any]:

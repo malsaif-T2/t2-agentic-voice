@@ -11,14 +11,18 @@ agent/turn.py reads), and every other is said with the invisible and markdown ma
 (agent/plain_speech.py). A card passes only when rule B passes each of its texts; one that does
 not is logged by its tool's name alone.
 
-**A claim sent again** (`guard.retry_claims`; the owner's call of 2026-11-18, where an agent
+**A clause sent again** (`guard.retry_claims`; the owner's call of 2026-11-18, where an agent
 whose booking tool had refused said «تم حجز رحلتك», your trip is booked, and a guard that held
-it back would have left the error notice in its place): the first clause of a turn that rule
-A blocks leaves no note and no notice (`ClauseBlocked.sent_again`); nothing more of its request
-is said nor any tool of it run (`held`, which agent/turn.py reads), and the request is sent once
-more, one past the turn's limit, with what it said before the clause as the model's own words
-and a note that the claim was held back (`held_back`, `CLAIM_HELD`). A claim blocked again in
-the turn, or any other clause blocked, goes as `guard.on_block` says.
+it back would have left the error notice in its place; and `guard.retry_ids`, from the owner's
+calls of 2026-11-22, where a model that added two fares itself after a tool failed had its sum
+blocked by rule B, and the caller heard the error notice): a clause that rule A blocks under
+the first, or rule B under the second, leaves no note and no notice (`ClauseBlocked.sent_again`);
+nothing more of its request is said nor any tool of it run (`held`, which agent/turn.py reads),
+and the request is sent once more, one past the turn's limit, with what it said before the
+clause as the model's own words and its rule's note (`held_back`: `CLAIM_HELD` or `ID_HELD`), up
+to `guard.retries_per_turn` times a turn (`retries`, the two rules' together). A clause blocked
+once those are spent, or by a rule whose setting is off, goes as `guard.on_block` says, and the
+session says the fixed phrase in its place (voice/session/talker_play.py).
 """
 
 from __future__ import annotations
@@ -42,11 +46,18 @@ from t2_agentic_voice.domain.ports.chat_model import ChatMessage
 from t2_agentic_voice.domain.text.arabic_numbers import Register
 
 _log = get_logger(__name__)
-# What a request sent again after a claim held back reads (the module's docstring).
+# What a request sent again after a clause held back reads, by the rule that held it: a claim
+# (rule A), or a number no result gives (rule B); the module's docstring.
 CLAIM_HELD = (
     "Note: the output guard held back the rest of your answer, unspoken, from a sentence that "
     "said something was done: no result of this call says it was done. Go on from what the "
     "caller heard, saying only what the results say: nothing is done until a result says so."
+)
+ID_HELD = (
+    "Note: the output guard held back the rest of your answer, unspoken, from a sentence holding "
+    "a number that no result of this call gives. Go on from what the caller heard, with only the "
+    "numbers the results give: never work a number out yourself (a sum, a difference); call the "
+    "tool that gives it."
 )
 
 
@@ -85,26 +96,35 @@ class ClauseGate:
         self.stopped = False  # a blocked clause dropped the rest of the reply
         self.blocked = 0
         self.not_speech = False  # a clause not speech ended the request (D-111)
-        self.held = self.retried = False  # a claim held back ended it, and one did in the turn
+        self.held = False  # a clause held back ended the request, which is sent again
+        self.retries = 0  # the turn's requests sent again so (`guard.retries_per_turn`)
+        self.note = CLAIM_HELD  # the note of the last clause held back
         self.said_now = 0  # the clauses the request said so far
 
     @property
     def ended(self) -> bool:
-        """Whether nothing more of the request is said: a clause not speech, or a claim held."""
+        """Whether nothing more of the request is said: a clause not speech, or one held."""
         return self.not_speech or self.held
 
     def begin(self) -> None:
         """A new request of the reply begins: nothing of it said, nor found not speech, nor a
-        claim held back."""
+        clause held back."""
         self.not_speech, self.held, self.said_now = False, False, 0
 
     def held_back(self) -> list[ChatMessage]:
-        """What the request sent again after a claim held back reads after the turn's messages:
-        what its request said before the claim, as the model's own, then `CLAIM_HELD`."""
+        """What the request sent again after a clause held back reads after the turn's
+        messages: what its request said before the clause, as the model's own, then its rule's
+        note (`CLAIM_HELD` or `ID_HELD`)."""
         passed = self.guard.passed
         said = passed[len(passed) - self.said_now :]
         own = [ChatMessage.assistant(" ".join(said))] if said else []
-        return [*own, ChatMessage.system(CLAIM_HELD)]
+        return [*own, ChatMessage.system(self.note)]
+
+    def _again(self, claim: bool) -> bool:
+        """Whether a clause blocked for a claim (`claim`) or for a number is held back and its
+        request sent again: its rule's setting on, and a retry of the turn's left."""
+        on = self.settings.retry_claims if claim else self.settings.retry_ids
+        return on and self.retries < self.settings.retries_per_turn
 
     def said(self, clauses: Iterable[str]) -> list[TalkerEvent]:
         """`clauses`, each spoken once the guard passed it, or blocked, or dropped past the
@@ -132,8 +152,8 @@ class ClauseGate:
                 continue
             self.blocked += 1
             claim = checked.reason == "unsupported_claim"
-            again = claim and self.settings.retry_claims and not self.retried
-            if not again:  # a claim sent again is answered anew: no note of it
+            again = self._again(claim)
+            if not again:  # a clause sent again is answered anew: no note of it
                 self.memory.notes[self.turn_id] = CLAIM_BLOCKED if claim else BLOCKED
             events.append(
                 ClauseBlocked(
@@ -145,7 +165,8 @@ class ClauseGate:
                 )
             )
             if again:
-                self.held = self.retried = True
+                self.held, self.retries = True, self.retries + 1
+                self.note = CLAIM_HELD if claim else ID_HELD
                 break
             self.stopped = self.settings.on_block == "drop_rest"
         return events

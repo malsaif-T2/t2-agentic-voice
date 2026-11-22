@@ -50,8 +50,8 @@ class LeanCall:
         self.check: BookingCheck = self.deps.check
         self._turn = 0
 
-    def find(self, **arguments: Any) -> ToolResult:
-        return run(find_flights(self.deps), self.tag, **arguments)
+    def find(self, *, heard: str = "", **arguments: Any) -> ToolResult:
+        return run(find_flights(self.deps), self.tag, heard=heard, **arguments)
 
     def choose(self, **arguments: Any) -> ToolResult:
         return run(choose_flights(self.deps), self.tag, **arguments)

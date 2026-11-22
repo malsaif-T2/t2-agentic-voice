@@ -4526,3 +4526,81 @@ twice; DOC-REF: every `D-NNN` cited anywhere is a heading here), so keep its sha
   millisecond) runs once a day, the first at the declaration, so a file fault still stops the
   start. A call that runs across midnight hears the new day's calendar from its first request
   after it, as its tools do. A text or a text per tag reads exactly as before.
+
+## D-136 · A blocked number sent again like a claim (`guard.retry_ids`), up to `guard.retries_per_turn` a turn; the real network guards no booking claim · 2026-11-22 · Accepted (the owner's calls of 2026-11-22; "it should say it have some difficulties, but I meant do not enforce the «تم الحجز» one to cause it too, since we don't do reservations to begin with"; library settings, off by default, GP-18; the flight app turns them on)
+
+- **Context:** after `choose_flights` failed, the model added two fares itself (1059 + 1429);
+  rule B blocked the sum, a number no result held, and the caller heard «صار عندنا خلل بسيط» or
+  «معليش، انقطع الجواب». `guard.retry_claims` (D-132's sibling for a claim) sent a blocked claim's
+  request once more, once a turn, but nothing did so for a number. And the real network, which
+  books nothing, declared the booking's claims on `choose_flights` (D-127), so a model's «تم
+  الحجز» was blocked and, sent again or not, could end in the error notice.
+- **Decision:** `guard.retry_ids` sends a request whose clause rule B blocked once more, as
+  `retry_claims` does a claim, with its own note (agent/clause_gate.py's `ID_HELD`: only the
+  numbers the results give, never one worked out; call the tool that gives it), and
+  `guard.retries_per_turn` (1 to 3, 1 by default, today's once a turn) counts both rules' sends
+  in a turn. A clause still blocked then is told as before, the notice said in its place: the
+  owner wants the caller told of a difficulty, never silence. The flight app turns `retry_ids`
+  on and sets `retries_per_turn` to 2 (voice_settings.py), each unless set; and on the real
+  network `choose_flights` declares no booking claims, the instructions asking the model never
+  to say a trip is booked (the mock's `book_trip` keeps `LEAN_CLAIMS`).
+- **Consequences:** a sum the model works out itself is usually answered anew by calling the tool
+  that gives it (D-137's `choose_flights` total), at the cost of one more request in that turn
+  only. A «تم الحجز» on the real network is said if the model writes it: the owner accepts that
+  over an error on a line where nothing books.
+
+## D-137 · The real network's trip from start to end: the way out first, the way back after it lands and following it, one summary with the total · 2026-11-22 · Accepted (the owner, 2026-11-22: "it needs to determine the out-bound flight, the return flight if any, then give a summary of both flights and the total"; "it should lock the outbound flight first then determine the return one after it (make sure its time is after the outbound). It also should [be] flexible to change the outbound trip later (change the destination or time) and the return trip follows"; plan 011; the real network only, the mock as run F reads it)
+
+- **Context:** the owner's calls of 2026-11-22, Qassim to Istanbul: Saad listed the way out,
+  the caller asked about the way back before choosing, and the model searched Istanbul to Qassim
+  as a new one-way trip (D-130's reading of the way back held only for a chosen outbound), which
+  replaced the trip; `choose_flights` then answered `unknown_id` three times, the model added the
+  fares itself, the guard blocked its sum and the caller heard «صار عندنا خلل بسيط». Saad never
+  asked whether there was a way back, and a new search for the way out without the return day
+  made a round trip one way. Replayed as text over the same flights (recorded from SerpApi on
+  2026-11-22), the current code broke the same way.
+- **Decision:** in code (lean/): a way back asked as its own search, the way out listed or
+  chosen, is the trip's return, the way out kept; the way back's flights come once the way out
+  is chosen, or listed before it when the caller asks about the way back (a return chosen
+  alone first is `outbound_first`; both in one call take the way out first), only those
+  leaving at least two hours after it lands (`too_early` otherwise), and another outbound
+  drops a return that no longer fits; on a round trip a new search for the way out with no return day keeps the trip round,
+  the way back following the new route on its day (`one_way` makes it one way); and
+  `choose_flights` notes the trip's end: one way so far, ask about a way back unless the caller
+  said one way, or both ways chosen, sum it up once. In the real instructions (real_en.md,
+  real_ar-SA.md): ask once, naturally, whether they come back; the way out first; a pick through
+  `choose_flights` the moment it is made, and a total only from it; one short summary of both
+  ways and the total; the way out may change, the way back follows.
+- **Consequences:** the trip has one order, the way out then the way back, which is how a phone
+  agent books; a caller who asks about the way back first hears its flights, and a return is
+  chosen only with or after the way out. The mock, its instructions (pinned) and run F are unchanged.
+
+## D-138 · A tool may read the caller's words of the turn (`CallContext.heard`); the flight app holds a search's day to the weekday the caller named · 2026-11-22 · Accepted (plan 011, the replays of the owner's Qassim to Istanbul calls; a new field of the tool's context, empty unless the talker gives it, GP-18)
+
+- **Context:** replayed 12 times, «بكرة، والرجعة السبت» was searched with the way back on
+  Wednesday the 25th or Thursday the 26th in 8 to 10 (the model counts dates less well than it
+  copies words), and `return_weekday`, which holds a day to the weekday the caller said
+  (weekday.py, from the owner's call of 2026-11-18), was passed in none of 36 tries, even
+  described plainly. A tool saw the caller, the call, the language and the record, never the
+  caller's words, so nothing could check the model's reading of them.
+- **Decision:** `CallContext` gains `heard`, the caller's words of the turn the tool runs in
+  (`hearing`; the talker gives its turn's, agent/turn.py), data the tool reads, never
+  instructions. The flight app's `find_flights` reads them for the way back's day alone
+  (lean/said_days.py), the way out always the model's: a weekday word, Arabic with its article
+  or English, with a return word in the three words before it («والرجعة السبت», «وبرجع الخميس»,
+  "back on Sunday") is the way back's, none after a negation or an anchor («مو», «بدال», «قبل»,
+  «بعد», "before", "after"); when exactly one is, and the model put the way back on another
+  weekday, it moves to that weekday's nearest date, never before the day out. The way back's own
+  search takes the one weekday named, never before the trip's day out. A way back said by its
+  weekday alone needs no date (`return_weekday` alone on the real network, its date the first
+  after the day out; on a search back, that search's day), and the weekday parameters ask for
+  the weekday plainly. A first version also moved the way out and read a return word after a
+  weekday; the review of 2026-11-22 found six ways it broke a call (a lone «السبت» answering
+  "when do you come back?" moved the way out, «وأرجع بعد يومين», «برجع», «قبل الجمعة», a search
+  back floored at today, a weekday passed for a search back), and the owner asked that the
+  return day stay free: narrowed to this.
+- **Consequences:** the 12 replays searched Saturday the 28th in all 12. A narrow fast path of
+  word lists beside the model's judgement (the owner's rule): a date, a count of days, "next
+  month", a lone weekday, two weekdays for the way back, or a weekday the lists miss leave the
+  model's date as it was, so the caller chooses the return day freely. The mock's search and
+  schema stay as run F reads them.

@@ -54,8 +54,8 @@ Both go in the agent's `tools`, each name once.
   it: a scripted model never sends what Groq refuses.
 - **`bind=`** fills a parameter from the call's verified caller, never from the talker, and
   hides it from the schema: `from_caller("subject")`, `"display_name"`, `"locale"` or
-  `"attributes.<key>"`. A parameter annotated `CallContext` gets the caller, the call's ID and
-  the reply's language.
+  `"attributes.<key>"`. A parameter annotated `CallContext` gets the caller, the call's ID,
+  the reply's language and the caller's words of the turn (`heard`).
 - **It returns** any value that is JSON, or a `ToolResult` (`data`, a `card` for a client with
   a screen, and `evidence` for the output guard). A `ToolError(message)` is a failure the talker
   reads; anything else, and the timeout, gives the talker only "the tool failed".

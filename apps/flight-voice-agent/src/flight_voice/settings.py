@@ -21,13 +21,14 @@ The library's settings as the app runs them: voice_settings.py's `for_the_app`, 
 - **books up to 50 a caller a day** (`ACTIONS_PER_DAY`) unless the environment sets
   `limits.actions_per_caller_per_day`: a demo day books more than the library's default;
 - **turns on** `guard.question_stop_drops_calls`, `guard.drop_stage_notes`, `guard.plain_speech`
-  and `guard.retry_claims` (`GUARD_ON`) and `llm.retry_rejected` (D-132), sets
+  `guard.retry_claims`, `guard.day_month_apart` and `guard.retry_ids` (`GUARD_ON`) and
+  `llm.retry_rejected` (D-132), sets `guard.retries_per_turn` to 2 (D-136) and
   `llm.max_requests_per_turn` to 4 (`REQUESTS_PER_TURN`), and, for the scripted agent alone,
   `interruptions.yes_over_read_back` (`YES_OVER_READ_BACK`), for the lean agent on the mock alone
   `interruptions.answer_yes_over_question` (`YES_OVER_QUESTION`), each unless the environment sets
   it (run F's rounds 2 and 3): a question the limit stopped ends the turn with no call of its
   request run, a stage note or a tag the model writes is never said, nor a clause that is not
-  speech or a booking's claim the guard held back, its request tried once more (D-111,
+  speech or a booking's claim or a number the guard held back, its request tried again (D-111,
   lean/book.py), a refused booking's next pick and its read-back fit in one turn, and a yes over
   the read-back books once its summary has played (D-108, the owner's "Any yes books"); the lean
   agent has no read-back to hold a yes over, so a yes over its closing question ("Shall I book

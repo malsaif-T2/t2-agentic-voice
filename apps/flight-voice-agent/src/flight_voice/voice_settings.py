@@ -8,10 +8,19 @@ only when it can book (`bookable`: the mock airline; on the real network the cal
 airline's own site, from the links on the cards, D-126, D-130); and it sends a request the
 provider rejected once more (`llm.retry_rejected`, D-132; the owner's call of 2026-11-19, a tool
 call the model wrote malformed that Groq refused) for either agent.
+
+For either agent too, a clause the guard blocks is first sent again (the owner's calls of
+2026-11-22, where a sum of two fares the model worked out itself was heard as «صار عندنا خلل
+بسيط»): a request whose claim or whose number the guard held back is sent once more
+(`retry_claims`, `retry_ids` in `GUARD_ON`), up to twice a turn (`_GUARD_SET`'s
+`retries_per_turn`, unless set); a clause still blocked after that is told as the library
+tells it, the caller hearing that something went wrong (the owner: "it should say it have
+some difficulties"). The real network declares no booking claims (lean/choose.py).
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Final, Literal
 
 from t2_agentic_voice import (
@@ -57,7 +66,10 @@ GUARD_ON: Final = (
     "plain_speech",
     "retry_claims",
     "day_month_apart",
+    "retry_ids",
 )
+# The guard's other values the app sets, each unless set (the module's docstring).
+_GUARD_SET: Final[Mapping[str, object]] = {"retries_per_turn": 2}
 REQUESTS_PER_TURN: Final = 4
 YES_OVER_READ_BACK: Final = "yes_over_read_back"
 YES_OVER_QUESTION: Final = "answer_yes_over_question"
@@ -70,10 +82,10 @@ def for_the_app(
     voice: VoiceSettings, *, agent: AgentKind = "scripted", bookable: bool = True
 ) -> VoiceSettings:
     """`voice` as the app runs `agent`: its folder nested (`APP_FOLDER`), its bookings a caller a
-    day `ACTIONS_PER_DAY`, the guard's `GUARD_ON` on, its most requests a turn
-    `REQUESTS_PER_TURN` and a rejected request sent once more (`llm.retry_rejected`), for the
-    scripted agent `YES_OVER_READ_BACK` on and for the lean one
-    (which has no read- back), when it can book, `YES_OVER_QUESTION`, with the booking's
+    day `ACTIONS_PER_DAY`, the guard's `GUARD_ON` on and its `_GUARD_SET` values, its most
+    requests a turn `REQUESTS_PER_TURN` and a rejected request sent once more
+    (`llm.retry_rejected`), for the scripted agent `YES_OVER_READ_BACK` on and for the lean one
+    (which has no read-back), when it can book, `YES_OVER_QUESTION`, with the booking's
     `SEND_WORDS` its `words.send`, `REGISTER_WORDS` for the caller's register, app_voice.py's
     speech, the calls' audio recorded where the caller consents, turned_on.py's `TURNED_ON` (and
     its `READ_BACK_TURNS` for the scripted agent), each unless set, and under `env` dev alone
@@ -86,7 +98,8 @@ def for_the_app(
         update["limits"] = LimitSettings.model_validate(
             voice.limits.model_dump() | {"actions_per_caller_per_day": ACTIONS_PER_DAY}
         )
-    if on := {name: True for name in GUARD_ON if name not in voice.guard.model_fields_set}:
+    guard: dict[str, object] = {**dict.fromkeys(GUARD_ON, True), **_GUARD_SET}
+    if on := {k: v for k, v in guard.items() if k not in voice.guard.model_fields_set}:
         update["guard"] = GuardSettings.model_validate(voice.guard.model_dump() | on)
     books = agent == "lean" and bookable
     yes = YES_OVER_READ_BACK if agent == "scripted" else YES_OVER_QUESTION if books else None
