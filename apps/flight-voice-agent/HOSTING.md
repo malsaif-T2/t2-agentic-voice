@@ -86,8 +86,8 @@ it to change them). Without those two settings the server runs the older scripte
 mock airline (the page that greets "Khalid").
 
 One process, one worker (the calls live in its memory). Run it as a service (systemd, NSSM or
-the Task Scheduler) that restarts it each night and on failure: the assistant's calendar is
-written for the day it starts. It refuses to start, naming the setting, when one is missing or
+the Task Scheduler) that restarts it on failure; it needs no nightly restart, since the
+assistant's calendar follows Riyadh's day (D-135). It refuses to start, naming the setting, when one is missing or
 wrong; `uv run t2v doctor` checks the keys and the voices first.
 
 ## TURN (coturn)
